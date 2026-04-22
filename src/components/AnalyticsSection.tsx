@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
-  ScatterChart, Scatter, ZAxis
+  ScatterChart, Scatter, ZAxis, Cell
 } from "recharts";
 import { Activity, Search, BarChart3, Crosshair, Map as MapIcon, Filter } from "lucide-react";
 
@@ -198,15 +198,38 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       return `${h}:${m}`;
   };
 
+  const getColorByZone = (macro: string, isDOT: boolean) => {
+      // isDOT = Azul, Centro = Verde
+      if (isDOT) {
+          switch(macro) {
+              case "Corredor Escobar": return "#bfdbfe"; // blue-200
+              case "Nordelta": return "#60a5fa"; // blue-400
+              case "San Isidro / Bancalari": return "#2563eb"; // blue-600
+              case "Tigre / Pacheco / Benav.": return "#1d4ed8"; // blue-700
+              case "Tortugas / Pilar": return "#1e3a8a"; // blue-900
+              default: return "#3b82f6";
+          }
+      } else {
+          switch(macro) {
+              case "Corredor Escobar": return "#bbf7d0"; // green-200
+              case "Nordelta": return "#4ade80"; // green-400
+              case "San Isidro / Bancalari": return "#16a34a"; // green-600
+              case "Tigre / Pacheco / Benav.": return "#15803d"; // green-700
+              case "Tortugas / Pilar": return "#14532d"; // green-900
+              default: return "#22c55e";
+          }
+      }
+  };
+
   const CustomScatterTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-slate-900 border border-slate-700 p-3 rounded-lg shadow-xl text-sm">
-          <p className="font-bold text-white mb-1">{data.barrio}</p>
+        <div className="bg-slate-900 border border-slate-700 p-3 rounded-lg shadow-xl text-sm font-sans flex flex-col gap-1">
+          <p className="font-bold mb-1" style={{color: getColorByZone(data.macro, data.isDOT)}}>{data.barrio}</p>
           <p className="text-slate-300">Horario: <span className="text-white font-medium">{formatHourTick(data.timeHour)}</span></p>
           <p className="text-slate-300">Duración: <span className="text-white font-medium">{data.duration} min</span></p>
-          <p className="text-slate-400 text-xs mt-1">Destino: {data.isDOT ? 'DOT' : 'Centro'}</p>
+          <p className="text-slate-400 text-xs mt-1">Hacia: {data.isDOT ? 'Shopping DOT' : 'Microcentro'}</p>
         </div>
       );
     }
@@ -335,9 +358,13 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                                 <XAxis type="number" dataKey="timeHour" domain={[6, 12]} tickFormatter={formatHourTick} stroke="#64748b" tick={{ fill: '#64748b', fontSize: 11 }} name="Horario" />
                                 <YAxis type="number" dataKey="duration" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 11 }} name="Minutos" unit="m" />
                                 <Tooltip cursor={{ strokeDasharray: '3 3' }} content={<CustomScatterTooltip />} />
-                                <ZAxis type="number" range={[40, 40]} /> 
-                                <Scatter name="Hacia DOT" data={scatterIdaDOT} fill="#3b82f6" opacity={0.7} />
-                                <Scatter name="Hacia Centro" data={scatterIdaCentro} fill="#a855f7" opacity={0.7} />
+                                <ZAxis type="number" range={[50, 50]} /> 
+                                <Scatter name="Hacia DOT" data={scatterIdaDOT} opacity={0.8}>
+                                    {scatterIdaDOT.map((entry, index) => <Cell key={`cell-dot-${index}`} fill={getColorByZone(entry.macro, true)} />)}
+                                </Scatter>
+                                <Scatter name="Hacia Centro" data={scatterIdaCentro} opacity={0.8}>
+                                    {scatterIdaCentro.map((entry, index) => <Cell key={`cell-centro-${index}`} fill={getColorByZone(entry.macro, false)} />)}
+                                </Scatter>
                             </ScatterChart>
                         </ResponsiveContainer>
                     )}
@@ -355,9 +382,13 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                                 <XAxis type="number" dataKey="timeHour" domain={[15, 20]} tickFormatter={formatHourTick} stroke="#64748b" tick={{ fill: '#64748b', fontSize: 11 }} name="Horario" />
                                 <YAxis type="number" dataKey="duration" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 11 }} name="Minutos" unit="m" />
                                 <Tooltip cursor={{ strokeDasharray: '3 3' }} content={<CustomScatterTooltip />} />
-                                <ZAxis type="number" range={[40, 40]} /> 
-                                <Scatter name="Desde DOT" data={scatterVueltaDOT} fill="#3b82f6" opacity={0.7} />
-                                <Scatter name="Desde Centro" data={scatterVueltaCentro} fill="#a855f7" opacity={0.7} />
+                                <ZAxis type="number" range={[50, 50]} /> 
+                                <Scatter name="Desde DOT" data={scatterVueltaDOT} opacity={0.8}>
+                                    {scatterVueltaDOT.map((entry, index) => <Cell key={`cell-dot-v-${index}`} fill={getColorByZone(entry.macro, true)} />)}
+                                </Scatter>
+                                <Scatter name="Desde Centro" data={scatterVueltaCentro} opacity={0.8}>
+                                    {scatterVueltaCentro.map((entry, index) => <Cell key={`cell-centro-v-${index}`} fill={getColorByZone(entry.macro, false)} />)}
+                                </Scatter>
                             </ScatterChart>
                         </ResponsiveContainer>
                     )}
