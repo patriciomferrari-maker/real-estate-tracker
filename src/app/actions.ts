@@ -6,11 +6,22 @@ import puppeteer from 'puppeteer'
 import { revalidatePath } from "next/cache"
 
 const ZONES = [
-  "El Canton, Escobar, Buenos Aires",
-  "Nordelta, Tigre, Buenos Aires",
-  "Rincon de Milberg, Tigre, Buenos Aires", // La Escondida
-  "Tortugas Country Club, Buenos Aires",
-  "Vicente Lopez, Buenos Aires"
+  // Escobar
+  "Barrio San Matias, Escobar, Buenos Aires",
+  "Puertos de Escobar, Buenos Aires",
+  "Barrio El Canton, Escobar, Buenos Aires",
+  "Barrio Santa Ana, Villa Nueva, Buenos Aires",
+  // Nordelta / Cercanias
+  "Barrio Santa Barbara, General Pacheco, Buenos Aires",
+  "Barrio Castaños, Nordelta, Buenos Aires",
+  "Barrio Las Glorietas, Nordelta, Buenos Aires",
+  "Barrio Barbarita, General Pacheco, Buenos Aires",
+  // Tigre
+  "Barrio La Escondida, Tigre, Buenos Aires",
+  // San Isidro
+  "Avenida Sucre y Avenida Dardo Rocha, San Isidro, Buenos Aires", // Usamos Dardo Rocha / Avellaneda que cruzan
+  // San Fernando
+  "Barrio Buenavista, Victoria, San Fernando, Buenos Aires"
 ]
 
 const DESTINATIONS = [

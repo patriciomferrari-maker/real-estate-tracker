@@ -4,11 +4,20 @@ import { syncAllData } from "./actions"
 
 // Helper to clean up names for the UI
 function formatZoneName(raw: string) {
-  if (raw.includes("Escobar")) return "Escobar";
-  if (raw.includes("Nordelta")) return "Nordelta";
-  if (raw.includes("Milberg") || raw.includes("Escondida")) return "Tigre (La Escondida)";
-  if (raw.includes("Tortugas")) return "Tortuguitas (Pilar)";
+  if (raw.includes("San Matias")) return "Escobar (San Matías)";
+  if (raw.includes("Puertos")) return "Escobar (Puertos)";
+  if (raw.includes("Canton") || raw.includes("Cantón")) return "Escobar (El Cantón)";
+  if (raw.includes("Santa Ana")) return "Escobar (Santa Ana)";
+  if (raw.includes("Santa Barbara")) return "Nordelta (Santa Bárbara)";
+  if (raw.includes("Castaños")) return "Nordelta (Castaños)";
+  if (raw.includes("Glorietas")) return "Nordelta (Glorietas)";
+  if (raw.includes("Barbarita")) return "Nordelta (Barbarita)";
+  if (raw.includes("Escondida") || raw.includes("Milberg")) return "Tigre (La Escondida)";
+  if (raw.includes("Sucre") || raw.includes("Rocha")) return "San Isidro (Lomas)";
+  if (raw.includes("Buenavista")) return "Buenavista (Bancalari)";
+  if (raw.includes("Tortugas")) return "Pilar (Tortugas)";
   if (raw.includes("Vicente Lopez")) return "Vicente Lopez";
+  
   if (raw.includes("DOT")) return "Shopping DOT";
   if (raw.includes("Florida") || raw.includes("Microcentro")) return "Microcentro";
   return raw;
