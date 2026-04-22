@@ -48,16 +48,14 @@ export default async function Dashboard({ searchParams }: any) {
   }));
 
   // Calculate aggregates based on direction and destination
-  interface Agg {
-    count: number; totalMins: number; min: number; max: number;
-    lastUpdate: Date | null;
+  interface DualAgg {
+    countDOT: number; totalMinsDOT: number; minDOT: number; maxDOT: number;
+    countMicro: number; totalMinsMicro: number; minMicro: number; maxMicro: number;
   }
   
   const groups = {
-    morningDOT: new Map<string, Agg>(), // Ida (Mañana) -> DOT
-    morningMicrocentro: new Map<string, Agg>(), // Ida (Mañana) -> Microcentro
-    afternoonDOT: new Map<string, Agg>(), // Vuelta (Tarde) <- DOT
-    afternoonMicrocentro: new Map<string, Agg>(), // Vuelta (Tarde) <- Microcentro
+    morning: new Map<string, DualAgg>(), // Ida (Mañana) -> Ciudad
+    afternoon: new Map<string, DualAgg>(), // Vuelta (Tarde) <- Ciudad
   };
 
   records.forEach(r => {
@@ -65,96 +63,145 @@ export default async function Dashboard({ searchParams }: any) {
     const dest = formatZoneName(r.destination);
     
     const isDOT = orig === "Shopping DOT" || dest === "Shopping DOT";
-    const isMicrocentro = orig === "Microcentro" || dest === "Microcentro";
+    const isMicrocentro = orig === "Microcentro" || dest === "Microcentro" || orig.includes("Obelisco") || dest.includes("Obelisco");
     
-    // Si el destino es DOT o Microcentro, es "Ida" a la ciudad (Normalmente Mañana).
-    // Si el origen es DOT o Microcentro, es "Vuelta" a provincia (Normalmente Tarde).
-    const isIda = dest === "Shopping DOT" || dest === "Microcentro";
-    
+    const isIda = dest === "Shopping DOT" || dest === "Microcentro" || dest.includes("Obelisco");
     const relevantZone = isIda ? orig : dest;
-    
-    let targetMap = null;
-    if (isIda && isDOT) targetMap = groups.morningDOT;
-    else if (isIda && isMicrocentro) targetMap = groups.morningMicrocentro;
-    else if (!isIda && isDOT) targetMap = groups.afternoonDOT;
-    else if (!isIda && isMicrocentro) targetMap = groups.afternoonMicrocentro;
+    const targetMap = isIda ? groups.morning : groups.afternoon;
 
-    if (targetMap) {
-      if (!targetMap.has(relevantZone)) {
-        targetMap.set(relevantZone, { count: 0, totalMins: 0, min: 999, max: 0, lastUpdate: null });
-      }
-      const group = targetMap.get(relevantZone)!;
-      group.count++;
-      group.totalMins += r.durationMins;
-      if (r.durationMins < group.min) group.min = r.durationMins;
-      if (r.durationMins > group.max) group.max = r.durationMins;
-      if (!group.lastUpdate || r.timestamp > group.lastUpdate) group.lastUpdate = r.timestamp;
+    if (!targetMap.has(relevantZone)) {
+      targetMap.set(relevantZone, { 
+        countDOT: 0, totalMinsDOT: 0, minDOT: 999, maxDOT: 0,
+        countMicro: 0, totalMinsMicro: 0, minMicro: 999, maxMicro: 0
+      });
+    }
+    
+    const group = targetMap.get(relevantZone)!;
+    if (isDOT) {
+      group.countDOT++;
+      group.totalMinsDOT += r.durationMins;
+      if (r.durationMins < group.minDOT) group.minDOT = r.durationMins;
+      if (r.durationMins > group.maxDOT) group.maxDOT = r.durationMins;
+    } else if (isMicrocentro) {
+      group.countMicro++;
+      group.totalMinsMicro += r.durationMins;
+      if (r.durationMins < group.minMicro) group.minMicro = r.durationMins;
+      if (r.durationMins > group.maxMicro) group.maxMicro = r.durationMins;
     }
   });
 
-  const generateBars = (mapToRender: Map<string, Agg>) => {
-    const rawList = Array.from(mapToRender.entries()).map(([name, data]) => ({
-      name,
-      avg: Math.round(data.totalMins / data.count),
-      macro: name.includes("Escobar") ? "Corredor Escobar" : 
-             name.includes("Nordelta") ? "Nordelta" : 
-             name.includes("Tortugas") ? "Tortugas / Pilar" : 
-             (name.includes("Tigre") || name.includes("Pacheco") || name.includes("Benavidez")) ? "Tigre / Pacheco / Benav." : 
-             (name.includes("San Isidro") || name.includes("Buenavista")) ? "San Isidro / Bancalari" : "Otros",
-      ...data
-    }));
+  const generateDualBars = (mapToRender: Map<string, DualAgg>) => {
+    const rawList = Array.from(mapToRender.entries()).map(([name, data]) => {
+      const avgDOT = data.countDOT > 0 ? Math.round(data.totalMinsDOT / data.countDOT) : 0;
+      const avgMicro = data.countMicro > 0 ? Math.round(data.totalMinsMicro / data.countMicro) : 0;
+      
+      return {
+        name,
+        avgDOT,
+        avgMicro,
+        sortVal: (avgDOT || 0) + (avgMicro || 0), // Use sum for robust sorting
+        macro: name.includes("Escobar") ? "Corredor Escobar" : 
+               name.includes("Nordelta") ? "Nordelta" : 
+               name.includes("Tortugas") ? "Tortugas / Pilar" : 
+               (name.includes("Tigre") || name.includes("Pacheco") || name.includes("Benavidez")) ? "Tigre / Pacheco / Benav." : 
+               (name.includes("San Isidro") || name.includes("Buenavista")) ? "San Isidro / Bancalari" : "Otros",
+        ...data
+      };
+    });
 
-    if (rawList.length === 0) return <p className="text-slate-500 text-sm py-4">No hay datos suficientes aún.</p>;
+    if (rawList.every(i => i.sortVal === 0)) return <p className="text-slate-500 text-sm py-4">No hay datos suficientes aún.</p>;
 
     const grouped = new Map<string, typeof rawList>();
-    rawList.forEach(item => {
+    rawList.filter(i => i.sortVal > 0).forEach(item => {
        if (!grouped.has(item.macro)) grouped.set(item.macro, []);
        grouped.get(item.macro)!.push(item);
     });
 
     const macrosSorted = Array.from(grouped.entries()).map(([macro, items]) => {
-      const avgMacro = Math.round(items.reduce((acc, curr) => acc + curr.avg, 0) / items.length);
-      return { macro, avgMacro, items: items.sort((a,b) => a.avg - b.avg) };
-    }).sort((a,b) => a.avgMacro - b.avgMacro);
+      let sumMacroDOT = 0, countMacroDOT = 0;
+      let sumMacroMicro = 0, countMacroMicro = 0;
+      
+      items.forEach(i => {
+         if(i.avgDOT > 0) { sumMacroDOT += i.avgDOT; countMacroDOT++; }
+         if(i.avgMicro > 0) { sumMacroMicro += i.avgMicro; countMacroMicro++; }
+      });
+
+      const avgMacroDOT = countMacroDOT > 0 ? Math.round(sumMacroDOT / countMacroDOT) : 0;
+      const avgMacroMicro = countMacroMicro > 0 ? Math.round(sumMacroMicro / countMacroMicro) : 0;
+
+      return { 
+        macro, 
+        avgMacroDOT, 
+        avgMacroMicro, 
+        sortMacro: avgMacroDOT + avgMacroMicro,
+        items: items.sort((a,b) => a.sortVal - b.sortVal) 
+      };
+    }).sort((a,b) => a.sortMacro - b.sortMacro);
 
     return (
       <div className="space-y-3">
         {macrosSorted.map(group => {
-           let fillMacro = Math.min(100, (group.avgMacro / 120) * 100);
-           const mColor = group.avgMacro > 90 ? 'bg-red-500' : group.avgMacro > 60 ? 'bg-yellow-500' : 'bg-emerald-500';
+           let fillDOT = group.avgMacroDOT > 0 ? Math.min(100, (group.avgMacroDOT / 120) * 100) : 0;
+           let fillMicro = group.avgMacroMicro > 0 ? Math.min(100, (group.avgMacroMicro / 120) * 100) : 0;
 
            return (
             <details key={group.macro} className="group bg-slate-900/50 rounded-xl border border-white/5 overflow-hidden open:ring-1 open:ring-white/10 transition-all">
+              {/* ACCORDION HEADER */}
               <summary className="p-3 cursor-pointer hover:bg-white/5 transition flex flex-col list-none w-full outline-none">
-                 <div className="flex justify-between items-center w-full mb-1">
+                 <div className="flex justify-between items-center w-full mb-2">
                     <span className="font-bold text-slate-200 flex items-center gap-2 text-sm">
                        <span className="text-blue-400 group-open:rotate-90 transition-transform inline-block">▶</span>
                        {group.macro}
                     </span>
-                    <span className="font-black text-white">{group.avgMacro} min</span>
                  </div>
-                 <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full transition-all duration-1000 ${mColor}`} style={{ width: `${fillMacro}%` }} />
+                 <div className="space-y-1.5 opacity-90">
+                    <div className="flex items-center gap-2 text-xs">
+                        <span className="w-16 font-semibold text-blue-300">Al DOT:</span>
+                        <div className="flex-1 h-1.5 bg-black/40 rounded-full overflow-hidden">
+                           {fillDOT > 0 && <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${fillDOT}%` }} />}
+                        </div>
+                        <span className="w-10 text-right font-black text-white">{group.avgMacroDOT > 0 ? `${group.avgMacroDOT}m` : '-'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                        <span className="w-16 font-semibold text-purple-300">Al Centro:</span>
+                        <div className="flex-1 h-1.5 bg-black/40 rounded-full overflow-hidden">
+                           {fillMicro > 0 && <div className="h-full rounded-full bg-purple-500 transition-all" style={{ width: `${fillMicro}%` }} />}
+                        </div>
+                        <span className="w-10 text-right font-black text-white">{group.avgMacroMicro > 0 ? `${group.avgMacroMicro}m` : '-'}</span>
+                    </div>
                  </div>
               </summary>
 
-              <div className="p-4 bg-black/30 border-t border-white/5 space-y-4">
+              {/* ACCORDION BODY */}
+              <div className="p-4 bg-black/30 border-t border-white/5 space-y-5">
                   {group.items.map(route => {
-                    let fillPercentage = Math.min(100, (route.avg / 120) * 100);
-                    const colorClass = route.avg > 90 ? 'bg-red-500' : route.avg > 60 ? 'bg-yellow-500' : 'bg-emerald-500';
+                    let fillBarDOT = route.avgDOT > 0 ? Math.min(100, (route.avgDOT / 120) * 100) : 0;
+                    let fillBarMicro = route.avgMicro > 0 ? Math.min(100, (route.avgMicro / 120) * 100) : 0;
+                    
                     return (
-                      <div key={route.name} className="relative pl-2 border-l-2 border-white/10">
-                        <div className="flex justify-between items-end mb-1">
-                          <p className="font-medium text-xs text-slate-300">{route.name}</p>
-                          <p className="text-xs font-bold text-slate-100">{route.avg} min</p>
-                        </div>
-                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
-                          <div className={`h-full rounded-full transition-all ${colorClass}`} style={{ width: `${fillPercentage}%` }} />
-                        </div>
-                        <div className="flex justify-between opacity-50 mt-1 text-[9px] text-slate-400">
-                           <span>Mín: {route.min}m</span>
-                           <span>Máx: {route.max}m</span>
-                        </div>
+                      <div key={route.name} className="relative pl-3 border-l-2 border-white/10 space-y-1.5">
+                        <p className="font-medium text-xs text-slate-200 border-b border-white/5 pb-1 mb-2">{route.name}</p>
+                        
+                        {/* DOT BAR */}
+                        {route.avgDOT > 0 && (
+                          <div className="flex items-center gap-2 text-[11px]">
+                             <span className="w-8 text-slate-400">DOT</span>
+                             <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+                               <div className="h-full rounded-full bg-blue-500" style={{ width: `${fillBarDOT}%` }} />
+                             </div>
+                             <span className="font-bold w-12 text-right">{route.avgDOT} min</span>
+                          </div>
+                        )}
+                        {/* MICROCENTRO BAR */}
+                        {route.avgMicro > 0 && (
+                          <div className="flex items-center gap-2 text-[11px]">
+                             <span className="w-8 text-slate-400">Centro</span>
+                             <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+                               <div className="h-full rounded-full bg-purple-500" style={{ width: `${fillBarMicro}%` }} />
+                             </div>
+                             <span className="font-bold w-12 text-right">{route.avgMicro} min</span>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -204,34 +251,18 @@ export default async function Dashboard({ searchParams }: any) {
             {/* IDA (MAÑANA) */}
             <section className="space-y-6">
               <h2 className="text-2xl font-bold border-b border-white/10 pb-2 mb-4 text-emerald-300 flex gap-2 items-center"><Clock size={24}/> Trayectos MAÑANA (Ida a CABA)</h2>
-              
-              <div className="glass-card">
-                <h3 className="text-lg font-medium mb-1 text-slate-100 flex items-center gap-2"><MapPin size={18} className="text-blue-400"/> Destino: Shopping DOT</h3>
-                <p className="text-xs text-slate-400 mb-6 border-b border-white/10 pb-4">Promedios de tiempos saliendo de la zona hacia el DOT.</p>
-                {generateBars(groups.morningDOT)}
-              </div>
-
-              <div className="glass-card">
-                <h3 className="text-lg font-medium mb-1 text-slate-100 flex items-center gap-2"><MapPin size={18} className="text-purple-400"/> Destino: Microcentro</h3>
-                <p className="text-xs text-slate-400 mb-6 border-b border-white/10 pb-4">Promedios de tiempos saliendo de la zona hacia Perón y Florida.</p>
-                {generateBars(groups.morningMicrocentro)}
+              <div className="glass-card shadow-lg shadow-emerald-900/10">
+                <p className="text-sm text-slate-400 mb-6 border-b border-white/10 pb-4">Promedios consolidados desde la Provincia hacia la capital (Shopping DOT y Centro).</p>
+                {generateDualBars(groups.morning)}
               </div>
             </section>
 
             {/* VUELTA (TARDE) */}
             <section className="space-y-6">
               <h2 className="text-2xl font-bold border-b border-white/10 pb-2 mb-4 text-amber-300 flex gap-2 items-center"><ArrowRightLeft size={24}/> Trayectos TARDE (Vuelta a Provincia)</h2>
-              
-              <div className="glass-card">
-                <h3 className="text-lg font-medium mb-1 text-slate-100 flex items-center gap-2"><ArrowRightLeft size={18} className="text-blue-400"/> Saliendo desde: Shopping DOT</h3>
-                <p className="text-xs text-slate-400 mb-6 border-b border-white/10 pb-4">Promedios de tiempos regresando desde el DOT hacia la zona.</p>
-                {generateBars(groups.afternoonDOT)}
-              </div>
-
-              <div className="glass-card">
-                <h3 className="text-lg font-medium mb-1 text-slate-100 flex items-center gap-2"><ArrowRightLeft size={18} className="text-purple-400"/> Saliendo desde: Microcentro</h3>
-                <p className="text-xs text-slate-400 mb-6 border-b border-white/10 pb-4">Promedios de tiempos regresando desde Perón y Florida hacia la zona.</p>
-                {generateBars(groups.afternoonMicrocentro)}
+              <div className="glass-card shadow-lg shadow-amber-900/10">
+                <p className="text-sm text-slate-400 mb-6 border-b border-white/10 pb-4">Promedios consolidados regresando desde Capital (Centro o DOT) hacia zona norte.</p>
+                {generateDualBars(groups.afternoon)}
               </div>
             </section>
 
