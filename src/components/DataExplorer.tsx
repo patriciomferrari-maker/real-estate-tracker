@@ -16,8 +16,7 @@ export default function DataExplorer({ records }: { records: any[] }) {
         
         // Calcular si es Ida o Vuelta en base al destino
         const esIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida");
-        
-        const turno = r.isPeakHour ? (esIda ? "Mañana (Ida)" : "Tarde (Vuelta)") : "Fuera de Pico";
+        const turno = r.isPeakHour ? (esIda ? "Ida (Mañana)" : "Vuelta (Tarde)") : "Fuera de Pico";
         const barrioCrudo = esIda ? r.origin : r.destination;
         
         // Clean up barrio string

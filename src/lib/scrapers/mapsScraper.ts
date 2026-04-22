@@ -14,7 +14,7 @@ export async function scrapeCommuteTime(origin: string, destination: string, exi
   }
   
   try {
-    const url = `https://www.google.com/maps/dir/${encodeURIComponent(origin)}/${encodeURIComponent(destination)}/`;
+    const url = `https://www.google.com/maps/dir/${encodeURIComponent(origin)}/${encodeURIComponent(destination)}/?hl=es-419&gl=AR`;
     await page!.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
     
     await page!.waitForSelector('div[data-trip-index]', { timeout: 7000 }).catch(() => {});

@@ -30,10 +30,9 @@ const ZONES = [
   "Barrio Altos de Pacheco, General Pacheco, Buenos Aires"
 ]
 
-const DESTINATIONS = [
-  "Shopping DOT Baires, Vedia, CABA",
-  "Peron y Florida, CABA"
-]
+const DOT = "Shopping DOT Baires, Vedia, CABA";
+const MICROCENTRO = "Obelisco, CABA";
+const DESTINATIONS = [DOT, MICROCENTRO];
 
 export async function syncAllData() {
   const browser = await puppeteer.launch({ 
