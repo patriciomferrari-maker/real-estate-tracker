@@ -93,39 +93,73 @@ export default async function Dashboard({ searchParams }: any) {
   });
 
   const generateBars = (mapToRender: Map<string, Agg>) => {
-    const sorted = Array.from(mapToRender.entries())
-      .map(([name, data]) => ({
-        name,
-        avg: Math.round(data.totalMins / data.count),
-        ...data
-      }))
-      .sort((a,b) => a.avg - b.avg);
+    const rawList = Array.from(mapToRender.entries()).map(([name, data]) => ({
+      name,
+      avg: Math.round(data.totalMins / data.count),
+      macro: name.includes("Escobar") ? "Corredor Escobar" : 
+             name.includes("Nordelta") ? "Nordelta" : 
+             name.includes("Tortugas") ? "Tortugas / Pilar" : 
+             (name.includes("Tigre") || name.includes("Pacheco") || name.includes("Benavidez")) ? "Tigre / Pacheco / Benav." : 
+             (name.includes("San Isidro") || name.includes("Buenavista")) ? "San Isidro / Bancalari" : "Otros",
+      ...data
+    }));
 
-    if (sorted.length === 0) return <p className="text-slate-500 text-sm py-4">No hay datos suficientes aún.</p>;
+    if (rawList.length === 0) return <p className="text-slate-500 text-sm py-4">No hay datos suficientes aún.</p>;
+
+    const grouped = new Map<string, typeof rawList>();
+    rawList.forEach(item => {
+       if (!grouped.has(item.macro)) grouped.set(item.macro, []);
+       grouped.get(item.macro)!.push(item);
+    });
+
+    const macrosSorted = Array.from(grouped.entries()).map(([macro, items]) => {
+      const avgMacro = Math.round(items.reduce((acc, curr) => acc + curr.avg, 0) / items.length);
+      return { macro, avgMacro, items: items.sort((a,b) => a.avg - b.avg) };
+    }).sort((a,b) => a.avgMacro - b.avgMacro);
 
     return (
-      <div className="space-y-6">
-        {sorted.map(route => {
-           let fillPercentage = Math.min(100, (route.avg / 120) * 100);
-           const colorClass = route.avg > 90 ? 'bg-red-500' : route.avg > 60 ? 'bg-yellow-500' : 'bg-emerald-500';
-           
+      <div className="space-y-3">
+        {macrosSorted.map(group => {
+           let fillMacro = Math.min(100, (group.avgMacro / 120) * 100);
+           const mColor = group.avgMacro > 90 ? 'bg-red-500' : group.avgMacro > 60 ? 'bg-yellow-500' : 'bg-emerald-500';
+
            return (
-            <div key={route.name} className="relative">
-              <div className="flex justify-between items-end mb-2">
-                <p className="font-medium text-sm text-slate-200">{route.name}</p>
-                <p className="text-sm font-bold">{route.avg} min</p>
+            <details key={group.macro} className="group bg-slate-900/50 rounded-xl border border-white/5 overflow-hidden open:ring-1 open:ring-white/10 transition-all">
+              <summary className="p-3 cursor-pointer hover:bg-white/5 transition flex flex-col list-none w-full outline-none">
+                 <div className="flex justify-between items-center w-full mb-1">
+                    <span className="font-bold text-slate-200 flex items-center gap-2 text-sm">
+                       <span className="text-blue-400 group-open:rotate-90 transition-transform inline-block">▶</span>
+                       {group.macro}
+                    </span>
+                    <span className="font-black text-white">{group.avgMacro} min</span>
+                 </div>
+                 <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full transition-all duration-1000 ${mColor}`} style={{ width: `${fillMacro}%` }} />
+                 </div>
+              </summary>
+
+              <div className="p-4 bg-black/30 border-t border-white/5 space-y-4">
+                  {group.items.map(route => {
+                    let fillPercentage = Math.min(100, (route.avg / 120) * 100);
+                    const colorClass = route.avg > 90 ? 'bg-red-500' : route.avg > 60 ? 'bg-yellow-500' : 'bg-emerald-500';
+                    return (
+                      <div key={route.name} className="relative pl-2 border-l-2 border-white/10">
+                        <div className="flex justify-between items-end mb-1">
+                          <p className="font-medium text-xs text-slate-300">{route.name}</p>
+                          <p className="text-xs font-bold text-slate-100">{route.avg} min</p>
+                        </div>
+                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+                          <div className={`h-full rounded-full transition-all ${colorClass}`} style={{ width: `${fillPercentage}%` }} />
+                        </div>
+                        <div className="flex justify-between opacity-50 mt-1 text-[9px] text-slate-400">
+                           <span>Mín: {route.min}m</span>
+                           <span>Máx: {route.max}m</span>
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
-              <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden mb-1 border border-white/5">
-                <div 
-                  className={`h-full rounded-full transition-all duration-1000 ${colorClass}`}
-                  style={{ width: `${fillPercentage}%` }}
-                />
-              </div>
-              <div className="flex justify-between text-[10px] text-slate-500">
-                <span>Récord Mejor: {route.min}m</span>
-                <span>Récord Peor: {route.max}m</span>
-              </div>
-            </div>
+            </details>
            );
         })}
       </div>
