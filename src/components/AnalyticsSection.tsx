@@ -89,6 +89,20 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const [lineSentido, setLineSentido] = useState<"ida" | "vuelta">("ida");
   const [lineDestino, setLineDestino] = useState<"todos" | "dot" | "centro">("todos");
   const [lineMacro, setLineMacro] = useState<string>("Todas las Zonas");
+  const [lineDate, setLineDate] = useState<string>("Histórico Promediado");
+
+  const uniqueDates = useMemo(() => {
+      const dates = new Set<string>();
+      records.forEach(r => {
+          dates.add(new Date(r.timestamp).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }));
+      });
+      return Array.from(dates).sort((a, b) => {
+          // simple string sort works well enough for DD/MM/YYYY if within same month, but better split:
+          const [d1, m1, y1] = a.split('/');
+          const [d2, m2, y2] = b.split('/');
+          return new Date(`${y1}-${m1}-${d1}`).getTime() - new Date(`${y2}-${m2}-${d2}`).getTime();
+      });
+  }, [records]);
 
   const barriosForLine = useMemo(() => {
       if (lineMacro === "Todas las Zonas") return [];
@@ -99,6 +113,10 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       const timeMap = new Map<string, any>();
       
       records.forEach(r => {
+          const date = new Date(r.timestamp);
+          const dateStr = date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          if (lineDate !== "Histórico Promediado" && dateStr !== lineDate) return;
+
           const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
           if (lineSentido === "ida" && !isIda) return;
           if (lineSentido === "vuelta" && isIda) return;
@@ -114,14 +132,16 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           
           if (lineMacro !== "Todas las Zonas" && macro !== lineMacro) return;
 
-          const date = new Date(r.timestamp);
           const mRounded = Math.floor(date.getMinutes() / 5) * 5; 
           const key = `${date.getHours().toString().padStart(2,'0')}:${mRounded.toString().padStart(2,'0')}`;
 
           if (!timeMap.has(key)) timeMap.set(key, { timeHourNum: date.getHours() + (mRounded/60), timeTick: key });
           const point = timeMap.get(key);
           
-          const seriesKey = lineMacro === "Todas las Zonas" ? macro : relevantBarrio;
+          let seriesKey = lineMacro === "Todas las Zonas" ? macro : relevantBarrio;
+          if (lineDestino === "todos") {
+              seriesKey += isDOT ? " (DOT)" : " (Centro)";
+          }
           
           if (!point[`_sum_${seriesKey}`]) { point[`_sum_${seriesKey}`] = 0; point[`_count_${seriesKey}`] = 0; }
           point[`_sum_${seriesKey}`] += r.durationMins;
@@ -138,18 +158,35 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           });
           return finalPt;
       }).sort((a,b) => a.timeHourNum - b.timeHourNum);
-  }, [records, lineSentido, lineDestino, lineMacro]);
+  }, [records, lineSentido, lineDestino, lineMacro, lineDate]);
 
   const dynamicLineKeys = useMemo(() => {
-      if (lineMacro === "Todas las Zonas") return Array.from(new Set(zones.map(z => getMacro(z)))).filter(m => m !== "Otras Zonas").sort();
-      return Array.from(new Set(barriosForLine));
-  }, [lineMacro, zones, barriosForLine]);
+      let baseKeys: string[] = [];
+      if (lineMacro === "Todas las Zonas") {
+          baseKeys = Array.from(new Set(zones.map(z => getMacro(z)))).filter(m => m !== "Otras Zonas").sort();
+      } else {
+          baseKeys = Array.from(new Set(barriosForLine));
+      }
 
-  const LINE_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#f43f5e", "#a855f7", "#06b6d4", "#f97316", "#84cc16"];
+      if (lineDestino === "todos") {
+          const expanded: string[] = [];
+          baseKeys.forEach(k => {
+              expanded.push(`${k} (DOT)`);
+              expanded.push(`${k} (Centro)`);
+          });
+          return expanded;
+      }
+      return baseKeys;
+  }, [lineMacro, zones, barriosForLine, lineDestino]);
+
+  const LINE_COLORS = [
+      "#3b82f6", "#10b981", "#f59e0b", "#f43f5e", "#a855f7", "#06b6d4", "#f97316", "#84cc16",
+      "#6366f1", "#14b8a6", "#eab308", "#ec4899", "#8b5cf6", "#3b82f6", "#10b981", "#f59e0b"
+  ];
 
   // 3. DATA: Radar Macro-Zone Comparability
   const radarData = useMemo(() => {
-    const macro = new Map<string, { name: string, min: number, max: number }>();
+      const macro = new Map<string, { name: string, min: number, max: number }>();
     records.forEach(r => {
         let macroName = getMacro(r.origin);
         if (macroName === "Otras Zonas") macroName = getMacro(r.destination);
@@ -491,6 +528,17 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                    >
                        <option value="Todas las Zonas">Todas las Macro-Zonas</option>
                        {Array.from(new Set(zones.map(z => getMacro(z)))).filter(m => m !== "Otras Zonas").sort().map(z => <option key={z} value={z}>{z}</option>)}
+                   </select>
+               </div>
+               
+               <div className="relative min-w-[160px]">
+                   <select 
+                      className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-4 py-1.5 text-sm appearance-none focus:outline-none focus:ring-1 focus:ring-slate-500"
+                      value={lineDate}
+                      onChange={(e) => setLineDate(e.target.value)}
+                   >
+                       <option value="Histórico Promediado">Histórico (Todo)</option>
+                       {uniqueDates.map(d => <option key={d} value={d}>{d}</option>)}
                    </select>
                </div>
            </div>
