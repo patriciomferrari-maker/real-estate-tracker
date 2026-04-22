@@ -13,6 +13,10 @@ function formatZoneName(raw: string) {
   if (raw.includes("Glorietas")) return "Nordelta (Glorietas)";
   if (raw.includes("Barbarita")) return "Nordelta (Barbarita)";
   if (raw.includes("Escondida") || raw.includes("Milberg")) return "Tigre (La Escondida)";
+  if (raw.includes("Liebres")) return "Tortugas (Las Liebres)";
+  if (raw.includes("Boulevares") || raw.includes("Bulevares")) return "Tortugas (Los Boulevares)";
+  if (raw.includes("Encuentro")) return "Benavidez (El Encuentro)";
+  if (raw.includes("Altos de Pacheco")) return "Pacheco (Altos de Pacheco)";
   if (raw.includes("Sucre") || raw.includes("Rocha")) return "San Isidro (Lomas)";
   if (raw.includes("Buenavista")) return "Buenavista (Bancalari)";
   if (raw.includes("Tortugas")) return "Pilar (Tortugas)";

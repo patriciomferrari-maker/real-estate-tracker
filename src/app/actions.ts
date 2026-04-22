@@ -21,7 +21,13 @@ const ZONES = [
   // San Isidro
   "Avenida Sucre y Avenida Dardo Rocha, San Isidro, Buenos Aires", // Usamos Dardo Rocha / Avellaneda que cruzan
   // San Fernando
-  "Barrio Buenavista, Victoria, San Fernando, Buenos Aires"
+  "Barrio Buenavista, Victoria, San Fernando, Buenos Aires",
+  // Tortugas
+  "Barrio Las Liebres, Tortuguitas, Buenos Aires",
+  "Barrio Los Boulevares, Tortuguitas, Buenos Aires",
+  // Benavidez / Pacheco
+  "Barrio El Encuentro, Benavidez, Buenos Aires",
+  "Barrio Altos de Pacheco, General Pacheco, Buenos Aires"
 ]
 
 const DESTINATIONS = [
