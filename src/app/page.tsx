@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma"
 import { MapPin, TrendingUp, RefreshCw, CarFront, Clock, ArrowRightLeft, Calendar } from "lucide-react"
 import { syncAllData } from "./actions"
+import ZoneCharts from "@/components/ZoneCharts"
 
 // Helper to clean up names for the UI
 function formatZoneName(raw: string) {
@@ -31,6 +32,12 @@ export default async function Dashboard() {
   const records = await prisma.commuteRecord.findMany({
     orderBy: { timestamp: 'desc' }
   });
+
+  // Convert dates to string for Client Components
+  const serializableRecords = records.map(r => ({
+     ...r,
+     timestamp: r.timestamp.toISOString()
+  }));
 
   // Calculate aggregates based on direction and destination
   interface Agg {
@@ -174,6 +181,9 @@ export default async function Dashboard() {
         </section>
 
       </div>
+
+      {/* DASHBOARD GRAFICO INTERACTIVO */}
+      <ZoneCharts records={serializableRecords} />
 
       {/* RECENT LOG TABLE */}
       <section className="mb-12 glass-card overflow-hidden !p-0">
