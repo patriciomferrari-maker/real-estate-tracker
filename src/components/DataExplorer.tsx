@@ -16,7 +16,13 @@ export default function DataExplorer({ records }: { records: any[] }) {
         
         // Calcular si es Ida o Vuelta en base al destino
         const esIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
-        const turno = esIda ? "Ida (Mañana)" : "Vuelta (Tarde)";
+        const isDOT = r.origin.includes("DOT") || r.destination.includes("DOT");
+        
+        let detalle = "";
+        if (esIda) detalle = isDOT ? " al DOT" : " al Centro";
+        else detalle = isDOT ? " del DOT" : " del Centro";
+
+        const turno = esIda ? `Ida${detalle}` : `Vuelta${detalle}`;
         const barrioCrudo = esIda ? r.origin : r.destination;
         
         // Clean up barrio string
