@@ -1,9 +1,11 @@
 import prisma from "@/lib/prisma"
-import { MapPin, TrendingUp, RefreshCw, CarFront, Clock, ArrowRightLeft, Calendar } from "lucide-react"
+import { MapPin, TrendingUp, RefreshCw, CarFront, Clock, ArrowRightLeft, Calendar, BarChart3, Database } from "lucide-react"
 
 export const dynamic = 'force-dynamic';
 import { syncAllData } from "./actions"
 import AnalyticsSection from "@/components/AnalyticsSection"
+import DataExplorer from "@/components/DataExplorer"
+import Link from 'next/link'
 
 // Helper to clean up names for the UI
 function formatZoneName(raw: string) {
@@ -30,7 +32,11 @@ function formatZoneName(raw: string) {
   return raw;
 }
 
-export default async function Dashboard() {
+export default async function Dashboard({ searchParams }: any) {
+  // Manejo directo de tabs para modo pagina
+  const resolvedParams = await searchParams;
+  const currentTab = resolvedParams?.tab || "dashboard";
+
   const records = await prisma.commuteRecord.findMany({
     orderBy: { timestamp: 'desc' }
   });
@@ -44,13 +50,6 @@ export default async function Dashboard() {
   // Calculate aggregates based on direction and destination
   interface Agg {
     count: number; totalMins: number; min: number; max: number;
-    lastUpdate: Date | null;
-  }
-  
-  const groups = {
-    morningDOT: new Map<string, Agg>(), // Ida (Mañana) -> DOT
-    morningMicrocentro: new Map<string, Agg>(), // Ida (Mañana) -> Microcentro
-    afternoonDOT: new Map<string, Agg>(), // Vuelta (Tarde) <- DOT
     afternoonMicrocentro: new Map<string, Agg>(), // Vuelta (Tarde) <- Microcentro
   };
 
