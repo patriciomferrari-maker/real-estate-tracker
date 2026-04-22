@@ -132,22 +132,42 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           
-          {/* BAR CHART: COMPARISON */}
+          {/* BAR CHART: COMPARISON DOT */}
           <div className="glass-card">
-              <h3 className="text-lg font-bold mb-1 flex items-center gap-2"><MapIcon size={18} className="text-emerald-400"/> Promedios Globales Reales (IDA)</h3>
-              <p className="text-xs text-slate-400 mb-6">Comparativa mano-a-mano de lo que promedia llegar desde cada barrio.</p>
+              <h3 className="text-lg font-bold mb-1 flex items-center gap-2"><MapIcon size={18} className="text-blue-400"/> Promedios Mañana: Al Shopping DOT</h3>
+              <p className="text-xs text-slate-400 mb-6">Ranking de tiempos desde cada barrio hasta el inicio de CABA.</p>
               
-              <div className="h-[350px] w-full">
+              <div className="h-[300px] w-full">
                   {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={comparisonData} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}>
+                        <BarChart data={comparisonData.filter(d => d["Al DOT"] > 0).sort((a,b) => a["Al DOT"] - b["Al DOT"])} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false}/>
                           <XAxis type="number" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} />
-                          <YAxis dataKey="zone" type="category" stroke="#64748b" width={80} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                          <YAxis dataKey="zone" type="category" stroke="#64748b" width={90} tick={{ fill: '#94a3b8', fontSize: 11 }} />
                           <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
-                          <Legend />
-                          <Bar dataKey="Al DOT" fill="#10b981" radius={[0, 4, 4, 0]} barSize={12} />
-                          <Bar dataKey="Al Microcentro" fill="#f43f5e" radius={[0, 4, 4, 0]} barSize={12} />
+                          <Bar dataKey="Al DOT" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={16}>
+                             {/* Optional labels */}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                  )}
+              </div>
+          </div>
+
+          {/* BAR CHART: COMPARISON MICROCENTRO */}
+          <div className="glass-card">
+              <h3 className="text-lg font-bold mb-1 flex items-center gap-2"><MapIcon size={18} className="text-purple-400"/> Promedios Mañana: Al Microcentro</h3>
+              <p className="text-xs text-slate-400 mb-6">Ranking de tiempos desde cada barrio hasta el corazón del centro.</p>
+              
+              <div className="h-[300px] w-full">
+                  {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={comparisonData.filter(d => d["Al Microcentro"] > 0).sort((a,b) => a["Al Microcentro"] - b["Al Microcentro"])} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false}/>
+                          <XAxis type="number" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} />
+                          <YAxis dataKey="zone" type="category" stroke="#64748b" width={90} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                          <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
+                          <Bar dataKey="Al Microcentro" fill="#a855f7" radius={[0, 4, 4, 0]} barSize={16} />
                         </BarChart>
                       </ResponsiveContainer>
                   )}
