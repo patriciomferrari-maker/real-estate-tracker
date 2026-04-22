@@ -31,12 +31,30 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
      if (!selectedZone && zones.length > 0) setSelectedZone(zones[0])
   }, [zones, selectedZone]);
 
+  // Utility to shorten raw names
+  const shortenBarrioName = (raw: string) => {
+      let friendly = raw;
+      if (friendly.includes("San Matias")) return "San Matías";
+      if (friendly.includes("Puertos")) return "Puertos";
+      if (friendly.includes("Canton")) return "El Cantón";
+      if (friendly.includes("Liebres")) return "Liebres";
+      if (friendly.includes("Boulevares")) return "Boulevares";
+      if (friendly.includes("Glorietas")) return "Glorietas";
+      if (friendly.includes("Castaños")) return "Castaños";
+      if (friendly.includes("Santa Barbara")) return "Santa Bárbara";
+      if (friendly.includes("Encuentro")) return "El Encuentro";
+      if (friendly.includes("Escondida")) return "La Escondida";
+      if (friendly.includes("Tigre")) return "Tigre";
+      return friendly.split(',')[0].replace("Barrio", "").trim();
+  };
+
   // Utility to determine Macro from name
   const getMacro = (name: string) => {
-      if (name.includes("Escobar")) return "Corredor Escobar";
-      if (name.includes("Nordelta")) return "Nordelta";
-      if (name.includes("Tortugas") || name.includes("Liebres") || name.includes("Boulevares")) return "Tortugas / Pilar";
-      if (name.includes("Tigre") || name.includes("Pacheco") || name.includes("Benavidez") || name.includes("Escondida") || name.includes("Barbarita")) return "Tigre / Pacheco / Benav.";
+      if (name.includes("Escobar") || name.includes("San Matias") || name.includes("Canton") || name.includes("Puertos")) return "Escobar";
+      if (name.includes("Nordelta") || name.includes("Glorietas") || name.includes("Castaños")) return "Nordelta";
+      if (name.includes("Tortugas") || name.includes("Liebres") || name.includes("Boulevares")) return "Tortugas";
+      if (name.includes("Pacheco") || name.includes("Benavidez") || name.includes("Encuentro")) return "Benavidez / Pacheco";
+      if (name.includes("Tigre") || name.includes("Escondida") || name.includes("Santa Barbara") || name.includes("Barbarita")) return "Tigre";
       if (name.includes("San Isidro") || name.includes("Buenavista") || name.includes("Lomas")) return "San Isidro / Bancalari";
       return "Otras Zonas";
   };
@@ -48,22 +66,9 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       const groups = new Map<string, { zone: string, totalDOT: number, countDOT: number, totalMicro: number, countMicro: number }>();
       records.forEach(r => {
           const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
-          if (!isIda) return; // Sólo promedios de IDA.
+          if (!isIda) return; 
           
-          let friendlyZone = r.origin;
-          
-          if (friendlyZone.includes("San Matias")) friendlyZone = "San Matías";
-          else if (friendlyZone.includes("Puertos")) friendlyZone = "Puertos";
-          else if (friendlyZone.includes("Canton")) friendlyZone = "El Cantón";
-          else if (friendlyZone.includes("Liebres")) friendlyZone = "Liebres";
-          else if (friendlyZone.includes("Boulevares")) friendlyZone = "Boulevares";
-          else if (friendlyZone.includes("Glorietas")) friendlyZone = "Glorietas";
-          else if (friendlyZone.includes("Castaños")) friendlyZone = "Castaños";
-          else if (friendlyZone.includes("Santa Barbara")) friendlyZone = "Santa Bárbara";
-          else if (friendlyZone.includes("Encuentro")) friendlyZone = "El Encuentro";
-          else if (friendlyZone.includes("Escondida")) friendlyZone = "La Escondida";
-          else friendlyZone = friendlyZone.split(',')[0].replace("Barrio", "").trim();
-
+          let friendlyZone = shortenBarrioName(r.origin);
           if (!groups.has(friendlyZone)) groups.set(friendlyZone, { zone: friendlyZone, totalDOT: 0, countDOT: 0, totalMicro: 0, countMicro: 0 });
           const stat = groups.get(friendlyZone)!;
           
@@ -82,11 +87,12 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   }, [records]);
 
   const [lineSentido, setLineSentido] = useState<"ida" | "vuelta">("ida");
+  const [lineDestino, setLineDestino] = useState<"todos" | "dot" | "centro">("todos");
   const [lineMacro, setLineMacro] = useState<string>("Todas las Zonas");
 
   const barriosForLine = useMemo(() => {
       if (lineMacro === "Todas las Zonas") return [];
-      return zones.filter(z => getMacro(z) === lineMacro);
+      return zones.filter(z => getMacro(z) === lineMacro).map(shortenBarrioName);
   }, [lineMacro, zones]);
 
   const evolutivoData = useMemo(() => {
@@ -97,8 +103,13 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           if (lineSentido === "ida" && !isIda) return;
           if (lineSentido === "vuelta" && isIda) return;
 
-          const relevantBarrio = isIda ? r.origin : r.destination;
-          const macro = getMacro(relevantBarrio);
+          const isDOT = isIda ? r.destination.includes("DOT") : r.origin.includes("DOT");
+          if (lineDestino === "dot" && !isDOT) return;
+          if (lineDestino === "centro" && isDOT) return;
+
+          const relevantBarrioRaw = isIda ? r.origin : r.destination;
+          const relevantBarrio = shortenBarrioName(relevantBarrioRaw);
+          const macro = getMacro(relevantBarrioRaw);
           if (macro === "Otras Zonas") return;
           
           if (lineMacro !== "Todas las Zonas" && macro !== lineMacro) return;
@@ -127,11 +138,11 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           });
           return finalPt;
       }).sort((a,b) => a.timeHourNum - b.timeHourNum);
-  }, [records, lineSentido, lineMacro]);
+  }, [records, lineSentido, lineDestino, lineMacro]);
 
   const dynamicLineKeys = useMemo(() => {
       if (lineMacro === "Todas las Zonas") return Array.from(new Set(zones.map(z => getMacro(z)))).filter(m => m !== "Otras Zonas").sort();
-      return barriosForLine;
+      return Array.from(new Set(barriosForLine));
   }, [lineMacro, zones, barriosForLine]);
 
   const LINE_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#f43f5e", "#a855f7", "#06b6d4", "#f97316", "#84cc16"];
@@ -448,6 +459,27 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                     className={`px-3 py-1 text-xs font-medium rounded transition-all ${lineSentido === 'vuelta' ? 'bg-orange-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
                   >
                     VUELTA (A Provincia)
+                  </button>
+               </div>
+
+               <div className="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1">
+                  <button 
+                    onClick={() => setLineDestino("todos")}
+                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${lineDestino === 'todos' ? 'bg-slate-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    Ambos
+                  </button>
+                  <button 
+                    onClick={() => setLineDestino("dot")}
+                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${lineDestino === 'dot' ? 'bg-blue-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    Solo DOT
+                  </button>
+                  <button 
+                    onClick={() => setLineDestino("centro")}
+                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${lineDestino === 'centro' ? 'bg-green-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    Solo Centro
                   </button>
                </div>
 
