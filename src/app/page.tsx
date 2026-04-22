@@ -3,7 +3,7 @@ import { MapPin, TrendingUp, RefreshCw, CarFront, Clock, ArrowRightLeft, Calenda
 
 export const dynamic = 'force-dynamic';
 import { syncAllData } from "./actions"
-import ZoneCharts from "@/components/ZoneCharts"
+import AnalyticsSection from "@/components/AnalyticsSection"
 
 // Helper to clean up names for the UI
 function formatZoneName(raw: string) {
@@ -184,8 +184,8 @@ export default async function Dashboard() {
 
       </div>
 
-      {/* DASHBOARD GRAFICO INTERACTIVO */}
-      <ZoneCharts records={serializableRecords} />
+      {/* MODULO AVANZADO DE ANALISIS VISUAL */}
+      <AnalyticsSection records={serializableRecords} />
 
       {/* RECENT LOG TABLE */}
       <section className="mb-12 glass-card overflow-hidden !p-0">
