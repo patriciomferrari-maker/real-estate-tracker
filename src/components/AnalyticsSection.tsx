@@ -13,8 +13,8 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const zones = useMemo(() => {
     const list = new Set<string>();
     records.forEach(r => {
-        if (!r.origin.includes("DOT") && !r.origin.includes("Microcentro") && !r.origin.includes("Florida") && !r.origin.includes("San Isidro")) list.add(r.origin);
-        if (!r.destination.includes("DOT") && !r.destination.includes("Microcentro") && !r.destination.includes("Florida") && !r.destination.includes("San Isidro")) list.add(r.destination); 
+        if (!r.origin.includes("DOT") && !r.origin.includes("Microcentro") && !r.origin.includes("Florida") && !r.origin.includes("Obelisco") && !r.origin.includes("San Isidro")) list.add(r.origin);
+        if (!r.destination.includes("DOT") && !r.destination.includes("Microcentro") && !r.destination.includes("Florida") && !r.destination.includes("Obelisco") && !r.destination.includes("San Isidro")) list.add(r.destination); 
         if (r.origin.includes("San Isidro")) list.add(r.origin);
         if (r.destination.includes("San Isidro")) list.add(r.destination);
     });
@@ -29,7 +29,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const comparisonData = useMemo(() => {
       const groups = new Map<string, { zone: string, totalDOT: number, countDOT: number, totalMicro: number, countMicro: number }>();
       records.forEach(r => {
-          const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida");
+          const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
           if (!isIda) return; // Sólo promedios de IDA.
           
           let friendlyZone = r.origin;
@@ -77,7 +77,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       const point = timeGroups.get(key)!;
       let target = isOrigin ? r.destination : r.origin;
       if (target.includes("DOT")) target = "DOT";
-      if (target.includes("Florida") || target.includes("Microcentro")) target = "Microcentro";
+      if (target.includes("Florida") || target.includes("Microcentro") || target.includes("Obelisco")) target = "Microcentro";
       if (isOrigin) point[`IDA (Hacia ${target})`] = r.durationMins;
       else point[`VUELTA (Desde ${target})`] = r.durationMins;
     });

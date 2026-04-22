@@ -28,7 +28,7 @@ function formatZoneName(raw: string) {
   if (raw.includes("Vicente Lopez")) return "Vicente Lopez";
   
   if (raw.includes("DOT")) return "Shopping DOT";
-  if (raw.includes("Florida") || raw.includes("Microcentro")) return "Microcentro";
+  if (raw.includes("Florida") || raw.includes("Microcentro") || raw.includes("Obelisco")) return "Microcentro";
   return raw;
 }
 
