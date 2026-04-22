@@ -1,11 +1,11 @@
 import prisma from "@/lib/prisma"
 import { MapPin, TrendingUp, RefreshCw, CarFront, Clock, ArrowRightLeft, Calendar, BarChart3, Database } from "lucide-react"
+import Link from 'next/link'
 
 export const dynamic = 'force-dynamic';
 import { syncAllData } from "./actions"
 import AnalyticsSection from "@/components/AnalyticsSection"
 import DataExplorer from "@/components/DataExplorer"
-import Link from 'next/link'
 
 // Helper to clean up names for the UI
 function formatZoneName(raw: string) {
@@ -66,7 +66,6 @@ export default async function Dashboard({ searchParams }: any) {
     
     const isDOT = orig === "Shopping DOT" || dest === "Shopping DOT";
     const isMicrocentro = orig === "Microcentro" || dest === "Microcentro";
-    const hour = new Date(r.timestamp).getHours();
     
     // Si el destino es DOT o Microcentro, es "Ida" a la ciudad (Normalmente Mañana).
     // Si el origen es DOT o Microcentro, es "Vuelta" a provincia (Normalmente Tarde).
@@ -107,8 +106,7 @@ export default async function Dashboard({ searchParams }: any) {
     return (
       <div className="space-y-6">
         {sorted.map(route => {
-           let fillPercentage = Math.min(100, (route.avg / 120) * 100); // 2 hours = 100% full bar
-           // Microcentro requires higher threshold than DOT naturally
+           let fillPercentage = Math.min(100, (route.avg / 120) * 100);
            const colorClass = route.avg > 90 ? 'bg-red-500' : route.avg > 60 ? 'bg-yellow-500' : 'bg-emerald-500';
            
            return (
@@ -117,8 +115,6 @@ export default async function Dashboard({ searchParams }: any) {
                 <p className="font-medium text-sm text-slate-200">{route.name}</p>
                 <p className="text-sm font-bold">{route.avg} min</p>
               </div>
-              
-              {/* Progress Bar Container */}
               <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden mb-1 border border-white/5">
                 <div 
                   className={`h-full rounded-full transition-all duration-1000 ${colorClass}`}
@@ -137,107 +133,97 @@ export default async function Dashboard({ searchParams }: any) {
   };
 
   return (
-    <main className="max-w-7xl mx-auto p-4 md:p-8 animate-fade-in relative z-10">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+    <main className="min-h-screen p-4 md:p-8 max-w-7xl mx-auto text-slate-200">
+      <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-white/10">
         <div>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">Commute <span className="gradient-text">Matrix</span></h1>
-          <p className="text-slate-400">Análisis detallado de tiempos de viaje (Ida/Vuelta y Destino).</p>
+          <h1 className="text-4xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">Commute Matrix</h1>
+          <p className="text-slate-400 mt-2 text-lg">Inteligencia inmobiliaria automatizada.</p>
         </div>
+        
+        {/* Sync Button */}
         <form action={syncAllData}>
-          <button type="submit" className="btn-primary flex items-center gap-2">
-            <RefreshCw size={18} />
-            Forzar Sincronización Real
+          <button type="submit" className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-6 py-3 rounded-full font-semibold shadow-lg shadow-purple-900/50 hover:shadow-purple-900/80 hover:-translate-y-1 transition-all border border-purple-400/30">
+            <RefreshCw size={18} /> Forzar Análisis Total
           </button>
         </form>
       </header>
 
-      {/* DASHBOARDS SEPARADOS */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-12">
-        
-        {/* IDA (MAÑANA) */}
-        <section className="space-y-6">
-          <h2 className="text-2xl font-bold border-b border-white/10 pb-2 mb-4">☀️ Trayectos MAÑANA (Ida a CABA)</h2>
-          
-          <div className="glass-card">
-            <h3 className="text-lg font-medium mb-1 text-slate-100 flex items-center gap-2"><MapPin size={18} className="text-emerald-400"/> Destino: Shopping DOT</h3>
-            <p className="text-xs text-slate-400 mb-6 border-b border-white/10 pb-4">Promedios de tiempos saliendo de la zona hacia el DOT.</p>
-            {generateBars(groups.morningDOT)}
+      {/* NAVEGACION DE TABS */}
+      <nav className="flex flex-wrap gap-3 mb-8 pb-4 border-b border-white/5">
+          <Link href="?tab=dashboard" className={`px-6 py-2.5 rounded-lg font-medium transition-all shadow-md flex items-center gap-2 ${currentTab === 'dashboard' ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white ring-2 ring-blue-400/50' : 'bg-slate-800/60 text-slate-300 hover:bg-slate-700'}`}>
+              <MapPin size={18} /> Resumen General
+          </Link>
+          <Link href="?tab=graficos" className={`px-6 py-2.5 rounded-lg font-medium transition-all shadow-md flex items-center gap-2 ${currentTab === 'graficos' ? 'bg-gradient-to-r from-purple-600 to-purple-500 text-white ring-2 ring-purple-400/50' : 'bg-slate-800/60 text-slate-300 hover:bg-slate-700'}`}>
+              <BarChart3 size={18} /> Analíticas Visuales
+          </Link>
+          <Link href="?tab=datos" className={`px-6 py-2.5 rounded-lg font-medium transition-all shadow-md flex items-center gap-2 ${currentTab === 'datos' ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white ring-2 ring-emerald-400/50' : 'bg-slate-800/60 text-slate-300 hover:bg-slate-700'}`}>
+              <Database size={18} /> Explorador de Datos
+          </Link>
+      </nav>
+
+      {/* RENDERIZADO CONDICIONAL POR PESTAÑAS */}
+
+      {currentTab === 'dashboard' && (
+        <div className="animate-fade-in duration-500">
+           <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-12">
+            
+            {/* IDA (MAÑANA) */}
+            <section className="space-y-6">
+              <h2 className="text-2xl font-bold border-b border-white/10 pb-2 mb-4 text-emerald-300 flex gap-2 items-center"><Clock size={24}/> Trayectos MAÑANA (Ida a CABA)</h2>
+              
+              <div className="glass-card">
+                <h3 className="text-lg font-medium mb-1 text-slate-100 flex items-center gap-2"><MapPin size={18} className="text-blue-400"/> Destino: Shopping DOT</h3>
+                <p className="text-xs text-slate-400 mb-6 border-b border-white/10 pb-4">Promedios de tiempos saliendo de la zona hacia el DOT.</p>
+                {generateBars(groups.morningDOT)}
+              </div>
+
+              <div className="glass-card">
+                <h3 className="text-lg font-medium mb-1 text-slate-100 flex items-center gap-2"><MapPin size={18} className="text-purple-400"/> Destino: Microcentro</h3>
+                <p className="text-xs text-slate-400 mb-6 border-b border-white/10 pb-4">Promedios de tiempos saliendo de la zona hacia Perón y Florida.</p>
+                {generateBars(groups.morningMicrocentro)}
+              </div>
+            </section>
+
+            {/* VUELTA (TARDE) */}
+            <section className="space-y-6">
+              <h2 className="text-2xl font-bold border-b border-white/10 pb-2 mb-4 text-amber-300 flex gap-2 items-center"><ArrowRightLeft size={24}/> Trayectos TARDE (Vuelta a Provincia)</h2>
+              
+              <div className="glass-card">
+                <h3 className="text-lg font-medium mb-1 text-slate-100 flex items-center gap-2"><ArrowRightLeft size={18} className="text-blue-400"/> Saliendo desde: Shopping DOT</h3>
+                <p className="text-xs text-slate-400 mb-6 border-b border-white/10 pb-4">Promedios de tiempos regresando desde el DOT hacia la zona.</p>
+                {generateBars(groups.afternoonDOT)}
+              </div>
+
+              <div className="glass-card">
+                <h3 className="text-lg font-medium mb-1 text-slate-100 flex items-center gap-2"><ArrowRightLeft size={18} className="text-purple-400"/> Saliendo desde: Microcentro</h3>
+                <p className="text-xs text-slate-400 mb-6 border-b border-white/10 pb-4">Promedios de tiempos regresando desde Perón y Florida hacia la zona.</p>
+                {generateBars(groups.afternoonMicrocentro)}
+              </div>
+            </section>
+
           </div>
-
-          <div className="glass-card">
-            <h3 className="text-lg font-medium mb-1 text-slate-100 flex items-center gap-2"><MapPin size={18} className="text-red-400"/> Destino: Microcentro</h3>
-            <p className="text-xs text-slate-400 mb-6 border-b border-white/10 pb-4">Promedios de tiempos saliendo de la zona hacia Perón y Florida.</p>
-            {generateBars(groups.morningMicrocentro)}
-          </div>
-        </section>
-
-        {/* VUELTA (TARDE) */}
-        <section className="space-y-6">
-          <h2 className="text-2xl font-bold border-b border-white/10 pb-2 mb-4">🌙 Trayectos TARDE (Vuelta a Provincia)</h2>
-          
-          <div className="glass-card">
-            <h3 className="text-lg font-medium mb-1 text-slate-100 flex items-center gap-2"><ArrowRightLeft size={18} className="text-emerald-400"/> Saliendo desde: Shopping DOT</h3>
-            <p className="text-xs text-slate-400 mb-6 border-b border-white/10 pb-4">Promedios de tiempos regresando desde el DOT hacia la zona.</p>
-            {generateBars(groups.afternoonDOT)}
-          </div>
-
-          <div className="glass-card">
-            <h3 className="text-lg font-medium mb-1 text-slate-100 flex items-center gap-2"><ArrowRightLeft size={18} className="text-red-400"/> Saliendo desde: Microcentro</h3>
-            <p className="text-xs text-slate-400 mb-6 border-b border-white/10 pb-4">Promedios de tiempos regresando desde Perón y Florida hacia la zona.</p>
-            {generateBars(groups.afternoonMicrocentro)}
-          </div>
-        </section>
-
-      </div>
-
-      {/* MODULO AVANZADO DE ANALISIS VISUAL */}
-      <AnalyticsSection records={serializableRecords} />
-
-      {/* RECENT LOG TABLE */}
-      <section className="mb-12 glass-card overflow-hidden !p-0">
-        <div className="p-4 border-b border-white/10 bg-white/5">
-           <h2 className="text-lg font-semibold flex items-center gap-2"><Calendar size={18} className="text-blue-400"/> Historial Crudo de Ejecuciones</h2>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-white/5 text-slate-400 text-xs uppercase">
-              <tr>
-                <th className="px-4 py-3">Fecha</th>
-                <th className="px-4 py-3">Hora</th>
-                <th className="px-4 py-3">Turno</th>
-                <th className="px-4 py-3">Dirección</th>
-                <th className="px-4 py-3">Lugar Base</th>
-                <th className="px-4 py-3">Central</th>
-                <th className="px-4 py-3">Tiempo (min)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-               {records.slice(0, 10).map(r => {
-                  const date = new Date(r.timestamp);
-                  const isIda = formatZoneName(r.destination) === "Shopping DOT" || formatZoneName(r.destination) === "Microcentro";
-                  const turno = date.getHours() < 12 ? 'Mañana' : 'Tarde/Noche';
-                  
-                  return (
-                    <tr key={r.id} className="hover:bg-white/5">
-                      <td className="px-4 py-3 font-medium text-slate-300">{date.toLocaleDateString('es-AR')}</td>
-                      <td className="px-4 py-3 text-slate-400">{date.toLocaleTimeString('es-AR', { hour: '2-digit', minute:'2-digit' })}</td>
-                      <td className="px-4 py-3">{turno}</td>
-                      <td className="px-4 py-3">
-                         <span className={`px-2 py-1 rounded text-xs font-semibold ${isIda ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'}`}>
-                           {isIda ? 'IDA (Hacia CABA)' : 'VUELTA (A Provincia)'}
-                         </span>
-                      </td>
-                      <td className="px-4 py-3">{isIda ? formatZoneName(r.origin) : formatZoneName(r.destination)}</td>
-                      <td className="px-4 py-3 font-semibold text-white">{isIda ? formatZoneName(r.destination) : formatZoneName(r.origin)}</td>
-                      <td className={`px-4 py-3 font-bold ${r.durationMins > 75 ? 'text-red-400' : r.durationMins > 50 ? 'text-yellow-400' : 'text-emerald-400'}`}>{r.durationMins} m</td>
-                    </tr>
-                  )
-               })}
-            </tbody>
-          </table>
-          {records.length === 0 && <p className="p-4 text-center text-slate-400">Aún no hay registros en la base de datos.</p>}
+      )}
+
+      {currentTab === 'graficos' && (
+        <div className="animate-fade-in duration-500">
+           <AnalyticsSection records={serializableRecords} />
         </div>
-      </section>
+      )}
+
+      {currentTab === 'datos' && (
+        <div className="animate-fade-in duration-500">
+           <DataExplorer records={serializableRecords} />
+        </div>
+      )}
+
+      {/* FOOTER GENERAL */}
+      {records.length > 0 && (
+         <div className="text-center mt-12 text-slate-500 text-sm italic">
+           Ultima actualización registrada: {new Date(records[0].timestamp).toLocaleString('es-AR')} - Hay {records.length} registros analizados en la DB.
+         </div>
+      )}
+
     </main>
-  )
+  );
 }
