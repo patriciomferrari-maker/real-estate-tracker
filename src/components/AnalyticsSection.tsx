@@ -41,7 +41,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       return "Otras Zonas";
   };
 
-  const [comparisonGroupBy, setComparisonGroupBy] = useState<"macro" | "barrio">("barrio");
+  const [scatterMode, setScatterMode] = useState<"barrio" | "macro">("barrio");
 
   // 1. DATA: Comparison Averages (Bar Chart)
   const comparisonData = useMemo(() => {
@@ -52,22 +52,17 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           
           let friendlyZone = r.origin;
           
-          if (comparisonGroupBy === "macro") {
-              friendlyZone = getMacro(r.origin);
-              if (friendlyZone === "Otras Zonas") return;
-          } else {
-              if (friendlyZone.includes("San Matias")) friendlyZone = "San Matías";
-              else if (friendlyZone.includes("Puertos")) friendlyZone = "Puertos";
-              else if (friendlyZone.includes("Canton")) friendlyZone = "El Cantón";
-              else if (friendlyZone.includes("Liebres")) friendlyZone = "Liebres";
-              else if (friendlyZone.includes("Boulevares")) friendlyZone = "Boulevares";
-              else if (friendlyZone.includes("Glorietas")) friendlyZone = "Glorietas";
-              else if (friendlyZone.includes("Castaños")) friendlyZone = "Castaños";
-              else if (friendlyZone.includes("Santa Barbara")) friendlyZone = "Santa Bárbara";
-              else if (friendlyZone.includes("Encuentro")) friendlyZone = "El Encuentro";
-              else if (friendlyZone.includes("Escondida")) friendlyZone = "La Escondida";
-              else friendlyZone = friendlyZone.split(',')[0].replace("Barrio", "").trim();
-          }
+          if (friendlyZone.includes("San Matias")) friendlyZone = "San Matías";
+          else if (friendlyZone.includes("Puertos")) friendlyZone = "Puertos";
+          else if (friendlyZone.includes("Canton")) friendlyZone = "El Cantón";
+          else if (friendlyZone.includes("Liebres")) friendlyZone = "Liebres";
+          else if (friendlyZone.includes("Boulevares")) friendlyZone = "Boulevares";
+          else if (friendlyZone.includes("Glorietas")) friendlyZone = "Glorietas";
+          else if (friendlyZone.includes("Castaños")) friendlyZone = "Castaños";
+          else if (friendlyZone.includes("Santa Barbara")) friendlyZone = "Santa Bárbara";
+          else if (friendlyZone.includes("Encuentro")) friendlyZone = "El Encuentro";
+          else if (friendlyZone.includes("Escondida")) friendlyZone = "La Escondida";
+          else friendlyZone = friendlyZone.split(',')[0].replace("Barrio", "").trim();
 
           if (!groups.has(friendlyZone)) groups.set(friendlyZone, { zone: friendlyZone, totalDOT: 0, countDOT: 0, totalMicro: 0, countMicro: 0 });
           const stat = groups.get(friendlyZone)!;
@@ -166,12 +161,30 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   }, [records]);
 
   const filteredScatter = useMemo(() => {
-      return rawScatterPoints.filter(p => {
+      let filtered = rawScatterPoints.filter(p => {
           if (scatterMacro !== "Todas las Zonas" && p.macro !== scatterMacro) return false;
           if (scatterBarrio !== "Todos los Barrios" && p.barrio !== scatterBarrio) return false;
           return true;
       });
-  }, [rawScatterPoints, scatterMacro, scatterBarrio]);
+
+      if (scatterMode === "macro") {
+          // Conglomerate points by [macro + timeHour + isIda + isDOT]
+          const clustered = new Map<string, { total: number, count: number, point: any }>();
+          filtered.forEach(p => {
+             const key = `${p.macro}-${p.timeHour}-${p.isIda}-${p.isDOT}`;
+             if (!clustered.has(key)) clustered.set(key, { total: 0, count: 0, point: { ...p, barrio: p.macro + " (Promedio)" } });
+             const cluster = clustered.get(key)!;
+             cluster.total += p.duration;
+             cluster.count++;
+          });
+          return Array.from(clustered.values()).map(c => ({
+             ...c.point,
+             duration: Math.round(c.total / c.count)
+          }));
+      }
+
+      return filtered;
+  }, [rawScatterPoints, scatterMacro, scatterBarrio, scatterMode]);
 
   const scatterIdaDOT = filteredScatter.filter(p => p.isIda && p.isDOT);
   const scatterIdaCentro = filteredScatter.filter(p => p.isIda && !p.isDOT);
@@ -204,36 +217,20 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   return (
     <section className="space-y-8 mb-12">
       
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mt-8 mb-4 border-b border-white/10 pb-4">
-        <div>
-           <h2 className="text-3xl font-bold flex items-center gap-3 mb-2">
-              <BarChart3 className="text-blue-500" size={28}/> 
-              Central Analítica
-           </h2>
-           <p className="text-slate-400">Visualizaciones estadísticas para comprender el comportamiento profundo del tránsito por barrios.</p>
-        </div>
-
-        <div className="mt-4 md:mt-0 flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1">
-           <button 
-             onClick={() => setComparisonGroupBy("barrio")}
-             className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${comparisonGroupBy === 'barrio' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
-           >
-             Ver por Barrio
-           </button>
-           <button 
-             onClick={() => setComparisonGroupBy("macro")}
-             className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${comparisonGroupBy === 'macro' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
-           >
-             Ver por Macro-Zonas
-           </button>
-        </div>
+      {/* HEADER */}
+      <div className="flex flex-col gap-2 mt-8 mb-4 border-b border-white/10 pb-4">
+        <h2 className="text-3xl font-bold flex items-center gap-3">
+           <BarChart3 className="text-blue-500" size={28}/> 
+           Central Analítica
+        </h2>
+        <p className="text-slate-400">Visualizaciones estadísticas para comprender el comportamiento profundo del tránsito por barrios.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* BAR CHART: COMPARISON DOT */}
           <div className="glass-card">
               <h3 className="text-lg font-bold mb-1 flex items-center gap-2"><MapIcon size={18} className="text-blue-400"/> Promedios Mañana: Al Shopping DOT</h3>
-              <p className="text-xs text-slate-400 mb-6">Ranking de tiempos promedio desde la provincia.</p>
+              <p className="text-xs text-slate-400 mb-6">Ranking de tiempos promedio desde todas las zonas de provincia.</p>
               
               <div className="h-[300px] w-full">
                   {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
@@ -279,8 +276,24 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                    <Crosshair size={20} className="text-cyan-400" /> 
                    Dispersión de Peajes y Horarios
                </h3>
-               <p className="text-slate-400 text-sm max-w-xl">Mapeo de nube de puntos. Cada punto es un viaje real registrado. Analiza la densidad de viajes a distintas horas del día y la brecha entre ir al DOT (Azul) vs Centro (Violeta).</p>
-            </div>
+               <p className="text-slate-400 text-sm max-w-xl mb-4">Mapeo de nube de puntos. Cada punto es un viaje real registrado. Analiza la densidad de viajes a distintas horas del día y la brecha entre ir al DOT (Azul) vs Centro (Violeta).</p>
+               
+               {/* SCATTER VIEW TOGGLE */}
+               <div className="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1">
+                  <button 
+                    onClick={() => setScatterMode("barrio")}
+                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${scatterMode === 'barrio' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    Nubes Reales (Barrios)
+                  </button>
+                  <button 
+                    onClick={() => setScatterMode("macro")}
+                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${scatterMode === 'macro' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    Promedios (Macro-Zonas)
+                  </button>
+               </div>
+            </div>            
             
             {/* FILTERS FOR SCATTER */}
             <div className="flex flex-col gap-3 min-w-[280px]">
