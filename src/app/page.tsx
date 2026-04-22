@@ -50,6 +50,13 @@ export default async function Dashboard({ searchParams }: any) {
   // Calculate aggregates based on direction and destination
   interface Agg {
     count: number; totalMins: number; min: number; max: number;
+    lastUpdate: Date | null;
+  }
+  
+  const groups = {
+    morningDOT: new Map<string, Agg>(), // Ida (Mañana) -> DOT
+    morningMicrocentro: new Map<string, Agg>(), // Ida (Mañana) -> Microcentro
+    afternoonDOT: new Map<string, Agg>(), // Vuelta (Tarde) <- DOT
     afternoonMicrocentro: new Map<string, Agg>(), // Vuelta (Tarde) <- Microcentro
   };
 
