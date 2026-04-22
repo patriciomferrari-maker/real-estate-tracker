@@ -3,12 +3,18 @@
 import React, { useState, useMemo } from 'react';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar 
+  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
+  ScatterChart, Scatter, ZAxis
 } from "recharts";
-import { Activity, Search, BarChart3, Crosshair, Map as MapIcon } from "lucide-react";
+import { Activity, Search, BarChart3, Crosshair, Map as MapIcon, Filter } from "lucide-react";
 
 export default function AnalyticsSection({ records }: { records: any[] }) {
+  // Estado original para LineChart
   const [selectedZone, setSelectedZone] = useState<string>("");
+
+  // Nuevos estados para los filtros Scatter
+  const [scatterMacro, setScatterMacro] = useState<string>("Todas las Zonas");
+  const [scatterBarrio, setScatterBarrio] = useState<string>("Todos los Barrios");
 
   const zones = useMemo(() => {
     const list = new Set<string>();
@@ -18,12 +24,22 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
         if (r.origin.includes("San Isidro")) list.add(r.origin);
         if (r.destination.includes("San Isidro")) list.add(r.destination);
     });
-    return Array.from(list).filter(z => !z.includes("DOT") && !z.includes("Microcentro") && !z.includes("Florida")).sort();
+    return Array.from(list).filter(z => !z.includes("DOT") && !z.includes("Microcentro") && !z.includes("Florida") && !z.includes("Obelisco")).sort();
   }, [records]);
 
   React.useEffect(() => {
      if (!selectedZone && zones.length > 0) setSelectedZone(zones[0])
   }, [zones, selectedZone]);
+
+  // Utility to determine Macro from name
+  const getMacro = (name: string) => {
+      if (name.includes("Escobar")) return "Corredor Escobar";
+      if (name.includes("Nordelta")) return "Nordelta";
+      if (name.includes("Tortugas") || name.includes("Liebres") || name.includes("Boulevares")) return "Tortugas / Pilar";
+      if (name.includes("Tigre") || name.includes("Pacheco") || name.includes("Benavidez") || name.includes("Escondida") || name.includes("Barbarita")) return "Tigre / Pacheco / Benav.";
+      if (name.includes("San Isidro") || name.includes("Buenavista") || name.includes("Lomas")) return "San Isidro / Bancalari";
+      return "Otras Zonas";
+  };
 
   // 1. DATA: Comparison Averages (Bar Chart)
   const comparisonData = useMemo(() => {
@@ -62,7 +78,6 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       })).filter(s => s["Al DOT"] > 0 || s["Al Microcentro"] > 0).sort((a,b) => (a["Al DOT"] + a["Al Microcentro"]) - (b["Al DOT"] + b["Al Microcentro"]));
   }, [records]);
 
-
   // 2. DATA: Time of Day Line Chart (Individual)
   const lineChartData = useMemo(() => {
     if (!selectedZone) return [];
@@ -97,13 +112,9 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const radarData = useMemo(() => {
     const macro = new Map<string, { name: string, min: number, max: number }>();
     records.forEach(r => {
-        let macroName = "Otro";
-        if (r.origin.includes("Escobar") || r.destination.includes("Escobar")) macroName = "Corredor Escobar";
-        else if (r.origin.includes("Nordelta") || r.destination.includes("Nordelta")) macroName = "Corredor Nordelta";
-        else if (r.origin.includes("Tortuguitas") || r.destination.includes("Tortuguitas")) macroName = "Tortugas/Tortuguitas";
-        else if (r.origin.includes("San Isidro") || r.origin.includes("Buenavista")) macroName = "Centrico (S.Isidro/S.F)";
-        
-        if (macroName === "Otro") return;
+        let macroName = getMacro(r.origin);
+        if (macroName === "Otras Zonas") macroName = getMacro(r.destination);
+        if (macroName === "Otras Zonas") return;
         
         if (!macro.has(macroName)) macro.set(macroName, { name: macroName, min: 999, max: 0 });
         const obj = macro.get(macroName)!;
@@ -117,6 +128,70 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
     }));
   }, [records]);
 
+  // 4. SCATTER PLOTS DATA
+  const allMacros = useMemo(() => Array.from(new Set(zones.map(z => getMacro(z)))).sort(), [zones]);
+  const barriosInSelectedMacro = useMemo(() => {
+      if (scatterMacro === "Todas las Zonas") return zones;
+      return zones.filter(z => getMacro(z) === scatterMacro);
+  }, [scatterMacro, zones]);
+  
+  // Format scatter points
+  const rawScatterPoints = useMemo(() => {
+      return records.map(r => {
+         const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
+         const relevantBarrio = isIda ? r.origin : r.destination;
+         const isDOT = isIda ? r.destination.includes("DOT") : r.origin.includes("DOT");
+         
+         const d = new Date(r.timestamp);
+         const timeDecimal = d.getHours() + (d.getMinutes() / 60);
+
+         return {
+            id: r.id,
+            isIda,
+            isDOT,
+            duration: r.durationMins,
+            timeHour: timeDecimal,
+            barrio: relevantBarrio,
+            macro: getMacro(relevantBarrio)
+         };
+      });
+  }, [records]);
+
+  const filteredScatter = useMemo(() => {
+      return rawScatterPoints.filter(p => {
+          if (scatterMacro !== "Todas las Zonas" && p.macro !== scatterMacro) return false;
+          if (scatterBarrio !== "Todos los Barrios" && p.barrio !== scatterBarrio) return false;
+          return true;
+      });
+  }, [rawScatterPoints, scatterMacro, scatterBarrio]);
+
+  const scatterIdaDOT = filteredScatter.filter(p => p.isIda && p.isDOT);
+  const scatterIdaCentro = filteredScatter.filter(p => p.isIda && !p.isDOT);
+  
+  const scatterVueltaDOT = filteredScatter.filter(p => !p.isIda && p.isDOT);
+  const scatterVueltaCentro = filteredScatter.filter(p => !p.isIda && !p.isDOT);
+
+  const formatHourTick = (val: number) => {
+      const h = Math.floor(val);
+      const m = Math.round((val % 1) * 60).toString().padStart(2, '0');
+      return `${h}:${m}`;
+  };
+
+  const CustomScatterTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-slate-900 border border-slate-700 p-3 rounded-lg shadow-xl text-sm">
+          <p className="font-bold text-white mb-1">{data.barrio}</p>
+          <p className="text-slate-300">Horario: <span className="text-white font-medium">{formatHourTick(data.timeHour)}</span></p>
+          <p className="text-slate-300">Duración: <span className="text-white font-medium">{data.duration} min</span></p>
+          <p className="text-slate-400 text-xs mt-1">Destino: {data.isDOT ? 'DOT' : 'Centro'}</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
 
   return (
     <section className="space-y-8 mb-12">
@@ -127,15 +202,14 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
            <BarChart3 className="text-blue-500" size={28}/> 
            Central Analítica
         </h2>
-        <p className="text-slate-400">Visualizaciones multiplataforma para comprender el comportamiento profundo por barrios.</p>
+        <p className="text-slate-400">Visualizaciones estadísticas para comprender el comportamiento profundo del tránsito por barrios.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          
           {/* BAR CHART: COMPARISON DOT */}
           <div className="glass-card">
               <h3 className="text-lg font-bold mb-1 flex items-center gap-2"><MapIcon size={18} className="text-blue-400"/> Promedios Mañana: Al Shopping DOT</h3>
-              <p className="text-xs text-slate-400 mb-6">Ranking de tiempos desde cada barrio hasta el inicio de CABA.</p>
+              <p className="text-xs text-slate-400 mb-6">Ranking de tiempos promedio desde todas las zonas de provincia.</p>
               
               <div className="h-[300px] w-full">
                   {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
@@ -145,9 +219,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                           <XAxis type="number" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} />
                           <YAxis dataKey="zone" type="category" stroke="#64748b" width={90} tick={{ fill: '#94a3b8', fontSize: 11 }} />
                           <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
-                          <Bar dataKey="Al DOT" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={16}>
-                             {/* Optional labels */}
-                          </Bar>
+                          <Bar dataKey="Al DOT" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={16} />
                         </BarChart>
                       </ResponsiveContainer>
                   )}
@@ -157,7 +229,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           {/* BAR CHART: COMPARISON MICROCENTRO */}
           <div className="glass-card">
               <h3 className="text-lg font-bold mb-1 flex items-center gap-2"><MapIcon size={18} className="text-purple-400"/> Promedios Mañana: Al Microcentro</h3>
-              <p className="text-xs text-slate-400 mb-6">Ranking de tiempos desde cada barrio hasta el corazón del centro.</p>
+              <p className="text-xs text-slate-400 mb-6">Ranking de tiempos promedio llegando al punto más congestionado de la ciudad.</p>
               
               <div className="h-[300px] w-full">
                   {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
@@ -173,10 +245,96 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                   )}
               </div>
           </div>
+      </div>
 
-          {/* RADAR: VOLATILITY */}
+      {/* DISPERSION SCATTER PLOTS */}
+      <div className="glass-card mt-8 border-violet-500/20 border-2">
+         <div className="flex flex-col md:flex-row justify-between items-start border-b border-white/10 pb-6 mb-6">
+            <div className="mb-4 md:mb-0">
+               <h3 className="text-xl font-bold flex items-center gap-2 mb-1">
+                   <Crosshair size={20} className="text-cyan-400" /> 
+                   Dispersión de Peajes y Horarios
+               </h3>
+               <p className="text-slate-400 text-sm max-w-xl">Mapeo de nube de puntos. Cada punto es un viaje real registrado. Analiza la densidad de viajes a distintas horas del día y la brecha entre ir al DOT (Azul) vs Centro (Violeta).</p>
+            </div>
+            
+            {/* FILTERS FOR SCATTER */}
+            <div className="flex flex-col gap-3 min-w-[280px]">
+                <div className="relative">
+                   <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                   <select 
+                      className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg pl-9 pr-4 py-1.5 text-sm appearance-none focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                      value={scatterMacro}
+                      onChange={(e) => { setScatterMacro(e.target.value); setScatterBarrio("Todos los Barrios"); }}
+                   >
+                       <option value="Todas las Zonas">Todas las Zonas Macro</option>
+                       {allMacros.map(z => <option key={z} value={z}>{z}</option>)}
+                   </select>
+                </div>
+                <div className="relative">
+                   <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                   <select 
+                      className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg pl-9 pr-4 py-1.5 text-sm appearance-none focus:outline-none focus:ring-1 focus:ring-cyan-500 opacity-90"
+                      value={scatterBarrio}
+                      onChange={(e) => setScatterBarrio(e.target.value)}
+                   >
+                       <option value="Todos los Barrios">Todos los Barrios</option>
+                       {barriosInSelectedMacro.map(z => <option key={z} value={z}>{z}</option>)}
+                   </select>
+                </div>
+            </div>
+         </div>
+
+         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            
+            {/* SCATTER IDA */}
+            <div className="space-y-2">
+                <h4 className="text-emerald-400 font-semibold mb-4 text-center">☀️ Nube de IDA (Mañana)</h4>
+                <div className="h-[300px] w-full">
+                    {scatterIdaDOT.length === 0 && scatterIdaCentro.length === 0 ? <p className="text-center text-slate-500 pt-16">Sin registros para este filtro</p> : (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: -20 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                                <XAxis type="number" dataKey="timeHour" domain={[6, 12]} tickFormatter={formatHourTick} stroke="#64748b" tick={{ fill: '#64748b', fontSize: 11 }} name="Horario" />
+                                <YAxis type="number" dataKey="duration" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 11 }} name="Minutos" unit="m" />
+                                <Tooltip cursor={{ strokeDasharray: '3 3' }} content={<CustomScatterTooltip />} />
+                                <ZAxis type="number" range={[40, 40]} /> 
+                                <Scatter name="Hacia DOT" data={scatterIdaDOT} fill="#3b82f6" opacity={0.7} />
+                                <Scatter name="Hacia Centro" data={scatterIdaCentro} fill="#a855f7" opacity={0.7} />
+                            </ScatterChart>
+                        </ResponsiveContainer>
+                    )}
+                </div>
+            </div>
+
+            {/* SCATTER VUELTA */}
+            <div className="space-y-2">
+                <h4 className="text-amber-400 font-semibold mb-4 text-center">🌙 Nube de VUELTA (Tarde)</h4>
+                <div className="h-[300px] w-full">
+                    {scatterVueltaDOT.length === 0 && scatterVueltaCentro.length === 0 ? <p className="text-center text-slate-500 pt-16">Sin registros para este filtro</p> : (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: -20 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                                <XAxis type="number" dataKey="timeHour" domain={[15, 20]} tickFormatter={formatHourTick} stroke="#64748b" tick={{ fill: '#64748b', fontSize: 11 }} name="Horario" />
+                                <YAxis type="number" dataKey="duration" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 11 }} name="Minutos" unit="m" />
+                                <Tooltip cursor={{ strokeDasharray: '3 3' }} content={<CustomScatterTooltip />} />
+                                <ZAxis type="number" range={[40, 40]} /> 
+                                <Scatter name="Desde DOT" data={scatterVueltaDOT} fill="#3b82f6" opacity={0.7} />
+                                <Scatter name="Desde Centro" data={scatterVueltaCentro} fill="#a855f7" opacity={0.7} />
+                            </ScatterChart>
+                        </ResponsiveContainer>
+                    )}
+                </div>
+            </div>
+
+         </div>
+      </div>
+
+
+      {/* RADAR: VOLATILITY */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
           <div className="glass-card">
-              <h3 className="text-lg font-bold mb-1 flex items-center gap-2"><Crosshair size={18} className="text-purple-400"/> Volatilidad y Previsibilidad de Corredores</h3>
+              <h3 className="text-lg font-bold mb-1 flex items-center gap-2"><Crosshair size={18} className="text-purple-400"/> Volatilidad Macro-Zonal</h3>
               <p className="text-xs text-slate-400 mb-6">Brecha entre un día sin tránsito ("Mejor tiempo") y picos de colapso ("Peor tránsito").</p>
               
               <div className="h-[350px] w-full">
@@ -195,46 +353,12 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                  )}
               </div>
           </div>
-      </div>
-
-      {/* INDIVIDUAL LINE CHART */}
-      <div className="glass-card mt-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-white/10 pb-4 mb-6">
-           <div>
-              <h3 className="text-xl font-bold flex items-center gap-2 mb-1">
-                  <Activity size={20} className="text-yellow-400" /> 
-                  Micro-Análisis por Hora
-              </h3>
-              <p className="text-slate-400 text-sm">Fluctuación exacta por minuto para un barrio en específico.</p>
-           </div>
-           <div className="mt-4 md:mt-0 relative min-w-[280px]">
-               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-               <select 
-                  className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg pl-10 pr-4 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={selectedZone}
-                  onChange={(e) => setSelectedZone(e.target.value)}
-               >
-                   {zones.map(z => <option key={z} value={z}>{z}</option>)}
-               </select>
-           </div>
-        </div>
-
-        <div className="w-full h-[350px]">
-             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={lineChartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                <XAxis dataKey="dateTime" stroke="#64748b" fontSize={11} tickMargin={10} tick={{ fill: '#64748b' }} />
-                <YAxis stroke="#64748b" fontSize={11} unit="m" domain={['dataMin - 5', 'dataMax + 10']} tick={{ fill: '#64748b' }} />
-                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
-                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                
-                <Line type="monotone" dataKey="IDA (Hacia DOT)" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} connectNulls />
-                <Line type="monotone" dataKey="IDA (Hacia Microcentro)" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} connectNulls />
-                <Line type="monotone" dataKey="VUELTA (Desde DOT)" stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" dot={{ r: 3 }} connectNulls />
-                <Line type="monotone" dataKey="VUELTA (Desde Microcentro)" stroke="#d946ef" strokeWidth={2} strokeDasharray="4 4" dot={{ r: 3 }} connectNulls />
-                </LineChart>
-            </ResponsiveContainer>
-        </div>
+          
+          <div className="glass-card flex flex-col items-center justify-center text-center p-8 space-y-4">
+               <Activity size={48} className="text-slate-700" />
+               <h3 className="text-xl font-bold text-slate-400">Inteligencia en Progreso</h3>
+               <p className="text-slate-500 text-sm max-w-sm">Mientras el sistema automatizado sigue alimentando la base de datos cada 5 minutos, las redes neuronales pronto detectarán el piso y el techo de los corredores viales para comprar bienes raíces mejor valuados.</p>
+          </div>
       </div>
     </section>
   )
