@@ -20,22 +20,24 @@ export async function scrapeCommuteTime(origin: string, destination: string, exi
     await page!.waitForSelector('div[data-trip-index]', { timeout: 7000 }).catch(() => {});
 
     const routeInfo = await page!.evaluate(() => {
+      const timeRegex = /((?:\d+\s*(?:h|hora|horas)\s*)?(?:\d+\s*min)|\d+\s*(?:h|hora|horas))/i;
+      
       const firstRouteParams = document.querySelector('div[data-trip-index="0"]');
       if (firstRouteParams) {
         const text = firstRouteParams.textContent || "";
-        const timeMatches = text.match(/(\d+)\s*(h|min|hora|horas)/g);
-        const kmMatches = text.match(/(\d+[,.]?\d*)\s*km/g);
+        const timeMatch = text.match(timeRegex);
+        const kmMatches = text.match(/(\d+[,.]?\d*)\s*km/i);
         return {
-          durationRaw: timeMatches ? timeMatches[0] : null,
+          durationRaw: timeMatch ? timeMatch[0] : null,
           distanceRaw: kmMatches ? kmMatches[0] : null
         };
       }
       
-      const timeMatches = document.body.innerText.match(/(\d+)\s*(h|min|hora|horas)/g);
-      const kmMatches = document.body.innerText.match(/(\d+[,.]?\d*)\s*km/g);
+      const timeMatchAlt = document.body.innerText.match(timeRegex);
+      const kmMatchesAlt = document.body.innerText.match(/(\d+[,.]?\d*)\s*km/i);
       return {
-        durationRaw: timeMatches ? timeMatches[0] : null,
-        distanceRaw: kmMatches ? kmMatches[0] : null
+        durationRaw: timeMatchAlt ? timeMatchAlt[0] : null,
+        distanceRaw: kmMatchesAlt ? kmMatchesAlt[0] : null
       };
     });
 
