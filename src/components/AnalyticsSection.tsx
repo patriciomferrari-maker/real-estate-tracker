@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
-  ScatterChart, Scatter, ZAxis, Cell
+  ScatterChart, Scatter, ZAxis, Cell, ReferenceLine, Label
 } from "recharts";
 import { Activity, Search, BarChart3, Crosshair, Map as MapIcon, Filter } from "lucide-react";
 
@@ -310,6 +310,44 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
     return null;
   };
 
+  const evolutivoStats = useMemo(() => {
+      let min = 999, max = 0, sum = 0, count = 0;
+      evolutivoData.forEach(pt => {
+         Object.keys(pt).forEach(k => {
+             if (k !== 'timeTick' && k !== 'timeHourNum') {
+                 const v = pt[k];
+                 if (v > max) max = v;
+                 if (v < min) min = v;
+                 sum += v;
+                 count++;
+             }
+         });
+      });
+      return { min: min === 999 ? 0 : min, max, avg: count > 0 ? Math.round(sum/count) : 0 };
+  }, [evolutivoData]);
+
+  const scatterIdaStats = useMemo(() => {
+      let min = 999, max = 0, sum = 0;
+      const all = [...scatterIdaDOT, ...scatterIdaCentro];
+      all.forEach(p => {
+          if (p.duration > max) max = p.duration;
+          if (p.duration < min) min = p.duration;
+          sum += p.duration;
+      });
+      return { min: min === 999 ? 0 : min, max, avg: all.length > 0 ? Math.round(sum/all.length) : 0 };
+  }, [scatterIdaDOT, scatterIdaCentro]);
+
+  const scatterVueltaStats = useMemo(() => {
+      let min = 999, max = 0, sum = 0;
+      const all = [...scatterVueltaDOT, ...scatterVueltaCentro];
+      all.forEach(p => {
+          if (p.duration > max) max = p.duration;
+          if (p.duration < min) min = p.duration;
+          sum += p.duration;
+      });
+      return { min: min === 999 ? 0 : min, max, avg: all.length > 0 ? Math.round(sum/all.length) : 0 };
+  }, [scatterVueltaDOT, scatterVueltaCentro]);
+
 
   return (
     <section className="space-y-8 mb-12">
@@ -433,6 +471,11 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                                 <YAxis type="number" dataKey="duration" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 11 }} name="Minutos" unit="m" />
                                 <Tooltip cursor={{ strokeDasharray: '3 3' }} content={<CustomScatterTooltip />} />
                                 <ZAxis type="number" range={[50, 50]} /> 
+                                
+                                {scatterIdaStats.max > 0 && <ReferenceLine y={scatterIdaStats.max} stroke="#ef4444" strokeDasharray="3 3" opacity={0.3}><Label value={`MAX ${scatterIdaStats.max}m`} position="insideTopLeft" fill="#ef4444" fontSize={10} /></ReferenceLine>}
+                                {scatterIdaStats.avg > 0 && <ReferenceLine y={scatterIdaStats.avg} stroke="#eab308" strokeDasharray="3 3" opacity={0.3}><Label value={`AVG ${scatterIdaStats.avg}m`} position="insideTopLeft" fill="#eab308" fontSize={10} /></ReferenceLine>}
+                                {scatterIdaStats.min > 0 && <ReferenceLine y={scatterIdaStats.min} stroke="#10b981" strokeDasharray="3 3" opacity={0.3}><Label value={`MIN ${scatterIdaStats.min}m`} position="insideBottomLeft" fill="#10b981" fontSize={10} /></ReferenceLine>}
+
                                 <Scatter name="Hacia DOT" data={scatterIdaDOT} opacity={0.8}>
                                     {scatterIdaDOT.map((entry, index) => <Cell key={`cell-dot-${index}`} fill={getColorByZone(entry.macro, true)} />)}
                                 </Scatter>
@@ -457,6 +500,11 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                                 <YAxis type="number" dataKey="duration" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 11 }} name="Minutos" unit="m" />
                                 <Tooltip cursor={{ strokeDasharray: '3 3' }} content={<CustomScatterTooltip />} />
                                 <ZAxis type="number" range={[50, 50]} /> 
+                                
+                                {scatterVueltaStats.max > 0 && <ReferenceLine y={scatterVueltaStats.max} stroke="#ef4444" strokeDasharray="3 3" opacity={0.3}><Label value={`MAX ${scatterVueltaStats.max}m`} position="insideTopLeft" fill="#ef4444" fontSize={10} /></ReferenceLine>}
+                                {scatterVueltaStats.avg > 0 && <ReferenceLine y={scatterVueltaStats.avg} stroke="#eab308" strokeDasharray="3 3" opacity={0.3}><Label value={`AVG ${scatterVueltaStats.avg}m`} position="insideTopLeft" fill="#eab308" fontSize={10} /></ReferenceLine>}
+                                {scatterVueltaStats.min > 0 && <ReferenceLine y={scatterVueltaStats.min} stroke="#10b981" strokeDasharray="3 3" opacity={0.3}><Label value={`MIN ${scatterVueltaStats.min}m`} position="insideBottomLeft" fill="#10b981" fontSize={10} /></ReferenceLine>}
+
                                 <Scatter name="Desde DOT" data={scatterVueltaDOT} opacity={0.8}>
                                     {scatterVueltaDOT.map((entry, index) => <Cell key={`cell-dot-v-${index}`} fill={getColorByZone(entry.macro, true)} />)}
                                 </Scatter>
@@ -555,6 +603,10 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                     <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
                     <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
                     
+                    {evolutivoStats.max > 0 && <ReferenceLine y={evolutivoStats.max} stroke="#ef4444" strokeDasharray="3 3" opacity={0.4}><Label value={`MAX ${evolutivoStats.max}m`} position="insideTopLeft" fill="#ef4444" fontSize={10} /></ReferenceLine>}
+                    {evolutivoStats.avg > 0 && <ReferenceLine y={evolutivoStats.avg} stroke="#eab308" strokeDasharray="3 3" opacity={0.4}><Label value={`AVG ${evolutivoStats.avg}m`} position="insideTopLeft" fill="#eab308" fontSize={10} /></ReferenceLine>}
+                    {evolutivoStats.min > 0 && <ReferenceLine y={evolutivoStats.min} stroke="#10b981" strokeDasharray="3 3" opacity={0.4}><Label value={`MIN ${evolutivoStats.min}m`} position="insideBottomLeft" fill="#10b981" fontSize={10} /></ReferenceLine>}
+
                     {dynamicLineKeys.map((k, i) => (
                         <Line 
                            key={k} 
