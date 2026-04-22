@@ -5,7 +5,7 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar 
 } from "recharts";
-import { Activity, Search, BarChart3, Crosshair, Map } from "lucide-react";
+import { Activity, Search, BarChart3, Crosshair, Map as MapIcon } from "lucide-react";
 
 export default function AnalyticsSection({ records }: { records: any[] }) {
   const [selectedZone, setSelectedZone] = useState<string>("");
@@ -59,7 +59,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           zone: s.zone,
           "Al DOT": s.countDOT > 0 ? Math.round(s.totalDOT / s.countDOT) : 0,
           "Al Microcentro": s.countMicro > 0 ? Math.round(s.totalMicro / s.countMicro) : 0,
-      })).filter(s => s["Al DOT"] > 0 || s["Al Microcentro"] > 0).sort((a,b) => a["Al Centro"] - b["Al Centro"]);
+      })).filter(s => s["Al DOT"] > 0 || s["Al Microcentro"] > 0).sort((a,b) => (a["Al DOT"] + a["Al Microcentro"]) - (b["Al DOT"] + b["Al Microcentro"]));
   }, [records]);
 
 
@@ -134,7 +134,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           
           {/* BAR CHART: COMPARISON */}
           <div className="glass-card">
-              <h3 className="text-lg font-bold mb-1 flex items-center gap-2"><Map size={18} className="text-emerald-400"/> Promedios Globales Reales (IDA)</h3>
+              <h3 className="text-lg font-bold mb-1 flex items-center gap-2"><MapIcon size={18} className="text-emerald-400"/> Promedios Globales Reales (IDA)</h3>
               <p className="text-xs text-slate-400 mb-6">Comparativa mano-a-mano de lo que promedia llegar desde cada barrio.</p>
               
               <div className="h-[350px] w-full">
