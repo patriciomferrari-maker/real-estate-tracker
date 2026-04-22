@@ -42,6 +42,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       if (friendly.includes("Glorietas")) return "Glorietas";
       if (friendly.includes("Castaños")) return "Castaños";
       if (friendly.includes("Santa Barbara")) return "Santa Bárbara";
+      if (friendly.includes("Barbarita")) return "Barbarita";
       if (friendly.includes("Encuentro")) return "El Encuentro";
       if (friendly.includes("Escondida")) return "La Escondida";
       if (friendly.includes("Tigre")) return "Tigre";
@@ -51,10 +52,10 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   // Utility to determine Macro from name
   const getMacro = (name: string) => {
       if (name.includes("Escobar") || name.includes("San Matias") || name.includes("Canton") || name.includes("Puertos")) return "Escobar";
-      if (name.includes("Nordelta") || name.includes("Glorietas") || name.includes("Castaños")) return "Nordelta";
+      if (name.includes("Nordelta") || name.includes("Glorietas") || name.includes("Castaños") || name.includes("Santa Barbara") || name.includes("Barbarita")) return "Nordelta";
       if (name.includes("Tortugas") || name.includes("Liebres") || name.includes("Boulevares")) return "Tortugas";
       if (name.includes("Pacheco") || name.includes("Benavidez") || name.includes("Encuentro")) return "Benavidez / Pacheco";
-      if (name.includes("Tigre") || name.includes("Escondida") || name.includes("Santa Barbara") || name.includes("Barbarita")) return "Tigre";
+      if (name.includes("Tigre") || name.includes("Escondida")) return "Tigre";
       if (name.includes("San Isidro") || name.includes("Buenavista") || name.includes("Lomas")) return "San Isidro / Bancalari";
       return "Otras Zonas";
   };
