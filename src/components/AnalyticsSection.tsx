@@ -91,6 +91,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const [lineDestino, setLineDestino] = useState<"todos" | "dot" | "centro">("todos");
   const [lineMacro, setLineMacro] = useState<string>("Todas las Zonas");
   const [lineDate, setLineDate] = useState<string>("Histórico Promediado");
+  const [lineModoView, setLineModoView] = useState<"desglosado" | "promediado">("desglosado");
 
   const uniqueDates = useMemo(() => {
       const dates = new Set<string>();
@@ -98,7 +99,6 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           dates.add(new Date(r.timestamp).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }));
       });
       return Array.from(dates).sort((a, b) => {
-          // simple string sort works well enough for DD/MM/YYYY if within same month, but better split:
           const [d1, m1, y1] = a.split('/');
           const [d2, m2, y2] = b.split('/');
           return new Date(`${y1}-${m1}-${d1}`).getTime() - new Date(`${y2}-${m2}-${d2}`).getTime();
@@ -106,9 +106,9 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   }, [records]);
 
   const barriosForLine = useMemo(() => {
-      if (lineMacro === "Todas las Zonas") return [];
+      if (lineMacro === "Todas las Zonas" || lineModoView === "promediado") return [];
       return zones.filter(z => getMacro(z) === lineMacro).map(shortenBarrioName);
-  }, [lineMacro, zones]);
+  }, [lineMacro, zones, lineModoView]);
 
   const evolutivoData = useMemo(() => {
       const timeMap = new Map<string, any>();
@@ -139,7 +139,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           if (!timeMap.has(key)) timeMap.set(key, { timeHourNum: date.getHours() + (mRounded/60), timeTick: key });
           const point = timeMap.get(key);
           
-          let seriesKey = lineMacro === "Todas las Zonas" ? macro : relevantBarrio;
+          let seriesKey = (lineMacro === "Todas las Zonas" || lineModoView === "promediado") ? macro : relevantBarrio;
           if (lineDestino === "todos") {
               seriesKey += isDOT ? " (DOT)" : " (Centro)";
           }
@@ -159,12 +159,13 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           });
           return finalPt;
       }).sort((a,b) => a.timeHourNum - b.timeHourNum);
-  }, [records, lineSentido, lineDestino, lineMacro, lineDate]);
+  }, [records, lineSentido, lineDestino, lineMacro, lineDate, lineModoView]);
 
   const dynamicLineKeys = useMemo(() => {
       let baseKeys: string[] = [];
-      if (lineMacro === "Todas las Zonas") {
-          baseKeys = Array.from(new Set(zones.map(z => getMacro(z)))).filter(m => m !== "Otras Zonas").sort();
+      if (lineMacro === "Todas las Zonas" || lineModoView === "promediado") {
+          baseKeys = Array.from(new Set(zones.map(z => getMacro(z)))).filter(m => m !== "Otras Zonas");
+          if (lineMacro !== "Todas las Zonas") baseKeys = [lineMacro];
       } else {
           baseKeys = Array.from(new Set(barriosForLine));
       }
@@ -311,20 +312,40 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   };
 
   const evolutivoStats = useMemo(() => {
-      let min = 999, max = 0, sum = 0, count = 0;
+      let dotMin = 999, dotMax = 0, dotSum = 0, dotCount = 0;
+      let centroMin = 999, centroMax = 0, centroSum = 0, centroCount = 0;
+
       evolutivoData.forEach(pt => {
          Object.keys(pt).forEach(k => {
              if (k !== 'timeTick' && k !== 'timeHourNum') {
                  const v = pt[k];
-                 if (v > max) max = v;
-                 if (v < min) min = v;
-                 sum += v;
-                 count++;
+                 if (lineDestino === 'todos') {
+                     if (k.includes('(DOT)')) {
+                         if (v > dotMax) dotMax = v;
+                         if (v < dotMin) dotMin = v;
+                         dotSum += v; dotCount++;
+                     } else if (k.includes('(Centro)')) {
+                         if (v > centroMax) centroMax = v;
+                         if (v < centroMin) centroMin = v;
+                         centroSum += v; centroCount++;
+                     }
+                 } else if (lineDestino === 'dot') {
+                     if (v > dotMax) dotMax = v;
+                     if (v < dotMin) dotMin = v;
+                     dotSum += v; dotCount++;
+                 } else {
+                     if (v > centroMax) centroMax = v;
+                     if (v < centroMin) centroMin = v;
+                     centroSum += v; centroCount++;
+                 }
              }
          });
       });
-      return { min: min === 999 ? 0 : min, max, avg: count > 0 ? Math.round(sum/count) : 0 };
-  }, [evolutivoData]);
+      return { 
+          dot: { min: dotMin === 999 ? 0 : dotMin, max: dotMax, avg: dotCount > 0 ? Math.round(dotSum/dotCount) : 0 },
+          centro: { min: centroMin === 999 ? 0 : centroMin, max: centroMax, avg: centroCount > 0 ? Math.round(centroSum/centroCount) : 0 }
+      };
+  }, [evolutivoData, lineDestino]);
 
   const scatterIdaStats = useMemo(() => {
       let min = 999, max = 0, sum = 0;
@@ -523,7 +544,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
 
       {/* INDIVIDUAL EVOLUTION LINE CHART */}
       <div className="glass-card mt-8 border-orange-500/20 border-2">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-white/10 pb-4 mb-6">
+        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center border-b border-white/10 pb-4 mb-6">
            <div>
               <h3 className="text-xl font-bold flex items-center gap-2 mb-1">
                   <Activity size={20} className="text-orange-400" /> 
@@ -532,7 +553,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
               <p className="text-slate-400 text-sm">Compara la línea en el tiempo para cada barrio dentro de una zona (o compara las macro-zonas enteras).</p>
            </div>
            
-           <div className="mt-4 md:mt-0 flex gap-4 flex-wrap">
+           <div className="mt-4 xl:mt-0 flex gap-4 flex-wrap">
                <div className="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1">
                   <button 
                     onClick={() => setLineSentido("ida")}
@@ -568,25 +589,40 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                     Solo Centro
                   </button>
                </div>
+               
+               <div className="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1">
+                  <button 
+                    onClick={() => setLineModoView("desglosado")}
+                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${lineModoView === 'desglosado' ? 'bg-slate-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    Ver Barrios
+                  </button>
+                  <button 
+                    onClick={() => setLineModoView("promediado")}
+                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${lineModoView === 'promediado' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    Promedio Zonal
+                  </button>
+               </div>
 
-               <div className="relative min-w-[220px]">
+               <div className="relative min-w-[200px]">
                    <select 
                       className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-4 py-1.5 text-sm appearance-none focus:outline-none focus:ring-1 focus:ring-orange-500"
                       value={lineMacro}
                       onChange={(e) => setLineMacro(e.target.value)}
                    >
-                       <option value="Todas las Zonas">Todas las Macro-Zonas</option>
+                       <option value="Todas las Zonas">Todas las Zonas</option>
                        {Array.from(new Set(zones.map(z => getMacro(z)))).filter(m => m !== "Otras Zonas").sort().map(z => <option key={z} value={z}>{z}</option>)}
                    </select>
                </div>
                
-               <div className="relative min-w-[160px]">
+               <div className="relative min-w-[150px]">
                    <select 
                       className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-4 py-1.5 text-sm appearance-none focus:outline-none focus:ring-1 focus:ring-slate-500"
                       value={lineDate}
                       onChange={(e) => setLineDate(e.target.value)}
                    >
-                       <option value="Histórico Promediado">Histórico (Todo)</option>
+                       <option value="Histórico Promediado">Histórico</option>
                        {uniqueDates.map(d => <option key={d} value={d}>{d}</option>)}
                    </select>
                </div>
@@ -603,9 +639,16 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                     <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
                     <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
                     
-                    {evolutivoStats.max > 0 && <ReferenceLine y={evolutivoStats.max} stroke="#ef4444" strokeDasharray="3 3" opacity={0.4}><Label value={`MAX ${evolutivoStats.max}m`} position="insideTopLeft" fill="#ef4444" fontSize={10} /></ReferenceLine>}
-                    {evolutivoStats.avg > 0 && <ReferenceLine y={evolutivoStats.avg} stroke="#eab308" strokeDasharray="3 3" opacity={0.4}><Label value={`AVG ${evolutivoStats.avg}m`} position="insideTopLeft" fill="#eab308" fontSize={10} /></ReferenceLine>}
-                    {evolutivoStats.min > 0 && <ReferenceLine y={evolutivoStats.min} stroke="#10b981" strokeDasharray="3 3" opacity={0.4}><Label value={`MIN ${evolutivoStats.min}m`} position="insideBottomLeft" fill="#10b981" fontSize={10} /></ReferenceLine>}
+                    {/* DOT STATS */}
+                    {['dot', 'todos'].includes(lineDestino) && evolutivoStats.dot.max > 0 && <ReferenceLine y={evolutivoStats.dot.max} stroke="#60a5fa" strokeDasharray="3 3" opacity={0.6}><Label value={`MAX (DOT): ${evolutivoStats.dot.max}m`} position="insideTopLeft" fill="#60a5fa" fontSize={10} /></ReferenceLine>}
+                    {['dot', 'todos'].includes(lineDestino) && evolutivoStats.dot.avg > 0 && <ReferenceLine y={evolutivoStats.dot.avg} stroke="#60a5fa" strokeDasharray="3 3" opacity={0.6}><Label value={`AVG (DOT): ${evolutivoStats.dot.avg}m`} position="insideTopLeft" fill="#60a5fa" fontSize={10} /></ReferenceLine>}
+                    {['dot', 'todos'].includes(lineDestino) && evolutivoStats.dot.min > 0 && <ReferenceLine y={evolutivoStats.dot.min} stroke="#60a5fa" strokeDasharray="3 3" opacity={0.6}><Label value={`MIN (DOT): ${evolutivoStats.dot.min}m`} position="insideBottomLeft" fill="#60a5fa" fontSize={10} /></ReferenceLine>}
+
+                    {/* CENTRO STATS */}
+                    {['centro', 'todos'].includes(lineDestino) && evolutivoStats.centro.max > 0 && <ReferenceLine y={evolutivoStats.centro.max} stroke="#4ade80" strokeDasharray="3 3" opacity={0.6}><Label value={`MAX (Centro): ${evolutivoStats.centro.max}m`} position="insideTopRight" fill="#4ade80" fontSize={10} /></ReferenceLine>}
+                    {['centro', 'todos'].includes(lineDestino) && evolutivoStats.centro.avg > 0 && <ReferenceLine y={evolutivoStats.centro.avg} stroke="#4ade80" strokeDasharray="3 3" opacity={0.6}><Label value={`AVG (Centro): ${evolutivoStats.centro.avg}m`} position="insideTopRight" fill="#4ade80" fontSize={10} /></ReferenceLine>}
+                    {['centro', 'todos'].includes(lineDestino) && evolutivoStats.centro.min > 0 && <ReferenceLine y={evolutivoStats.centro.min} stroke="#4ade80" strokeDasharray="3 3" opacity={0.6}><Label value={`MIN (Centro): ${evolutivoStats.centro.min}m`} position="insideBottomRight" fill="#4ade80" fontSize={10} /></ReferenceLine>}
+
 
                     {dynamicLineKeys.map((k, i) => (
                         <Line 
