@@ -153,6 +153,11 @@ export default async function Dashboard({ searchParams }: any) {
                        <span className="text-blue-400 group-open:rotate-90 transition-transform inline-block">▶</span>
                        {group.macro}
                     </span>
+                    {group.avgMacroMicro > 0 && group.avgMacroDOT > 0 && (
+                       <span className="text-[10px] font-bold bg-white/5 px-2 py-0.5 rounded text-slate-300 border border-white/10" title="Diferencia de tiempo entre Centro y DOT">
+                          Δ {Math.abs(group.avgMacroMicro - group.avgMacroDOT)} min
+                       </span>
+                    )}
                  </div>
                  <div className="space-y-1.5 opacity-90">
                     <div className="flex items-center gap-2 text-xs">
@@ -180,7 +185,14 @@ export default async function Dashboard({ searchParams }: any) {
                     
                     return (
                       <div key={route.name} className="relative pl-3 border-l-2 border-white/10 space-y-1.5">
-                        <p className="font-medium text-xs text-slate-200 border-b border-white/5 pb-1 mb-2">{route.name}</p>
+                        <div className="flex justify-between items-center border-b border-white/5 pb-1 mb-2">
+                           <p className="font-medium text-xs text-slate-200">{route.name}</p>
+                           {route.avgMicro > 0 && route.avgDOT > 0 && (
+                             <span className="text-[10px] text-amber-500 font-bold bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20" title="Costo adicional de tiempo hacia el Centro">
+                               + {Math.abs(route.avgMicro - route.avgDOT)} min
+                             </span>
+                           )}
+                        </div>
                         
                         {/* DOT BAR */}
                         {route.avgDOT > 0 && (
