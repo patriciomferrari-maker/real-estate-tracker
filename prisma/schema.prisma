@@ -1,0 +1,34 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model CommuteRecord {
+  id            Int      @id @default(autoincrement())
+  timestamp     DateTime @default(now())
+  origin        String
+  destination   String
+  durationMins  Int
+  distanceKm    Float
+  isPeakHour    Boolean  @default(false)
+  notes         String?
+}
+
+model PropertyListing {
+  id            Int      @id @default(autoincrement())
+  timestamp     DateTime @default(now())
+  url           String   @unique
+  price         Int
+  currency      String
+  zone          String
+  neighborhood  String
+  rooms         Int
+  bathrooms     Int?
+  sizeM2        Int?
+  source        String
+}
