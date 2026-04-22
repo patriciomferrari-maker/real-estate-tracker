@@ -81,35 +81,60 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       })).filter(s => s["Al DOT"] > 0 || s["Al Microcentro"] > 0).sort((a,b) => (a["Al DOT"] + a["Al Microcentro"]) - (b["Al DOT"] + b["Al Microcentro"]));
   }, [records]);
 
-  // 2. DATA: Time of Day Line Chart (Individual)
-  const lineChartData = useMemo(() => {
-    if (!selectedZone) return [];
-    const timeGroups = new Map<string, any>();
-    records.forEach(r => {
-      const isOrigin = r.origin === selectedZone;
-      const isDest = r.destination === selectedZone;
-      if (!isOrigin && !isDest) return;
-      const date = new Date(r.timestamp);
-      const key = `${date.getDate()}/${date.getMonth()+1} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
-      if (!timeGroups.has(key)) timeGroups.set(key, { dateTime: key });
-      const point = timeGroups.get(key)!;
-      let target = isOrigin ? r.destination : r.origin;
-      if (target.includes("DOT")) target = "DOT";
-      if (target.includes("Florida") || target.includes("Microcentro") || target.includes("Obelisco")) target = "Microcentro";
-      if (isOrigin) point[`IDA (Hacia ${target})`] = r.durationMins;
-      else point[`VUELTA (Desde ${target})`] = r.durationMins;
-    });
+  const [lineSentido, setLineSentido] = useState<"ida" | "vuelta">("ida");
+  const [lineMacro, setLineMacro] = useState<string>("Todas las Zonas");
 
-    const sortedRaw = records.filter(r => r.origin === selectedZone || r.destination === selectedZone).sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-    const seriesData: any[] = [];
-    const usedKeys = new Set();
-    sortedRaw.forEach(r => {
-       const date = new Date(r.timestamp);
-       const key = `${date.getDate()}/${date.getMonth()+1} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
-       if(!usedKeys.has(key)) { usedKeys.add(key); seriesData.push(timeGroups.get(key)); }
-    })
-    return seriesData;
-  }, [selectedZone, records]);
+  const barriosForLine = useMemo(() => {
+      if (lineMacro === "Todas las Zonas") return [];
+      return zones.filter(z => getMacro(z) === lineMacro);
+  }, [lineMacro, zones]);
+
+  const evolutivoData = useMemo(() => {
+      const timeMap = new Map<string, any>();
+      
+      records.forEach(r => {
+          const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
+          if (lineSentido === "ida" && !isIda) return;
+          if (lineSentido === "vuelta" && isIda) return;
+
+          const relevantBarrio = isIda ? r.origin : r.destination;
+          const macro = getMacro(relevantBarrio);
+          if (macro === "Otras Zonas") return;
+          
+          if (lineMacro !== "Todas las Zonas" && macro !== lineMacro) return;
+
+          const date = new Date(r.timestamp);
+          const mRounded = Math.floor(date.getMinutes() / 5) * 5; 
+          const key = `${date.getHours().toString().padStart(2,'0')}:${mRounded.toString().padStart(2,'0')}`;
+
+          if (!timeMap.has(key)) timeMap.set(key, { timeHourNum: date.getHours() + (mRounded/60), timeTick: key });
+          const point = timeMap.get(key);
+          
+          const seriesKey = lineMacro === "Todas las Zonas" ? macro : relevantBarrio;
+          
+          if (!point[`_sum_${seriesKey}`]) { point[`_sum_${seriesKey}`] = 0; point[`_count_${seriesKey}`] = 0; }
+          point[`_sum_${seriesKey}`] += r.durationMins;
+          point[`_count_${seriesKey}`]++;
+      });
+
+      return Array.from(timeMap.values()).map(pt => {
+          const finalPt: any = { timeTick: pt.timeTick, timeHourNum: pt.timeHourNum };
+          Object.keys(pt).forEach(k => {
+              if (k.startsWith("_sum_")) {
+                  const series = k.replace("_sum_", "");
+                  finalPt[series] = Math.round(pt[k] / pt[`_count_${series}`]);
+              }
+          });
+          return finalPt;
+      }).sort((a,b) => a.timeHourNum - b.timeHourNum);
+  }, [records, lineSentido, lineMacro]);
+
+  const dynamicLineKeys = useMemo(() => {
+      if (lineMacro === "Todas las Zonas") return Array.from(new Set(zones.map(z => getMacro(z)))).filter(m => m !== "Otras Zonas").sort();
+      return barriosForLine;
+  }, [lineMacro, zones, barriosForLine]);
+
+  const LINE_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#f43f5e", "#a855f7", "#06b6d4", "#f97316", "#84cc16"];
 
   // 3. DATA: Radar Macro-Zone Comparability
   const radarData = useMemo(() => {
@@ -399,7 +424,75 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       </div>
 
 
-      {/* RADAR: VOLATILITY */}
+      {/* INDIVIDUAL EVOLUTION LINE CHART */}
+      <div className="glass-card mt-8 border-orange-500/20 border-2">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-white/10 pb-4 mb-6">
+           <div>
+              <h3 className="text-xl font-bold flex items-center gap-2 mb-1">
+                  <Activity size={20} className="text-orange-400" /> 
+                  Evolución Minuto a Minuto
+              </h3>
+              <p className="text-slate-400 text-sm">Compara la línea en el tiempo para cada barrio dentro de una zona (o compara las macro-zonas enteras).</p>
+           </div>
+           
+           <div className="mt-4 md:mt-0 flex gap-4 flex-wrap">
+               <div className="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1">
+                  <button 
+                    onClick={() => setLineSentido("ida")}
+                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${lineSentido === 'ida' ? 'bg-orange-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    IDA (A Capital)
+                  </button>
+                  <button 
+                    onClick={() => setLineSentido("vuelta")}
+                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${lineSentido === 'vuelta' ? 'bg-orange-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    VUELTA (A Provincia)
+                  </button>
+               </div>
+
+               <div className="relative min-w-[220px]">
+                   <select 
+                      className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-4 py-1.5 text-sm appearance-none focus:outline-none focus:ring-1 focus:ring-orange-500"
+                      value={lineMacro}
+                      onChange={(e) => setLineMacro(e.target.value)}
+                   >
+                       <option value="Todas las Zonas">Todas las Macro-Zonas</option>
+                       {Array.from(new Set(zones.map(z => getMacro(z)))).filter(m => m !== "Otras Zonas").sort().map(z => <option key={z} value={z}>{z}</option>)}
+                   </select>
+               </div>
+           </div>
+        </div>
+
+        <div className="w-full h-[400px]">
+             {evolutivoData.length === 0 ? <p className="text-center text-slate-500 pt-20">No hay datos acumulados en estos parámetros.</p> : (
+                 <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={evolutivoData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                    <XAxis dataKey="timeTick" stroke="#64748b" fontSize={11} tickMargin={10} tick={{ fill: '#64748b' }} />
+                    <YAxis stroke="#64748b" fontSize={11} domain={['dataMin - 5', 'dataMax + 10']} tick={{ fill: '#64748b' }} unit="m" />
+                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
+                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                    
+                    {dynamicLineKeys.map((k, i) => (
+                        <Line 
+                           key={k} 
+                           type="monotone" 
+                           dataKey={k} 
+                           name={k} 
+                           stroke={LINE_COLORS[i % LINE_COLORS.length]} 
+                           strokeWidth={3} 
+                           dot={{ r: 4 }} 
+                           activeDot={{ r: 6 }} 
+                           connectNulls 
+                        />
+                    ))}
+                    </LineChart>
+                </ResponsiveContainer>
+             )}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
           <div className="glass-card">
               <h3 className="text-lg font-bold mb-1 flex items-center gap-2"><Crosshair size={18} className="text-purple-400"/> Volatilidad Macro-Zonal</h3>
