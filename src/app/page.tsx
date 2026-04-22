@@ -1,5 +1,7 @@
 import prisma from "@/lib/prisma"
 import { MapPin, TrendingUp, RefreshCw, CarFront, Clock, ArrowRightLeft, Calendar } from "lucide-react"
+
+export const dynamic = 'force-dynamic';
 import { syncAllData } from "./actions"
 import ZoneCharts from "@/components/ZoneCharts"
 
