@@ -41,6 +41,8 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       return "Otras Zonas";
   };
 
+  const [comparisonGroupBy, setComparisonGroupBy] = useState<"macro" | "barrio">("barrio");
+
   // 1. DATA: Comparison Averages (Bar Chart)
   const comparisonData = useMemo(() => {
       const groups = new Map<string, { zone: string, totalDOT: number, countDOT: number, totalMicro: number, countMicro: number }>();
@@ -49,17 +51,23 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           if (!isIda) return; // Sólo promedios de IDA.
           
           let friendlyZone = r.origin;
-          if (friendlyZone.includes("San Matias")) friendlyZone = "San Matías";
-          else if (friendlyZone.includes("Puertos")) friendlyZone = "Puertos";
-          else if (friendlyZone.includes("Canton")) friendlyZone = "El Cantón";
-          else if (friendlyZone.includes("Liebres")) friendlyZone = "Liebres";
-          else if (friendlyZone.includes("Boulevares")) friendlyZone = "Boulevares";
-          else if (friendlyZone.includes("Glorietas")) friendlyZone = "Glorietas";
-          else if (friendlyZone.includes("Castaños")) friendlyZone = "Castaños";
-          else if (friendlyZone.includes("Santa Barbara")) friendlyZone = "Santa Bárbara";
-          else if (friendlyZone.includes("Encuentro")) friendlyZone = "El Encuentro";
-          else if (friendlyZone.includes("Escondida")) friendlyZone = "La Escondida";
-          else friendlyZone = friendlyZone.split(',')[0].replace("Barrio", "").trim();
+          
+          if (comparisonGroupBy === "macro") {
+              friendlyZone = getMacro(r.origin);
+              if (friendlyZone === "Otras Zonas") return;
+          } else {
+              if (friendlyZone.includes("San Matias")) friendlyZone = "San Matías";
+              else if (friendlyZone.includes("Puertos")) friendlyZone = "Puertos";
+              else if (friendlyZone.includes("Canton")) friendlyZone = "El Cantón";
+              else if (friendlyZone.includes("Liebres")) friendlyZone = "Liebres";
+              else if (friendlyZone.includes("Boulevares")) friendlyZone = "Boulevares";
+              else if (friendlyZone.includes("Glorietas")) friendlyZone = "Glorietas";
+              else if (friendlyZone.includes("Castaños")) friendlyZone = "Castaños";
+              else if (friendlyZone.includes("Santa Barbara")) friendlyZone = "Santa Bárbara";
+              else if (friendlyZone.includes("Encuentro")) friendlyZone = "El Encuentro";
+              else if (friendlyZone.includes("Escondida")) friendlyZone = "La Escondida";
+              else friendlyZone = friendlyZone.split(',')[0].replace("Barrio", "").trim();
+          }
 
           if (!groups.has(friendlyZone)) groups.set(friendlyZone, { zone: friendlyZone, totalDOT: 0, countDOT: 0, totalMicro: 0, countMicro: 0 });
           const stat = groups.get(friendlyZone)!;
@@ -196,20 +204,36 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   return (
     <section className="space-y-8 mb-12">
       
-      {/* HEADER */}
-      <div className="flex flex-col gap-2 mt-8 mb-4 border-b border-white/10 pb-4">
-        <h2 className="text-3xl font-bold flex items-center gap-3">
-           <BarChart3 className="text-blue-500" size={28}/> 
-           Central Analítica
-        </h2>
-        <p className="text-slate-400">Visualizaciones estadísticas para comprender el comportamiento profundo del tránsito por barrios.</p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mt-8 mb-4 border-b border-white/10 pb-4">
+        <div>
+           <h2 className="text-3xl font-bold flex items-center gap-3 mb-2">
+              <BarChart3 className="text-blue-500" size={28}/> 
+              Central Analítica
+           </h2>
+           <p className="text-slate-400">Visualizaciones estadísticas para comprender el comportamiento profundo del tránsito por barrios.</p>
+        </div>
+
+        <div className="mt-4 md:mt-0 flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1">
+           <button 
+             onClick={() => setComparisonGroupBy("barrio")}
+             className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${comparisonGroupBy === 'barrio' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+           >
+             Ver por Barrio
+           </button>
+           <button 
+             onClick={() => setComparisonGroupBy("macro")}
+             className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${comparisonGroupBy === 'macro' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+           >
+             Ver por Macro-Zonas
+           </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* BAR CHART: COMPARISON DOT */}
           <div className="glass-card">
               <h3 className="text-lg font-bold mb-1 flex items-center gap-2"><MapIcon size={18} className="text-blue-400"/> Promedios Mañana: Al Shopping DOT</h3>
-              <p className="text-xs text-slate-400 mb-6">Ranking de tiempos promedio desde todas las zonas de provincia.</p>
+              <p className="text-xs text-slate-400 mb-6">Ranking de tiempos promedio desde la provincia.</p>
               
               <div className="h-[300px] w-full">
                   {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
