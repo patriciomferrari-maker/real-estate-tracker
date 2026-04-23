@@ -65,19 +65,25 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   };
 
   const [scatterMode, setScatterMode] = useState<"barrio" | "macro">("barrio");
+  const [scatterDestino, setScatterDestino] = useState<"todos" | "dot" | "centro">("todos");
+  const [barTimeMode, setBarTimeMode] = useState<"mañana" | "tarde">("mañana");
 
   // 1. DATA: Comparison Averages (Bar Chart)
   const comparisonData = useMemo(() => {
       const groups = new Map<string, { zone: string, totalDOT: number, countDOT: number, totalMicro: number, countMicro: number }>();
       records.forEach(r => {
           const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
-          if (!isIda) return; 
           
-          let friendlyZone = shortenBarrioName(r.origin);
+          if (barTimeMode === "mañana" && !isIda) return;
+          if (barTimeMode === "tarde" && isIda) return;
+
+          const isDOT = isIda ? r.destination.includes("DOT") : r.origin.includes("DOT");
+          let friendlyZone = shortenBarrioName(isIda ? r.origin : r.destination);
+          
           if (!groups.has(friendlyZone)) groups.set(friendlyZone, { zone: friendlyZone, totalDOT: 0, countDOT: 0, totalMicro: 0, countMicro: 0 });
           const stat = groups.get(friendlyZone)!;
           
-          if (r.destination.includes("DOT")) {
+          if (isDOT) {
               stat.totalDOT += r.durationMins; stat.countDOT++;
           } else {
               stat.totalMicro += r.durationMins; stat.countMicro++;
@@ -89,7 +95,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           "Al DOT": s.countDOT > 0 ? Math.round(s.totalDOT / s.countDOT) : 0,
           "Al Microcentro": s.countMicro > 0 ? Math.round(s.totalMicro / s.countMicro) : 0,
       })).filter(s => s["Al DOT"] > 0 || s["Al Microcentro"] > 0).sort((a,b) => (a["Al DOT"] + a["Al Microcentro"]) - (b["Al DOT"] + b["Al Microcentro"]));
-  }, [records]);
+  }, [records, barTimeMode]);
 
   const [lineSentido, setLineSentido] = useState<"ida" | "vuelta">("ida");
   const [lineDestino, setLineDestino] = useState<"todos" | "dot" | "centro">("todos");
@@ -190,24 +196,53 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       "#6366f1", "#14b8a6", "#eab308", "#ec4899", "#8b5cf6", "#3b82f6", "#10b981", "#f59e0b"
   ];
 
-  // 3. DATA: Radar Macro-Zone Comparability
-  const radarData = useMemo(() => {
+  // 3. DATA: Radar Macro-Zone Comparability (Split by Ida/Vuelta)
+  const radarIdaData = useMemo(() => {
       const macro = new Map<string, { name: string, min: number, max: number }>();
-    records.forEach(r => {
-        let macroName = getMacro(r.origin);
-        if (macroName === "Otras Zonas") macroName = getMacro(r.destination);
-        if (macroName === "Otras Zonas") return;
-        
-        if (!macro.has(macroName)) macro.set(macroName, { name: macroName, min: 999, max: 0 });
-        const obj = macro.get(macroName)!;
-        if (r.durationMins < obj.min) obj.min = r.durationMins;
-        if (r.durationMins > obj.max) obj.max = r.durationMins;
-    });
-    return Array.from(macro.values()).map(m => ({
-        subject: m.name,
-        "Mejor Tiempo": m.min === 999 ? 0 : m.min,
-        "Peor Tránsito": m.max
-    }));
+      records.forEach(r => {
+          const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
+          if (!isIda) return;
+          
+          let macroName = getMacro(r.origin);
+          if (macroName === "Otras Zonas") return;
+          
+          // Filter out unrealistically low values (< 10 mins)
+          if (r.durationMins < 10) return;
+
+          if (!macro.has(macroName)) macro.set(macroName, { name: macroName, min: 999, max: 0 });
+          const obj = macro.get(macroName)!;
+          if (r.durationMins < obj.min) obj.min = r.durationMins;
+          if (r.durationMins > obj.max) obj.max = r.durationMins;
+      });
+      return Array.from(macro.values()).map(m => ({
+          subject: m.name,
+          "Mejor Tiempo": m.min === 999 ? 0 : m.min,
+          "Peor Tránsito": m.max
+      }));
+  }, [records]);
+
+  const radarVueltaData = useMemo(() => {
+      const macro = new Map<string, { name: string, min: number, max: number }>();
+      records.forEach(r => {
+          const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
+          if (isIda) return; // Only return
+          
+          let macroName = getMacro(r.destination);
+          if (macroName === "Otras Zonas") return;
+          
+          // Filter out unrealistically low values (< 10 mins)
+          if (r.durationMins < 10) return;
+
+          if (!macro.has(macroName)) macro.set(macroName, { name: macroName, min: 999, max: 0 });
+          const obj = macro.get(macroName)!;
+          if (r.durationMins < obj.min) obj.min = r.durationMins;
+          if (r.durationMins > obj.max) obj.max = r.durationMins;
+      });
+      return Array.from(macro.values()).map(m => ({
+          subject: m.name,
+          "Mejor Tiempo": m.min === 999 ? 0 : m.min,
+          "Peor Tránsito": m.max
+      }));
   }, [records]);
 
   // 4. SCATTER PLOTS DATA
@@ -243,6 +278,10 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       let filtered = rawScatterPoints.filter(p => {
           if (scatterMacro !== "Todas las Zonas" && p.macro !== scatterMacro) return false;
           if (scatterBarrio !== "Todos los Barrios" && p.barrio !== scatterBarrio) return false;
+          
+          if (scatterDestino === "dot" && !p.isDOT) return false;
+          if (scatterDestino === "centro" && p.isDOT) return false;
+          
           return true;
       });
 
@@ -390,47 +429,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
         <p className="text-slate-400">Visualizaciones estadísticas para comprender el comportamiento profundo del tránsito por barrios.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* BAR CHART: COMPARISON DOT */}
-          <div className="glass-card">
-              <h3 className="text-lg font-bold mb-1 flex items-center gap-2"><MapIcon size={18} className="text-blue-400"/> Promedios Mañana: Al Shopping DOT</h3>
-              <p className="text-xs text-slate-400 mb-6">Ranking de tiempos promedio desde todas las zonas de provincia.</p>
-              
-              <div className="h-[300px] w-full">
-                  {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={comparisonData.filter(d => d["Al DOT"] > 0).sort((a,b) => a["Al DOT"] - b["Al DOT"])} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false}/>
-                          <XAxis type="number" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} />
-                          <YAxis dataKey="zone" type="category" stroke="#64748b" width={90} tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                          <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
-                          <Bar dataKey="Al DOT" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={16} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                  )}
-              </div>
-          </div>
 
-          {/* BAR CHART: COMPARISON MICROCENTRO */}
-          <div className="glass-card">
-              <h3 className="text-lg font-bold mb-1 flex items-center gap-2"><MapIcon size={18} className="text-purple-400"/> Promedios Mañana: Al Microcentro</h3>
-              <p className="text-xs text-slate-400 mb-6">Ranking de tiempos promedio llegando al punto más congestionado de la ciudad.</p>
-              
-              <div className="h-[300px] w-full">
-                  {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={comparisonData.filter(d => d["Al Microcentro"] > 0).sort((a,b) => a["Al Microcentro"] - b["Al Microcentro"])} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false}/>
-                          <XAxis type="number" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} />
-                          <YAxis dataKey="zone" type="category" stroke="#64748b" width={90} tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                          <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
-                          <Bar dataKey="Al Microcentro" fill="#a855f7" radius={[0, 4, 4, 0]} barSize={16} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                  )}
-              </div>
-          </div>
-      </div>
 
       {/* DISPERSION SCATTER PLOTS */}
       <div className="glass-card mt-8 border-violet-500/20 border-2">
@@ -443,18 +442,39 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                <p className="text-slate-400 text-sm max-w-xl mb-4">Mapeo de nube de puntos. Cada punto es un viaje real registrado. Analiza la densidad de viajes a distintas horas del día y la brecha entre ir al DOT (Azul) vs Centro (Violeta).</p>
                
                {/* SCATTER VIEW TOGGLE */}
-               <div className="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1">
+               <div className="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1 mr-4">
                   <button 
                     onClick={() => setScatterMode("barrio")}
                     className={`px-3 py-1 text-xs font-medium rounded transition-all ${scatterMode === 'barrio' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
                   >
-                    Nubes Reales (Barrios)
+                    Nubes (Barrios)
                   </button>
                   <button 
                     onClick={() => setScatterMode("macro")}
                     className={`px-3 py-1 text-xs font-medium rounded transition-all ${scatterMode === 'macro' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
                   >
-                    Promedios (Macro-Zonas)
+                    Promedios (Macro)
+                  </button>
+               </div>
+
+               <div className="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1">
+                  <button 
+                    onClick={() => setScatterDestino("todos")}
+                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${scatterDestino === 'todos' ? 'bg-slate-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    Ambos
+                  </button>
+                  <button 
+                    onClick={() => setScatterDestino("dot")}
+                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${scatterDestino === 'dot' ? 'bg-blue-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    Solo DOT
+                  </button>
+                  <button 
+                    onClick={() => setScatterDestino("centro")}
+                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${scatterDestino === 'centro' ? 'bg-purple-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    Solo Centro
                   </button>
                </div>
             </div>            
@@ -677,17 +697,43 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
         </div>
       </div>
 
+      {/* VOLATILITY RADAR CHARTS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-          <div className="glass-card">
-              <h3 className="text-lg font-bold mb-1 flex items-center gap-2"><Crosshair size={18} className="text-purple-400"/> Volatilidad Macro-Zonal</h3>
-              <p className="text-xs text-slate-400 mb-6">Brecha entre un día sin tránsito ("Mejor tiempo") y picos de colapso ("Peor tránsito").</p>
+          <div className="glass-card border-purple-500/10 border">
+              <h3 className="text-lg font-bold mb-1 flex items-center gap-2">
+                <Crosshair size={18} className="text-emerald-400"/> Volatilidad: IDA (Mañana)
+              </h3>
+              <p className="text-xs text-slate-400 mb-6">Brecha entre mejor y peor tiempo hacia CABA.</p>
               
-              <div className="h-[350px] w-full">
-                 {radarData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
+              <div className="h-[320px] w-full">
+                 {radarIdaData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
                      <ResponsiveContainer width="100%" height="100%">
-                        <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                        <RadarChart data={radarIdaData}>
                           <PolarGrid stroke="rgba(255,255,255,0.1)" />
-                          <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                          <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                          <PolarRadiusAxis angle={30} domain={[0, 'dataMax']} tick={{ fill: '#64748b', fontSize: 9 }} />
+                          <Radar name="Peor Tránsito" dataKey="Peor Tránsito" stroke="#ef4444" fill="#ef4444" fillOpacity={0.3} />
+                          <Radar name="Mejor Tiempo" dataKey="Mejor Tiempo" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
+                          <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
+                          <Legend />
+                        </RadarChart>
+                     </ResponsiveContainer>
+                 )}
+              </div>
+          </div>
+
+          <div className="glass-card border-purple-500/10 border">
+              <h3 className="text-lg font-bold mb-1 flex items-center gap-2">
+                <Crosshair size={18} className="text-amber-400"/> Volatilidad: VUELTA (Tarde)
+              </h3>
+              <p className="text-xs text-slate-400 mb-6">Brecha entre mejor y peor tiempo hacia Provincia.</p>
+              
+              <div className="h-[320px] w-full">
+                 {radarVueltaData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
+                     <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart data={radarVueltaData}>
+                          <PolarGrid stroke="rgba(255,255,255,0.1)" />
+                          <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 10 }} />
                           <PolarRadiusAxis angle={30} domain={[0, 'dataMax']} tick={{ fill: '#64748b', fontSize: 10 }} />
                           <Radar name="Peor Tránsito" dataKey="Peor Tránsito" stroke="#ef4444" fill="#ef4444" fillOpacity={0.3} />
                           <Radar name="Mejor Tiempo" dataKey="Mejor Tiempo" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
@@ -698,11 +744,69 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                  )}
               </div>
           </div>
-          
-          <div className="glass-card flex flex-col items-center justify-center text-center p-8 space-y-4">
-               <Activity size={48} className="text-slate-700" />
-               <h3 className="text-xl font-bold text-slate-400">Inteligencia en Progreso</h3>
-               <p className="text-slate-500 text-sm max-w-sm">Mientras el sistema automatizado sigue alimentando la base de datos cada 5 minutos, las redes neuronales pronto detectarán el piso y el techo de los corredores viales para comprar bienes raíces mejor valuados.</p>
+      </div>
+
+      {/* COMPARISON BAR CHARTS (MOVED TO END) */}
+      <div className="glass-card mt-8 border-blue-500/20 border-2">
+          <div className="flex justify-between items-center border-b border-white/10 pb-4 mb-6">
+              <div>
+                  <h3 className="text-xl font-bold flex items-center gap-2">
+                      <BarChart3 size={20} className="text-blue-400" />
+                      Ranking Comparativo de Tiempos
+                  </h3>
+                  <p className="text-slate-400 text-sm">Promedios generales por barrio hacia los destinos principales.</p>
+              </div>
+
+              <div className="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1">
+                  <button 
+                    onClick={() => setBarTimeMode("mañana")}
+                    className={`px-4 py-1.5 text-xs font-bold rounded transition-all ${barTimeMode === 'mañana' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    MIRA LA MAÑANA (A CABA)
+                  </button>
+                  <button 
+                    onClick={() => setBarTimeMode("tarde")}
+                    className={`px-4 py-1.5 text-xs font-bold rounded transition-all ${barTimeMode === 'tarde' ? 'bg-orange-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    MIRA LA TARDE (A PROVINCIA)
+                  </button>
+              </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                  <h4 className="text-blue-400 font-semibold text-center border-b border-blue-500/20 pb-2">Destino: Shopping DOT</h4>
+                  <div className="h-[350px] w-full">
+                      {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={comparisonData.filter(d => d["Al DOT"] > 0).sort((a,b) => a["Al DOT"] - b["Al DOT"])} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false}/>
+                              <XAxis type="number" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} />
+                              <YAxis dataKey="zone" type="category" stroke="#64748b" width={90} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                              <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
+                              <Bar dataKey="Al DOT" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={16} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                      )}
+                  </div>
+              </div>
+
+              <div className="space-y-4">
+                  <h4 className="text-purple-400 font-semibold text-center border-b border-purple-500/20 pb-2">Destino: Microcentro</h4>
+                  <div className="h-[350px] w-full">
+                      {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={comparisonData.filter(d => d["Al Microcentro"] > 0).sort((a,b) => a["Al Microcentro"] - b["Al Microcentro"])} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false}/>
+                              <XAxis type="number" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} />
+                              <YAxis dataKey="zone" type="category" stroke="#64748b" width={90} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                              <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
+                              <Bar dataKey="Al Microcentro" fill="#a855f7" radius={[0, 4, 4, 0]} barSize={16} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                      )}
+                  </div>
+              </div>
           </div>
       </div>
     </section>
