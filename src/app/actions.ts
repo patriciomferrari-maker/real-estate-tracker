@@ -11,6 +11,8 @@ const ZONES = [
   "Puertos de Escobar, Buenos Aires",
   "Barrio El Canton, Escobar, Buenos Aires",
   "Barrio Santa Ana, Villa Nueva, Buenos Aires",
+  "Barrio San Marco, Villa Nueva, Buenos Aires",
+  "Villa Nueva, Buenos Aires",
   // Nordelta / Cercanias
   "Barrio Santa Barbara, General Pacheco, Buenos Aires",
   "Barrio Castaños, Nordelta, Buenos Aires",

@@ -43,6 +43,9 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       if (friendly.includes("Castaños")) return "Castaños";
       if (friendly.includes("Santa Barbara")) return "Santa Bárbara";
       if (friendly.includes("Barbarita")) return "Barbarita";
+      if (friendly.includes("San Marco")) return "San Marco";
+      if (friendly.includes("Santa Ana")) return "Santa Ana";
+      if (friendly.includes("Villa Nueva")) return "Villa Nueva";
       if (friendly.includes("Encuentro")) return "El Encuentro";
       if (friendly.includes("Escondida")) return "La Escondida";
       if (friendly.includes("Tigre")) return "Tigre";
@@ -53,6 +56,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const getMacro = (name: string) => {
       if (name.includes("Escobar") || name.includes("San Matias") || name.includes("Canton") || name.includes("Puertos")) return "Escobar";
       if (name.includes("Nordelta") || name.includes("Glorietas") || name.includes("Castaños") || name.includes("Santa Barbara") || name.includes("Barbarita")) return "Nordelta";
+      if (name.includes("Villa Nueva") || name.includes("San Marco") || name.includes("Santa Ana")) return "Villa Nueva";
       if (name.includes("Tortugas") || name.includes("Liebres") || name.includes("Boulevares")) return "Tortugas";
       if (name.includes("Pacheco") || name.includes("Benavidez") || name.includes("Encuentro")) return "Benavidez / Pacheco";
       if (name.includes("Tigre") || name.includes("Escondida")) return "Tigre";
@@ -277,20 +281,24 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       // isDOT = Azul, Centro = Verde
       if (isDOT) {
           switch(macro) {
-              case "Corredor Escobar": return "#bfdbfe"; // blue-200
+              case "Escobar": return "#bfdbfe"; // blue-200
+              case "Villa Nueva": return "#93c5fd"; // blue-300
               case "Nordelta": return "#60a5fa"; // blue-400
               case "San Isidro / Bancalari": return "#2563eb"; // blue-600
-              case "Tigre / Pacheco / Benav.": return "#1d4ed8"; // blue-700
-              case "Tortugas / Pilar": return "#1e3a8a"; // blue-900
+              case "Benavidez / Pacheco": return "#1d4ed8"; // blue-700
+              case "Tigre": return "#1e40af"; // blue-800
+              case "Tortugas": return "#1e3a8a"; // blue-900
               default: return "#3b82f6";
           }
       } else {
           switch(macro) {
-              case "Corredor Escobar": return "#bbf7d0"; // green-200
+              case "Escobar": return "#bbf7d0"; // green-200
+              case "Villa Nueva": return "#86efac"; // green-300
               case "Nordelta": return "#4ade80"; // green-400
               case "San Isidro / Bancalari": return "#16a34a"; // green-600
-              case "Tigre / Pacheco / Benav.": return "#15803d"; // green-700
-              case "Tortugas / Pilar": return "#14532d"; // green-900
+              case "Benavidez / Pacheco": return "#15803d"; // green-700
+              case "Tigre": return "#166534"; // green-800
+              case "Tortugas": return "#14532d"; // green-900
               default: return "#22c55e";
           }
       }
@@ -640,14 +648,14 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                     <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
                     
                     {/* DOT STATS */}
-                    {['dot', 'todos'].includes(lineDestino) && evolutivoStats.dot.max > 0 && <ReferenceLine y={evolutivoStats.dot.max} stroke="#60a5fa" strokeDasharray="3 3" opacity={0.6}><Label value={`MAX (DOT): ${evolutivoStats.dot.max}m`} position="insideTopLeft" fill="#60a5fa" fontSize={10} /></ReferenceLine>}
-                    {['dot', 'todos'].includes(lineDestino) && evolutivoStats.dot.avg > 0 && <ReferenceLine y={evolutivoStats.dot.avg} stroke="#60a5fa" strokeDasharray="3 3" opacity={0.6}><Label value={`AVG (DOT): ${evolutivoStats.dot.avg}m`} position="insideTopLeft" fill="#60a5fa" fontSize={10} /></ReferenceLine>}
-                    {['dot', 'todos'].includes(lineDestino) && evolutivoStats.dot.min > 0 && <ReferenceLine y={evolutivoStats.dot.min} stroke="#60a5fa" strokeDasharray="3 3" opacity={0.6}><Label value={`MIN (DOT): ${evolutivoStats.dot.min}m`} position="insideBottomLeft" fill="#60a5fa" fontSize={10} /></ReferenceLine>}
+                    {['dot', 'todos'].includes(lineDestino) && evolutivoStats.dot.max > 0 && <ReferenceLine y={evolutivoStats.dot.max} stroke="#ef4444" strokeDasharray="3 3" opacity={0.6}><Label value={`MAX (DOT): ${evolutivoStats.dot.max}m`} position="insideTopLeft" fill="#ef4444" fontSize={10} /></ReferenceLine>}
+                    {['dot', 'todos'].includes(lineDestino) && evolutivoStats.dot.avg > 0 && <ReferenceLine y={evolutivoStats.dot.avg} stroke="#eab308" strokeDasharray="3 3" opacity={0.6}><Label value={`AVG (DOT): ${evolutivoStats.dot.avg}m`} position="insideTopLeft" fill="#eab308" fontSize={10} /></ReferenceLine>}
+                    {['dot', 'todos'].includes(lineDestino) && evolutivoStats.dot.min > 0 && <ReferenceLine y={evolutivoStats.dot.min} stroke="#10b981" strokeDasharray="3 3" opacity={0.6}><Label value={`MIN (DOT): ${evolutivoStats.dot.min}m`} position="insideBottomLeft" fill="#10b981" fontSize={10} /></ReferenceLine>}
 
                     {/* CENTRO STATS */}
-                    {['centro', 'todos'].includes(lineDestino) && evolutivoStats.centro.max > 0 && <ReferenceLine y={evolutivoStats.centro.max} stroke="#4ade80" strokeDasharray="3 3" opacity={0.6}><Label value={`MAX (Centro): ${evolutivoStats.centro.max}m`} position="insideTopRight" fill="#4ade80" fontSize={10} /></ReferenceLine>}
-                    {['centro', 'todos'].includes(lineDestino) && evolutivoStats.centro.avg > 0 && <ReferenceLine y={evolutivoStats.centro.avg} stroke="#4ade80" strokeDasharray="3 3" opacity={0.6}><Label value={`AVG (Centro): ${evolutivoStats.centro.avg}m`} position="insideTopRight" fill="#4ade80" fontSize={10} /></ReferenceLine>}
-                    {['centro', 'todos'].includes(lineDestino) && evolutivoStats.centro.min > 0 && <ReferenceLine y={evolutivoStats.centro.min} stroke="#4ade80" strokeDasharray="3 3" opacity={0.6}><Label value={`MIN (Centro): ${evolutivoStats.centro.min}m`} position="insideBottomRight" fill="#4ade80" fontSize={10} /></ReferenceLine>}
+                    {['centro', 'todos'].includes(lineDestino) && evolutivoStats.centro.max > 0 && <ReferenceLine y={evolutivoStats.centro.max} stroke="#ef4444" strokeDasharray="3 3" opacity={0.6}><Label value={`MAX (Centro): ${evolutivoStats.centro.max}m`} position="insideTopRight" fill="#ef4444" fontSize={10} /></ReferenceLine>}
+                    {['centro', 'todos'].includes(lineDestino) && evolutivoStats.centro.avg > 0 && <ReferenceLine y={evolutivoStats.centro.avg} stroke="#eab308" strokeDasharray="3 3" opacity={0.6}><Label value={`AVG (Centro): ${evolutivoStats.centro.avg}m`} position="insideTopRight" fill="#eab308" fontSize={10} /></ReferenceLine>}
+                    {['centro', 'todos'].includes(lineDestino) && evolutivoStats.centro.min > 0 && <ReferenceLine y={evolutivoStats.centro.min} stroke="#10b981" strokeDasharray="3 3" opacity={0.6}><Label value={`MIN (Centro): ${evolutivoStats.centro.min}m`} position="insideBottomRight" fill="#10b981" fontSize={10} /></ReferenceLine>}
 
 
                     {dynamicLineKeys.map((k, i) => (
