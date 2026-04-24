@@ -16,16 +16,31 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const [scatterMacro, setScatterMacro] = useState<string>("Todas las Zonas");
   const [scatterBarrio, setScatterBarrio] = useState<string>("Todos los Barrios");
 
-  const zones = useMemo(() => {
-    const list = new Set<string>();
+  const metadata = useMemo(() => {
+    const zonesSet = new Set<string>();
+    const datesSet = new Set<string>();
+    
     records.forEach(r => {
-        if (!r.origin.includes("DOT") && !r.origin.includes("Microcentro") && !r.origin.includes("Florida") && !r.origin.includes("Obelisco") && !r.origin.includes("San Isidro")) list.add(r.origin);
-        if (!r.destination.includes("DOT") && !r.destination.includes("Microcentro") && !r.destination.includes("Florida") && !r.destination.includes("Obelisco") && !r.destination.includes("San Isidro")) list.add(r.destination); 
-        if (r.origin.includes("San Isidro")) list.add(r.origin);
-        if (r.destination.includes("San Isidro")) list.add(r.destination);
+        // Zones
+        if (!r.origin.includes("DOT") && !r.origin.includes("Microcentro") && !r.origin.includes("Florida") && !r.origin.includes("Obelisco")) zonesSet.add(r.origin);
+        if (!r.destination.includes("DOT") && !r.destination.includes("Microcentro") && !r.destination.includes("Florida") && !r.destination.includes("Obelisco")) zonesSet.add(r.destination); 
+        
+        // Dates
+        datesSet.add(new Date(r.timestamp).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }));
     });
-    return Array.from(list).filter(z => !z.includes("DOT") && !z.includes("Microcentro") && !z.includes("Florida") && !z.includes("Obelisco")).sort();
+
+    const sortedZones = Array.from(zonesSet).sort();
+    const sortedDates = Array.from(datesSet).sort((a, b) => {
+        const [d1, m1, y1] = a.split('/');
+        const [d2, m2, y2] = b.split('/');
+        return new Date(`${y1}-${m1}-${d1}`).getTime() - new Date(`${y2}-${m2}-${d2}`).getTime();
+    });
+
+    return { zones: sortedZones, uniqueDates: sortedDates };
   }, [records]);
+
+  const zones = metadata.zones;
+  const uniqueDates = metadata.uniqueDates;
 
   React.useEffect(() => {
      if (!selectedZone && zones.length > 0) setSelectedZone(zones[0])
@@ -67,30 +82,22 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const [scatterMode, setScatterMode] = useState<"barrio" | "macro">("macro");
   const [scatterDestino, setScatterDestino] = useState<"todos" | "dot" | "centro">("todos");
   const [barTimeMode, setBarTimeMode] = useState<"mañana" | "tarde">("mañana");
-  const [timeBinSize, setTimeBinSize] = useState<number>(5);
+  const [timeBinSize, setTimeBinSize] = useState<number>(30); // Default higher for performance
 
   // 1. DATA: Comparison Averages (Bar Chart)
   const comparisonData = useMemo(() => {
       const groups = new Map<string, { zone: string, totalDOT: number, countDOT: number, totalMicro: number, countMicro: number }>();
       records.forEach(r => {
           const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
-          
           if (barTimeMode === "mañana" && !isIda) return;
           if (barTimeMode === "tarde" && isIda) return;
-
           const isDOT = isIda ? r.destination.includes("DOT") : r.origin.includes("DOT");
           let friendlyZone = shortenBarrioName(isIda ? r.origin : r.destination);
-          
           if (!groups.has(friendlyZone)) groups.set(friendlyZone, { zone: friendlyZone, totalDOT: 0, countDOT: 0, totalMicro: 0, countMicro: 0 });
           const stat = groups.get(friendlyZone)!;
-          
-          if (isDOT) {
-              stat.totalDOT += r.durationMins; stat.countDOT++;
-          } else {
-              stat.totalMicro += r.durationMins; stat.countMicro++;
-          }
+          if (isDOT) { stat.totalDOT += r.durationMins; stat.countDOT++; } 
+          else { stat.totalMicro += r.durationMins; stat.countMicro++; }
       });
-
       return Array.from(groups.values()).map(s => ({
           zone: s.zone,
           "Al DOT": s.countDOT > 0 ? Math.round(s.totalDOT / s.countDOT) : 0,
@@ -103,18 +110,6 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const [lineMacro, setLineMacro] = useState<string>("Todas las Zonas");
   const [lineDate, setLineDate] = useState<string>("Histórico Promediado");
   const [lineModoView, setLineModoView] = useState<"desglosado" | "promediado">("desglosado");
-
-  const uniqueDates = useMemo(() => {
-      const dates = new Set<string>();
-      records.forEach(r => {
-          dates.add(new Date(r.timestamp).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }));
-      });
-      return Array.from(dates).sort((a, b) => {
-          const [d1, m1, y1] = a.split('/');
-          const [d2, m2, y2] = b.split('/');
-          return new Date(`${y1}-${m1}-${d1}`).getTime() - new Date(`${y2}-${m2}-${d2}`).getTime();
-      });
-  }, [records]);
 
   const barriosForLine = useMemo(() => {
       if (lineMacro === "Todas las Zonas" || lineModoView === "promediado") return [];
@@ -275,7 +270,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
             macro: getMacro(relevantBarrio)
          };
       });
-  }, [records]);
+  }, [records, timeBinSize]);
 
   const filteredScatter = useMemo(() => {
       let filtered = rawScatterPoints.filter(p => {

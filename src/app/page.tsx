@@ -37,7 +37,15 @@ export default async function Dashboard({ searchParams }: any) {
   const resolvedParams = await searchParams;
   const currentTab = resolvedParams?.tab || "dashboard";
 
+  const fortyFiveDaysAgo = new Date();
+  fortyFiveDaysAgo.setDate(fortyFiveDaysAgo.getDate() - 45);
+
   const records = await prisma.commuteRecord.findMany({
+    where: {
+      timestamp: {
+        gte: fortyFiveDaysAgo
+      }
+    },
     orderBy: { timestamp: 'desc' }
   });
 
