@@ -347,8 +347,9 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
   // Local state for Weekly Stability filters
   const [weeklyMacro, setWeeklyMacro] = useState<string>("Todas las Zonas");
   const [weeklyBarrio, setWeeklyBarrio] = useState<string>("Todos los Barrios");
+  const [weeklyDest, setWeeklyDest] = useState<"DOT" | "Obelisco">("Obelisco");
 
-  const obeliscoDowData = useMemo(() => {
+  const weeklyDowData = useMemo(() => {
     const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
     const morningMap = new Map<string, any>();
     const afternoonMap = new Map<string, any>(); 
@@ -359,12 +360,15 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
     }
 
     enrichedRecords.forEach(r => {
-        if (r.isDOT) return; 
+        // Destination Filter
+        if (weeklyDest === "DOT" && !r.isDOT) return;
+        if (weeklyDest === "Obelisco" && r.isDOT) return;
+
         if (r.dayOfWeek === 0 || r.dayOfWeek === 6) return; 
 
         // Filter Logic
         if (weeklyMacro !== "Todas las Zonas" && r.macro !== weeklyMacro) return;
-        if (weeklyBarrio !== "Todos los Barrios" && r.barrio !== weeklyBarrio) return;
+        if (weeklyBarrio !== "Todos los Barrios" && r.barrioRaw !== weeklyBarrio) return;
         
         const isMorning = r.hours < 13;
         const targetMap = isMorning ? morningMap : afternoonMap;
@@ -389,19 +393,19 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
         morning: Array.from(morningMap.values()).sort((a,b) => a.dayIdx - b.dayIdx),
         afternoon: Array.from(afternoonMap.values()).sort((a,b) => a.dayIdx - b.dayIdx)
     };
-  }, [enrichedRecords, weeklyMacro, weeklyBarrio]);
+  }, [enrichedRecords, weeklyMacro, weeklyBarrio, weeklyDest]);
 
   // Derived labels for the chart bars
   const weeklySeriesKeys = useMemo(() => {
       const keys = new Set<string>();
-      const combined = [...obeliscoDowData.morning, ...obeliscoDowData.afternoon];
+      const combined = [...weeklyDowData.morning, ...weeklyDowData.afternoon];
       combined.forEach(d => {
           Object.keys(d).forEach(k => {
               if (k !== "day" && k !== "dayIdx" && !k.endsWith('_s') && !k.endsWith('_c')) keys.add(k);
           });
       });
       return Array.from(keys).sort();
-  }, [obeliscoDowData]);
+  }, [weeklyDowData]);
 
   const highlightStats = useMemo(() => {
       const cats = {
@@ -1565,12 +1569,24 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                 <div>
                     <h3 className="text-xl font-bold flex items-center gap-2">
                         <Calendar size={20} className="text-purple-400" />
-                        Estabilidad Semanal: Destino Microcentro / Obelisco
+                        Estabilidad Semanal: Destino {weeklyDest === "DOT" ? "Shopping DOT" : "Microcentro / Obelisco"}
                     </h3>
-                    <p className="text-xs text-slate-400">¿Cuál es el mejor y peor día de la semana para ir al centro? Promedios históricos.</p>
+                    <p className="text-xs text-slate-400">¿Cuál es el mejor y peor día de la semana para viajar? Promedios históricos.</p>
                 </div>
 
                 <div className="flex items-center gap-3 bg-slate-900/50 p-2 rounded-xl border border-white/5 self-start md:self-auto">
+                    <div className="flex items-center gap-2">
+                        <MapPin size={14} className="text-purple-500 ml-1" />
+                        <select 
+                          value={weeklyDest} 
+                          onChange={(e) => setWeeklyDest(e.target.value as any)}
+                          className="bg-transparent text-[10px] font-black text-purple-300 outline-none border-r border-white/10 pr-2 cursor-pointer hover:text-white transition-colors uppercase"
+                        >
+                            <option value="Obelisco">Obelisco</option>
+                            <option value="DOT">Shopping DOT</option>
+                        </select>
+                    </div>
+
                     <div className="flex items-center gap-2">
                         <Filter size={14} className="text-slate-500 ml-1" />
                         <select 
@@ -1600,11 +1616,11 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
               {/* Morning DOW */}
               <div className="space-y-6">
                   <h4 className="text-sm font-black text-indigo-400 uppercase tracking-widest text-center flex items-center justify-center gap-2 py-1 bg-indigo-500/5 rounded-full">
-                    <Sun size={14} /> Mañana: Ida al Centro (06-12hs)
+                    <Sun size={14} /> Mañana: Ida al {weeklyDest === "DOT" ? "DOT" : "Centro"} (06-12hs)
                   </h4>
                   <div className="h-[320px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={obeliscoDowData.morning} margin={{ top: 25, right: 30, left: -20, bottom: 0 }}>
+                          <BarChart data={weeklyDowData.morning} margin={{ top: 25, right: 30, left: -20, bottom: 0 }}>
                               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                               <XAxis dataKey="day" stroke="#64748b" fontSize={11} tick={{ fill: '#94a3b8', fontWeight: 'bold' }} />
                               <YAxis stroke="#64748b" fontSize={10} unit="m" />
@@ -1626,11 +1642,11 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
               {/* Afternoon DOW */}
               <div className="space-y-6">
                   <h4 className="text-sm font-black text-amber-400 uppercase tracking-widest text-center flex items-center justify-center gap-2 py-1 bg-amber-500/5 rounded-full">
-                    <Moon size={14} /> Tarde: Ida al Centro (13-20hs)
+                    <Moon size={14} /> Tarde: Ida al {weeklyDest === "DOT" ? "DOT" : "Centro"} (13-20hs)
                   </h4>
                   <div className="h-[320px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={obeliscoDowData.afternoon} margin={{ top: 25, right: 30, left: -20, bottom: 0 }}>
+                          <BarChart data={weeklyDowData.afternoon} margin={{ top: 25, right: 30, left: -20, bottom: 0 }}>
                               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                               <XAxis dataKey="day" stroke="#64748b" fontSize={11} tick={{ fill: '#94a3b8', fontWeight: 'bold' }} />
                               <YAxis stroke="#64748b" fontSize={10} unit="m" />
