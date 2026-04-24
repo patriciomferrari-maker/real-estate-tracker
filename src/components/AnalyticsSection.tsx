@@ -433,6 +433,9 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
         }
         // Mañana termina a las 9:00 exactas
         timeline.push({ key: `${dayNames[d]} 09:00`, day: dayNames[d], hour: 9, min: 0, dayIdx: d, absMin: (d * 24 * 60) + (9 * 60), val_s: 0, val_c: 0, duration: 0 });
+        
+        // Espaciador para mañana
+        if (d < 5) timeline.push({ key: `GAP_M_${d}`, isSpacer: true, hour: 10, absMin: (d * 24 * 60) + (10 * 60), val_s: 0, val_c: 0, duration: 0 });
 
         // Ventana Tarde (16:30 a 19:30)
         for(let h=16; h<=19; h++) {
@@ -444,6 +447,9 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
             }
         }
         timeline.push({ key: `${dayNames[d]} 19:30`, day: dayNames[d], hour: 19, min: 30, dayIdx: d, absMin: (d * 24 * 60) + (19 * 60) + 30, val_s: 0, val_c: 0, duration: 0 });
+        
+        // Espaciador para tarde
+        if (d < 5) timeline.push({ key: `GAP_T_${d}`, isSpacer: true, hour: 20, absMin: (d * 24 * 60) + (20 * 60), val_s: 0, val_c: 0, duration: 0 });
     }
 
     enrichedRecords.forEach(r => {
@@ -472,10 +478,11 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
         }
     });
 
-    // Filtrar timeline para mostrar solo el turno seleccionado
+    // Filtrar timeline para mostrar solo el turno seleccionado + spacers
     return timeline.filter(t => {
-        if (pulseShift === "mañana") return t.hour < 12;
-        return t.hour >= 12;
+        if (t.isSpacer) return true;
+        if (pulseShift === "mañana") return t.hour < 13;
+        return t.hour >= 13;
     });
   }, [enrichedRecords, pulseMacro, pulseBarrio, pulseShift, pulseDest]);
 
