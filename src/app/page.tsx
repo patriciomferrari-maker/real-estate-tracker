@@ -360,8 +360,8 @@ export default async function Dashboard({ searchParams }: any) {
 
       {/* FOOTER GENERAL */}
       {records.length > 0 && (
-         <div className="text-center mt-12 text-slate-500 text-sm italic">
-           Ultima actualización registrada: {new Date(records[0].timestamp).toLocaleString('es-AR')} - Hay {records.length} registros analizados en la DB.
+         <div className="text-center mt-12 text-slate-500 text-sm italic" suppressHydrationWarning>
+           Ultima actualización registrada: {records[0].timestamp.toString().split('T')[0]} - Hay {records.length} registros en la DB.
          </div>
       )}
 
