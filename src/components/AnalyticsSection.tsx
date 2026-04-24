@@ -371,11 +371,31 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
               const b = timeBuckets.get(t)!; b.s += r.durationMins; b.c++;
           });
           let bTime = "", wTime = "", bTimeVal = 999, wTimeVal = 0;
+          
+          // Ventanas Laborales Definidas
+          // Mañana: Salida 06:45 - 08:30 (llegada 8-9:30)
+          // Tarde: Salida 17:00 - 19:00
+          const isMorning = filter.ida;
+          const laborStart = isMorning ? (6 * 60 + 45) : (17 * 60);
+          const laborEnd = isMorning ? (8 * 60 + 30) : (19 * 60);
+
           timeBuckets.forEach((v,k) => {
               const avg = v.s/v.c;
-              if (avg < bTimeVal) { bTimeVal = avg; bTime = k; }
+              const [h, m] = k.split(':').map(Number);
+              const totalMins = h * 60 + m;
+              const isWorkWindow = totalMins >= laborStart && totalMins <= laborEnd;
+
+              // El mejor tiempo debe estar DENTRO de la ventana laboral
+              if (isWorkWindow && avg < bTimeVal) { bTimeVal = avg; bTime = k; }
+              
+              // El peor tiempo se mide sobre todo el rango para alertar sobre el pico
               if (avg > wTimeVal) { wTimeVal = avg; wTime = k; }
           });
+          
+          // Fallback si no hay datos en la ventana (raro pero posible)
+          if (bTime === "") {
+              timeBuckets.forEach((v,k) => { if (v.s/v.c < bTimeVal) { bTimeVal = v.s/v.c; bTime = k; } });
+          }
 
           // Reliability & Predictability
           const avgTotal = sRecords.reduce((acc, curr) => acc + curr.durationMins, 0) / sRecords.length;
@@ -708,7 +728,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                                                     <Zap size={16} className="text-amber-400" />
                                                 </div>
                                                 <div>
-                                                    <p className="text-[10px] text-slate-500 font-bold uppercase mb-0.5">Ventana de Oro</p>
+                                                    <p className="text-[10px] text-slate-500 font-bold uppercase mb-0.5">Mejor Salida</p>
                                                     <p className="text-sm font-black text-emerald-400">{s.bestTime} hs</p>
                                                 </div>
                                             </div>
@@ -748,9 +768,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                                         <div className="mt-2 p-3 bg-indigo-600/5 border border-indigo-500/10 rounded-xl flex items-start gap-3">
                                             <div className="mt-1 w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)] animate-pulse" />
                                             <p className="text-[10px] text-indigo-300 leading-relaxed italic">
-                                                {s.reliability > 85 
-                                                  ? `Trayecto altamente predecible. La zona de ${shortenBarrioName(s.bestBarrio)} es ideal para traslados con horario fijo.` 
-                                                  : `Zonas con varianza moderada. Se recomienda salir en la ventana de las ${s.bestTime}hs para evitar el impacto de ${s.peakImpact}m.`}
+                                                {`Dentro de tu horario laboral, salir a las ${s.bestTime}hs te ahorra hasta ${s.potentialSavings}m vs el pico máximo.`}
                                             </p>
                                         </div>
                                     </div>
@@ -809,7 +827,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                                                     <Zap size={16} className="text-emerald-400" />
                                                 </div>
                                                 <div>
-                                                    <p className="text-[10px] text-slate-500 font-bold uppercase mb-0.5">Ventana de Oro</p>
+                                                    <p className="text-[10px] text-slate-500 font-bold uppercase mb-0.5">Mejor Salida</p>
                                                     <p className="text-sm font-black text-emerald-400">{s.bestTime} hs</p>
                                                 </div>
                                             </div>
@@ -849,9 +867,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                                         <div className="mt-2 p-3 bg-orange-600/5 border border-orange-500/10 rounded-xl flex items-start gap-3">
                                             <div className="mt-1 w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)] animate-pulse" />
                                             <p className="text-[10px] text-orange-300 leading-relaxed italic">
-                                                {s.reliability > 85 
-                                                  ? `Trayecto estable. Regreso desde ${isDOT ? 'DOT' : 'Centro'} hacia ${shortenBarrioName(s.bestBarrio)} con flujo constante.` 
-                                                  : `Zonas con alta variabilidad. El regreso puede demorar hasta ${s.peakImpact}m extra fuera de la ventana de las ${s.bestTime}hs.`}
+                                                {`Para salir entre las 17 y 19hs, la mejor opción es a las ${s.bestTime}hs (+${s.peakImpact}m de impacto en pico vs ideal absoluto).`}
                                             </p>
                                         </div>
                                     </div>
