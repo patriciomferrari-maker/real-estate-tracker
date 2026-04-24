@@ -323,19 +323,19 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
 
         return {
             zone: s.zone,
-            "Histórico (DOT)": hDOT,
-            "Hoy (DOT)": hoyDOT,
-            "Histórico DOW (DOT)": dowDOT,
+            "Promedio Histórico": hDOT,
+            "Tiempo de viaje hoy": hoyDOT,
+            "Promedio Día de la Semana": dowDOT,
             "deltaDOT": hoyDOT > 0 ? hoyDOT - hDOT : 0,
             "dotZoneLabel": `${s.zone} ${hoyDOT > 0 ? (hoyDOT >= hDOT ? `(+${hoyDOT - hDOT}m)` : `(${hoyDOT - hDOT}m)`) : ''}`,
             
-            "Histórico (Centro)": hMicro,
-            "Hoy (Centro)": hoyMicro,
-            "Histórico DOW (Centro)": dowMicro,
+            "Promedio Histórico (Centro)": hMicro,
+            "Tiempo de viaje hoy (Centro)": hoyMicro,
+            "Promedio Día de la Semana (Centro)": dowMicro,
             "deltaCentro": hoyMicro > 0 ? hoyMicro - hMicro : 0,
             "centroZoneLabel": `${s.zone} ${hoyMicro > 0 ? (hoyMicro >= hMicro ? `(+${hoyMicro - hMicro}m)` : `(${hoyMicro - hMicro}m)`) : ''}`
         };
-    }).sort((a,b) => (a["Histórico (DOT)"] + a["Histórico (Centro)"]) - (b["Histórico (DOT)"] + b["Histórico (Centro)"]));
+    }).sort((a,b) => (a["Promedio Histórico"] + a["Promedio Histórico (Centro)"]) - (b["Promedio Histórico"] + b["Promedio Histórico (Centro)"]));
   }, [enrichedRecords, barTimeMode, barMacro, globalMode, todayStr, comparisonMode]);
 
   const highlightStats = useMemo(() => {
@@ -1286,13 +1286,13 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                       {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
                           <ResponsiveContainer width="100%" height="100%">
                             <BarChart 
-                             data={comparisonData.filter(d => d["Histórico (DOT)"] > 0).sort((a,b) => a["Histórico (DOT)"] - b["Histórico (DOT)"])} 
+                             data={comparisonData.filter(d => d["Promedio Histórico"] > 0).sort((a,b) => a["Promedio Histórico"] - b["Promedio Histórico"])} 
                              layout="vertical" 
                              margin={{ top: 0, right: 30, left: 20, bottom: 0 }}
                              style={{ overflow: 'visible' }}
                            >
                               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false}/>
-                              <XAxis type="number" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} />
+                              <XAxis type="number" stroke="#475569" fontSize={10} hide />
                               <YAxis 
                                 dataKey="dotZoneLabel" 
                                 type="category" 
@@ -1321,24 +1321,17 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                               <Tooltip 
                                  cursor={{fill: 'rgba(255,255,255,0.05)'}} 
                                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
-                                 formatter={(value, name, props) => {
-                                   if (name === "Hoy (DOT)") {
-                                     const delta = props.payload.deltaDOT;
-                                     const dText = delta > 0 ? `(+${delta}m)` : (delta < 0 ? `(${delta}m)` : '');
-                                     return [`${value} min ${dText}`, name];
-                                   }
-                                   return [`${value} min`, name];
-                                 }}
+                                 formatter={(value: any, name: any) => [`${value} min`, name]}
                                />
                                <Legend verticalAlign="top" height={36}/>
-                               <Bar dataKey="Histórico DOW (DOT)" name="Prom. Histórico DOW" fill="#4338ca" radius={[0, 4, 4, 0]} barSize={8}>
-                                   <LabelList dataKey="Histórico DOW (DOT)" position="right" formatter={(v:any) => `${v}m`} style={{ fill: '#818cf8', fontSize: '9px', fontWeight: 'bold' }} />
+                               <Bar dataKey="Promedio Día de la Semana" name="Promedio Día de la Semana" fill="#4338ca" radius={[0, 4, 4, 0]} barSize={8}>
+                                   <LabelList dataKey="Promedio Día de la Semana" position="right" formatter={(v:any) => v > 0 ? `${v}m` : ''} style={{ fill: '#818cf8', fontSize: '9px', fontWeight: 'bold' }} />
                                </Bar>
-                               <Bar dataKey="Hoy (DOT)" name="Hoy Real" fill="#60a5fa" radius={[0, 4, 4, 0]} barSize={14}>
-                                   <LabelList dataKey="Hoy (DOT)" position="right" formatter={(v:any) => `${v}m`} style={{ fill: '#ffffff', fontSize: '11px', fontWeight: 'bold' }} />
+                               <Bar dataKey="Tiempo de viaje hoy" name="Tiempo de viaje hoy" fill="#60a5fa" radius={[0, 4, 4, 0]} barSize={14}>
+                                   <LabelList dataKey="Tiempo de viaje hoy" position="right" formatter={(v:any) => v > 0 ? `${v}m` : ''} style={{ fill: '#ffffff', fontSize: '11px', fontWeight: 'bold' }} />
                                </Bar>
-                               <Bar dataKey="Histórico (DOT)" name="Prom. General" fill="#1e293b" radius={[0, 4, 4, 0]} barSize={8}>
-                                   <LabelList dataKey="Histórico (DOT)" position="right" formatter={(v:any) => `${v}m`} style={{ fill: '#64748b', fontSize: '9px', fontWeight: 'bold' }} />
+                               <Bar dataKey="Promedio Histórico" name="Promedio Histórico" fill="#1e293b" radius={[0, 4, 4, 0]} barSize={8}>
+                                   <LabelList dataKey="Promedio Histórico" position="right" formatter={(v:any) => v > 0 ? `${v}m` : ''} style={{ fill: '#64748b', fontSize: '9px', fontWeight: 'bold' }} />
                                </Bar>
                             </BarChart>
                           </ResponsiveContainer>
@@ -1352,13 +1345,13 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                       {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
                           <ResponsiveContainer width="100%" height="100%">
                             <BarChart 
-                             data={comparisonData.filter(d => d["Histórico (Centro)"] > 0).sort((a,b) => a["Histórico (Centro)"] - b["Histórico (Centro)"])} 
+                             data={comparisonData.filter(d => d["Promedio Histórico (Centro)"] > 0).sort((a,b) => a["Promedio Histórico (Centro)"] - b["Promedio Histórico (Centro)"])} 
                              layout="vertical" 
                              margin={{ top: 0, right: 30, left: 20, bottom: 0 }}
                              style={{ overflow: 'visible' }}
                            >
                               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false}/>
-                              <XAxis type="number" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} />
+                              <XAxis type="number" stroke="#475569" fontSize={10} hide />
                               <YAxis 
                                 dataKey="centroZoneLabel" 
                                 type="category" 
@@ -1366,11 +1359,11 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                                 width={140} 
                                 tick={(props: any) => {
                                   const { x, y, payload } = props;
-                                  const isBad = payload.value.includes('+');
-                                  const isGood = payload.value.includes('-') && !payload.value.includes('+-');
-                                  const labelParts = payload.value.split(' ');
+                                  const labelParts = (payload.value || "").split(' ');
                                   const zoneName = labelParts.slice(0, -1).join(' ');
                                   const deltaText = labelParts[labelParts.length - 1];
+                                  const isBad = deltaText?.includes('+');
+                                  const isGood = deltaText?.includes('-') && !deltaText?.includes('+-');
 
                                   return (
                                     <g transform={`translate(${x},${y})`}>
@@ -1387,24 +1380,17 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                               <Tooltip 
                                  cursor={{fill: 'rgba(255,255,255,0.05)'}} 
                                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
-                                 formatter={(value, name, props) => {
-                                   if (name === "Hoy (Centro)") {
-                                     const delta = props.payload.deltaCentro;
-                                     const dText = delta > 0 ? `(+${delta}m)` : (delta < 0 ? `(${delta}m)` : '');
-                                     return [`${value} min ${dText}`, name];
-                                   }
-                                   return [`${value} min`, name];
-                                 }}
+                                 formatter={(value: any, name: any) => [`${value} min`, name]}
                                />
                                <Legend verticalAlign="top" height={36}/>
-                               <Bar dataKey="Histórico DOW (Centro)" name="Prom. Histórico DOW" fill="#7e22ce" radius={[0, 4, 4, 0]} barSize={8}>
-                                   <LabelList dataKey="Histórico DOW (Centro)" position="right" formatter={(v:any) => `${v}m`} style={{ fill: '#c084fc', fontSize: '9px', fontWeight: 'bold' }} />
+                               <Bar dataKey="Promedio Día de la Semana (Centro)" name="Promedio Día de la Semana" fill="#7e22ce" radius={[0, 4, 4, 0]} barSize={8}>
+                                   <LabelList dataKey="Promedio Día de la Semana (Centro)" position="right" formatter={(v:any) => v > 0 ? `${v}m` : ''} style={{ fill: '#c084fc', fontSize: '9px', fontWeight: 'bold' }} />
                                </Bar>
-                               <Bar dataKey="Hoy (Centro)" name="Hoy Real" fill="#a855f7" radius={[0, 4, 4, 0]} barSize={14}>
-                                   <LabelList dataKey="Hoy (Centro)" position="right" formatter={(v:any) => `${v}m`} style={{ fill: '#ffffff', fontSize: '11px', fontWeight: 'bold' }} />
+                               <Bar dataKey="Tiempo de viaje hoy" name="Tiempo de viaje hoy" fill="#a855f7" radius={[0, 4, 4, 0]} barSize={14}>
+                                   <LabelList dataKey="Tiempo de viaje hoy" position="right" formatter={(v:any) => v > 0 ? `${v}m` : ''} style={{ fill: '#ffffff', fontSize: '11px', fontWeight: 'bold' }} />
                                </Bar>
-                               <Bar dataKey="Histórico (Centro)" name="Prom. General" fill="#1e293b" radius={[0, 4, 4, 0]} barSize={8}>
-                                   <LabelList dataKey="Histórico (Centro)" position="right" formatter={(v:any) => `${v}m`} style={{ fill: '#64748b', fontSize: '9px', fontWeight: 'bold' }} />
+                               <Bar dataKey="Promedio Histórico (Centro)" name="Promedio Histórico" fill="#1e293b" radius={[0, 4, 4, 0]} barSize={8}>
+                                   <LabelList dataKey="Promedio Histórico (Centro)" position="right" formatter={(v:any) => v > 0 ? `${v}m` : ''} style={{ fill: '#64748b', fontSize: '9px', fontWeight: 'bold' }} />
                                </Bar>
                             </BarChart>
                           </ResponsiveContainer>
