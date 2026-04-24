@@ -434,11 +434,11 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
     return (
       <g>
         <text 
-          x={x + width + 8} 
+          x={x + width + 5} 
           y={y + 11} 
-          fill={isBad ? "#f87171" : "#4ade80"} 
-          fontSize={10} 
-          fontWeight="bold"
+          fill={isBad ? "#ff4d4d" : "#00ff88"} 
+          fontSize={12} 
+          fontWeight="black"
         >
           {isBad ? `+${delta}` : delta}m
         </text>
@@ -802,7 +802,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                   <div className="h-[350px] w-full">
                       {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
                           <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={comparisonData.filter(d => d["Histórico (DOT)"] > 0).sort((a,b) => a["Histórico (DOT)"] - b["Histórico (DOT)"])} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
+                            <BarChart data={comparisonData.filter(d => d["Histórico (DOT)"] > 0).sort((a,b) => a["Histórico (DOT)"] - b["Histórico (DOT)"])} layout="vertical" margin={{ top: 0, right: 50, left: 10, bottom: 0 }}>
                               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false}/>
                               <XAxis type="number" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} />
                               <YAxis dataKey="zone" type="category" stroke="#64748b" width={90} tick={{ fill: '#94a3b8', fontSize: 11 }} />
@@ -810,7 +810,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                               <Legend />
                               <Bar dataKey="Histórico (DOT)" fill="#1e40af" radius={[0, 4, 4, 0]} barSize={10} />
                               <Bar dataKey="Hoy (DOT)" fill="#60a5fa" radius={[0, 4, 4, 0]} barSize={14}>
-                                 <LabelList dataKey="Hoy (DOT)" content={<DeltaLabel deltaKey="deltaDOT" />} />
+                                 <LabelList dataKey="Hoy (DOT)" content={<DeltaLabel deltaKey="deltaDOT" fontSize={12} />} />
                               </Bar>
                             </BarChart>
                           </ResponsiveContainer>
@@ -823,7 +823,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                   <div className="h-[350px] w-full">
                       {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
                           <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={comparisonData.filter(d => d["Histórico (Centro)"] > 0).sort((a,b) => a["Histórico (Centro)"] - b["Histórico (Centro)"])} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
+                            <BarChart data={comparisonData.filter(d => d["Histórico (Centro)"] > 0).sort((a,b) => a["Histórico (Centro)"] - b["Histórico (Centro)"])} layout="vertical" margin={{ top: 0, right: 50, left: 10, bottom: 0 }}>
                               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false}/>
                               <XAxis type="number" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} />
                               <YAxis dataKey="zone" type="category" stroke="#64748b" width={90} tick={{ fill: '#94a3b8', fontSize: 11 }} />
