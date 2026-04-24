@@ -600,8 +600,9 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
         if (!map.has(key)) map.set(key, { timeTick: key, timeHourNum: r.hours + (binMins/60) });
         const obj = map.get(key)!;
         
-        // Determinamos qué etiqueta usar en el gráfico: el barrio si está filtrado, o la macro si no.
-        const label = globalBarrio !== "Todos los Barrios" ? r.barrio : r.macro;
+        // Determinamos qué etiqueta usar en el gráfico: 
+        // Si hay un barrio seleccionado, usamos ese nombre exacto (el largo) para que coincida con el JSX
+        const label = globalBarrio !== "Todos los Barrios" ? globalBarrio : r.macro;
         const type = r.isIda ? 'Ida' : 'Vuelta';
         
         const dataKey = `${label} ${type} (${isToday ? 'Hoy' : 'Hist'})`;
