@@ -41,11 +41,11 @@ export default function DataExplorer({ records }: { records: any[] }) {
 
   // Filter apply
   const filteredData = gridData.filter(d => {
-      // Simplificamos filtros para que solo queden los útiles
-      if (fDay && d.diaDeSemana !== fDay) return false;
-      if (fSentido && d.sentido !== fSentido) return false;
-      if (fDestino && d.destino !== fDestino) return false;
-      if (fBarrio && d.barrio !== fBarrio) return false;
+      // Normalizamos a minúsculas y eliminamos espacios para evitar fallos de formato
+      if (fDay && d.diaDeSemana.toLowerCase().trim() !== fDay.toLowerCase().trim()) return false;
+      if (fSentido && d.sentido.toLowerCase().trim() !== fSentido.toLowerCase().trim()) return false;
+      if (fDestino && d.destino.toLowerCase().trim() !== fDestino.toLowerCase().trim()) return false;
+      if (fBarrio && d.barrio.toLowerCase().trim() !== fBarrio.toLowerCase().trim()) return false;
       return true;
   });
 
@@ -105,7 +105,7 @@ export default function DataExplorer({ records }: { records: any[] }) {
                 </tr>
             </thead>
             <tbody>
-                {filteredData.slice(0, 500).map((row, i) => (
+                {filteredData.length > 0 ? filteredData.slice(0, 500).map((row, i) => (
                 <tr key={i} className={`hover:bg-white/5 transition-colors border-b border-white/5 ${i % 2 === 0 ? 'bg-transparent' : 'bg-white/5'}`}>
                     <td className="p-3 text-slate-300">{row.fecha}</td>
                     <td className="p-3 text-slate-400">{row.diaDeSemana}</td>
@@ -115,12 +115,26 @@ export default function DataExplorer({ records }: { records: any[] }) {
                     <td className="p-3 text-sky-400">{row.destino}</td>
                     <td className="p-3 text-right font-bold text-white">{row.tiempo} min</td>
                 </tr>
-                ))}
+                )) : (
+                    <tr>
+                        <td colSpan={7} className="p-20 text-center">
+                            <div className="flex flex-col items-center gap-4">
+                                <p className="text-slate-500">No se encontraron datos para estos filtros.</p>
+                                <div className="bg-slate-900/50 p-4 rounded border border-white/5 text-left w-full max-w-xl mx-auto shadow-2xl">
+                                    <p className="text-[10px] text-amber-500 font-bold mb-2 uppercase tracking-widest flex items-center gap-2">
+                                        <div className="w-1 h-1 rounded-full bg-amber-500 animate-pulse"/> 
+                                        Diagnóstico de Memoria (Primer Registro):
+                                    </p>
+                                    <pre className="text-[10px] text-slate-300 font-mono overflow-x-auto">
+                                        {JSON.stringify(gridData[0] || "No hay datos en memoria", null, 2)}
+                                    </pre>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                )}
             </tbody>
             </table>
-            {filteredData.length === 0 && (
-                <div className="p-8 text-center text-slate-500">No se encontraron datos para estos filtros.</div>
-            )}
             {filteredData.length > 500 && (
                 <div className="p-3 text-center text-xs text-slate-500 bg-black/20">Se muestran los últimos 500 registros. {filteredData.length} en total.</div>
             )}
