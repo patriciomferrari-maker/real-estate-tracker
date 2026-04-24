@@ -458,23 +458,26 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       return { min: min === 999 ? 0 : min, max, avg: count > 0 ? Math.round(sum/count) : 0 };
   }, [scatterSeriesVuelta]);
   const DeltaLabel = (props: any) => {
-    const { x, y, width, deltaKey } = props;
-    if (!props.payload || props.payload[deltaKey] === undefined) return null;
-    const delta = props.payload[deltaKey];
-    if (delta === 0) return null;
+    const { x, y, width, deltaKey, payload } = props;
+    if (!payload) return null;
+    
+    const delta = payload[deltaKey];
+    if (delta === undefined || delta === 0) return null;
+    
     const isBad = delta > 0;
+    const text = isBad ? `+${delta}m` : `${delta}m`;
+    
     return (
-      <g>
-        <text 
-          x={x + width + 5} 
-          y={y + 11} 
-          fill={isBad ? "#ff4d4d" : "#00ff88"} 
-          fontSize={12} 
-          fontWeight="black"
-        >
-          {isBad ? `+${delta}` : delta}m
-        </text>
-      </g>
+      <text 
+        x={x + width + 6} 
+        y={y + 11} 
+        fill={isBad ? "#ff4d4d" : "#00ff88"} 
+        fontSize={12} 
+        fontWeight="900"
+        textAnchor="start"
+      >
+        {text}
+      </text>
     );
   };
 
@@ -867,7 +870,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                               <Legend />
                               <Bar dataKey="Histórico (DOT)" fill="#1e40af" radius={[0, 4, 4, 0]} barSize={10} />
                               <Bar dataKey="Hoy (DOT)" fill="#60a5fa" radius={[0, 4, 4, 0]} barSize={14}>
-                                 <LabelList dataKey="Hoy (DOT)" content={<DeltaLabel deltaKey="deltaDOT" fontSize={12} />} />
+                                 <LabelList dataKey="Hoy (DOT)" content={(props: any) => <DeltaLabel {...props} deltaKey="deltaDOT" />} />
                               </Bar>
                             </BarChart>
                           </ResponsiveContainer>
@@ -888,7 +891,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                               <Legend />
                               <Bar dataKey="Histórico (Centro)" fill="#6b21a8" radius={[0, 4, 4, 0]} barSize={10} />
                               <Bar dataKey="Hoy (Centro)" fill="#a855f7" radius={[0, 4, 4, 0]} barSize={14}>
-                                 <LabelList dataKey="Hoy (Centro)" content={<DeltaLabel deltaKey="deltaCentro" />} />
+                                 <LabelList dataKey="Hoy (Centro)" content={(props: any) => <DeltaLabel {...props} deltaKey="deltaCentro" />} />
                               </Bar>
                             </BarChart>
                           </ResponsiveContainer>
