@@ -1818,21 +1818,41 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                         <XAxis 
                             dataKey="key" 
                             stroke="#475569" 
-                            fontSize={9} 
+                            height={55}
                             tickFormatter={(v:string) => {
-                                const [day, time] = v.split(' ');
-                                if (time === "06:00" || time === "16:30") return v;
-                                if (time.endsWith(':00')) return time;
-                                return "";
+                                if (v.includes("GAP") || v.includes("SEP")) return "";
+                                const parts = v.split(' ');
+                                if (parts.length < 2) return "";
+                                return parts[1]; // Devolver solo la hora
                             }}
                             interval={0}
                             tick={(props) => {
                                 const { x, y, payload } = props;
-                                const isDayStart = payload.value.includes("06:00") || payload.value.includes("16:30");
+                                if (payload.value.includes("GAP") || payload.value.includes("SEP")) return null;
+                                
+                                const [day, time] = payload.value.split(' ');
+                                const isHourStart = time && time.endsWith(":00");
+                                
+                                // Definir qué hora usamos de centro para el nombre del día
+                                const centerTime = pulseShift === 'mañana' ? '07:30' : '18:00';
+                                const isCenter = time === centerTime;
+
                                 return (
-                                    <text x={x} y={(Number(y) || 0) + 12} fill={isDayStart ? "#60a5fa" : "#475569"} fontSize={isDayStart ? 10 : 9} fontWeight={isDayStart ? "bold" : "normal"} textAnchor="middle">
-                                        {payload.value.includes("06:00") || payload.value.includes("16:30") ? payload.value : (payload.value.endsWith(":00") ? payload.value.split(" ")[1] : "")}
-                                    </text>
+                                    <g>
+                                        {/* Fila de Horas */}
+                                        {isHourStart && (
+                                            <text x={x} y={(Number(y) || 0) + 12} fill="#64748b" fontSize={9} textAnchor="middle">
+                                                {time}
+                                            </text>
+                                        )}
+                                        
+                                        {/* Fila de Días (Centrada) */}
+                                        {isCenter && (
+                                            <text x={x} y={(Number(y) || 0) + 32} fill="#60a5fa" fontSize={11} fontWeight="black" textAnchor="middle" className="uppercase tracking-widest">
+                                                {day}
+                                            </text>
+                                        )}
+                                    </g>
                                 );
                             }}
                         />
