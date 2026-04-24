@@ -3,10 +3,9 @@
 import React, { useState, useMemo } from 'react';
 
 export default function DataExplorer({ records }: { records: any[] }) {
-  const [fYear, setFYear] = useState('');
-  const [fMonth, setFMonth] = useState('');
   const [fDay, setFDay] = useState('');
-  const [fTurno, setFTurno] = useState('');
+  const [fSentido, setFSentido] = useState('');
+  const [fDestino, setFDestino] = useState('');
   const [fBarrio, setFBarrio] = useState('');
   
   // Transform records into tabular data
@@ -25,7 +24,10 @@ export default function DataExplorer({ records }: { records: any[] }) {
             fecha: d.toLocaleDateString('es-AR'),
             zona: barrioCrudo?.includes("Escobar") ? "Escobar" : barrioCrudo?.includes("Nordelta") ? "Nordelta" : barrioCrudo?.includes("Tigre") || barrioCrudo?.includes("Pacheco") || barrioCrudo?.includes("Benavidez") ? "Tigre/Pacheco" : barrioCrudo?.includes("San Isidro") ? "San Isidro" : barrioCrudo?.includes("Tortuguitas") ? "Tortugas" : "Otro",
             barrio,
-            turno: isIda ? (r.isDOT ? 'Ida al DOT' : 'Ida al Centro') : 'Vuelta a Provincia',
+            isIda: r.isIda,
+            isDOT: r.isDOT,
+            sentido: r.isIda ? 'Ida' : 'Vuelta',
+            destino: r.isDOT ? 'Shopping DOT' : 'Microcentro',
             tiempo: r.durationMins
         };
       });
@@ -34,18 +36,15 @@ export default function DataExplorer({ records }: { records: any[] }) {
    const totalCount = records.length;
 
   // Extracts lists for selects
-  const uniqueYears = Array.from(new Set(gridData.map(d => d.year)));
-  const uniqueMonths = Array.from(new Set(gridData.map(d => d.month)));
-  const uniqueDays = Array.from(new Set(gridData.map(d => d.diaDeSemana)));
-  const uniqueTurnos = Array.from(new Set(gridData.map(d => d.turno)));
+  const uniqueDays = Array.from(new Set(gridData.map(d => d.diaDeSemana))).sort();
   const uniqueBarrios = Array.from(new Set(gridData.map(d => d.barrio))).sort();
 
   // Filter apply
   const filteredData = gridData.filter(d => {
-      if (fYear && d.year !== fYear) return false;
-      if (fMonth && d.month !== fMonth) return false;
+      // Simplificamos filtros para que solo queden los útiles
       if (fDay && d.diaDeSemana !== fDay) return false;
-      if (fTurno && d.turno !== fTurno) return false;
+      if (fSentido && d.sentido !== fSentido) return false;
+      if (fDestino && d.destino !== fDestino) return false;
       if (fBarrio && d.barrio !== fBarrio) return false;
       return true;
   });
@@ -57,39 +56,36 @@ export default function DataExplorer({ records }: { records: any[] }) {
             <p className="text-sm text-slate-400">Filtrá y analizá cada viaje individual guardado en el sistema.</p>
         </div>
 
-        {/* FILTERS */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-            <select value={fYear} onChange={e=>setFYear(e.target.value)} className="bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm">
-                <option value="">Todos los Años...</option>
-                {uniqueYears.map(v => <option key={v} value={v}>{v}</option>)}
-            </select>
-
-            <select value={fMonth} onChange={e=>setFMonth(e.target.value)} className="bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm">
-                <option value="">Todos los Meses...</option>
-                {uniqueMonths.map(v => <option key={v} value={v}>{v}</option>)}
-            </select>
-
-            <select value={fDay} onChange={e=>setFDay(e.target.value)} className="bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm">
-                <option value="">Todos los Días...</option>
+        {/* FILTERS REDESIGNED */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+            <select value={fDay} onChange={e=>setFDay(e.target.value)} className="bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm outline-none focus:ring-1 focus:ring-emerald-500">
+                <option value="">Cualquier Día...</option>
                 {uniqueDays.map(v => <option key={v} value={v}>{v}</option>)}
             </select>
 
-            <select value={fTurno} onChange={e=>setFTurno(e.target.value)} className="bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm">
-                <option value="">Todos los Turnos...</option>
-                {uniqueTurnos.map(v => <option key={v} value={v}>{v}</option>)}
+            <select value={fSentido} onChange={e=>setFSentido(e.target.value)} className="bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm outline-none focus:ring-1 focus:ring-emerald-500">
+                <option value="">Cualquier Sentido...</option>
+                <option value="Ida">Ida (Hacia CABA)</option>
+                <option value="Vuelta">Vuelta (A Provincia)</option>
             </select>
 
-            <select value={fBarrio} onChange={e=>setFBarrio(e.target.value)} className="bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm">
+            <select value={fDestino} onChange={e=>setFDestino(e.target.value)} className="bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm outline-none focus:ring-1 focus:ring-emerald-500">
+                <option value="">Cualquier Destino...</option>
+                <option value="Shopping DOT">Shopping DOT</option>
+                <option value="Microcentro">Microcentro</option>
+            </select>
+
+            <select value={fBarrio} onChange={e=>setFBarrio(e.target.value)} className="bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm outline-none focus:ring-1 focus:ring-emerald-500">
                 <option value="">Todos los Barrios...</option>
                 {uniqueBarrios.map(v => <option key={v} value={v}>{v}</option>)}
             </select>
             
-            <div className="col-span-2 md:col-span-5 flex justify-end">
+            <div className="flex justify-end items-center">
                  <button 
-                   onClick={() => { setFYear(''); setFMonth(''); setFDay(''); setFTurno(''); setFBarrio(''); }}
-                   className="text-sm text-pink-400 hover:text-pink-300 transition"
+                   onClick={() => { setFDay(''); setFSentido(''); setFDestino(''); setFBarrio(''); }}
+                   className="text-xs font-bold uppercase tracking-tighter text-pink-500 hover:text-pink-400 transition bg-pink-500/10 px-4 py-2 rounded-lg border border-pink-500/20"
                  >
-                    Limpiar Filtros
+                    Resetear Filtros
                  </button>
             </div>
         </div>
@@ -103,8 +99,9 @@ export default function DataExplorer({ records }: { records: any[] }) {
                 <th className="p-3 border-b border-white/5 font-semibold">Día</th>
                 <th className="p-3 border-b border-white/5 font-semibold">Macro-Zona</th>
                 <th className="p-3 border-b border-white/5 font-semibold">Barrio</th>
-                <th className="p-3 border-b border-white/5 font-semibold">Sentido (Turno)</th>
-                <th className="p-3 border-b border-white/5 font-semibold text-right">Tiempo de Viaje</th>
+                <th className="p-3 border-b border-white/5 font-semibold">Sentido</th>
+                <th className="p-3 border-b border-white/5 font-semibold">Destino</th>
+                <th className="p-3 border-b border-white/5 font-semibold text-right">Tiempo</th>
                 </tr>
             </thead>
             <tbody>
@@ -114,7 +111,8 @@ export default function DataExplorer({ records }: { records: any[] }) {
                     <td className="p-3 text-slate-400">{row.diaDeSemana}</td>
                     <td className="p-3 text-emerald-400 font-medium">{row.zona}</td>
                     <td className="p-3 text-blue-300">{row.barrio}</td>
-                    <td className="p-3 text-purple-300">{row.turno}</td>
+                    <td className="p-3 text-purple-300">{row.sentido}</td>
+                    <td className="p-3 text-sky-400">{row.destino}</td>
                     <td className="p-3 text-right font-bold text-white">{row.tiempo} min</td>
                 </tr>
                 ))}
