@@ -1811,11 +1811,12 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                             fontSize={9} 
                             tickFormatter={(v:string) => {
                                 const [day, time] = v.split(' ');
-                                if (time === "06:00" || time === "13:00") return `${day} ${time}`;
+                                // Mostrar Día + Hora en el inicio de cada franja (06:00 o 16:30)
+                                if (time === "06:00" || time === "16:30") return `${day} ${time}`;
                                 if (time.endsWith(':00')) return time;
                                 return "";
                             }}
-                            interval={1}
+                            interval={0}
                             tick={{ fill: '#64748b', fontWeight: 'bold' }}
                         />
                         <YAxis stroke="#475569" fontSize={10} unit="m" />
