@@ -269,12 +269,15 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
   // BARS: Ranking data
   const comparisonData = useMemo(() => {
     const groups = new Map<string, any>();
-    // Día de la semana real (0-6)
-    const todayDOW = new Date().getDay();
+    
+    // Nombres de días para comparación humana y robusta
+    const days = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+    const now = new Date();
+    const todayName = days[now.getDay()];
 
     enrichedRecords.forEach(r => {
-        // Exclusión agresiva de registros genéricos
-        if (r.barrio === "Villa Nueva" || r.barrio.includes("Gral")) return;
+        // Exclusión TOTAL de Villa Nueva (por barrio o por macro)
+        if (r.barrio === "Villa Nueva" || r.macro === "Villa Nueva" || r.barrio.includes("Gral")) return;
         
         // Local Filter for BARS
         if (barMacro !== "Todas las Zonas" && r.macro !== barMacro) return;
@@ -301,8 +304,9 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
             if (r.isDOT) { s.tdDOT += r.durationMins; s.cdDOT++; }
             else { s.tdMicro += r.durationMins; s.cdMicro++; }
         } else {
-            // Comparación DOW robusta
-            const isSameDOW = r.dayOfWeek === todayDOW;
+            // Comparación por nombre de día (blindada)
+            const recDayName = days[r.dayOfWeek];
+            const isSameDOW = recDayName === todayName;
             
             if (r.isDOT) { 
                 s.tDOT += r.durationMins; s.cDOT++; 
@@ -324,6 +328,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
 
         return {
             zone: s.zone,
+            todayName, // Pasamos el nombre del día para debug e info
             "dot_historico": hDOT,
             "dot_hoy": hoyDOT,
             "dot_dow": dowDOT,
