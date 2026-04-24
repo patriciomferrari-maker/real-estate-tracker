@@ -1198,7 +1198,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                                  return (
                                      <React.Fragment key={m}>
                                          <Line type="monotone" dataKey={`${m} ${type} (Hoy)`} name={`${m} Hoy`} stroke={color} strokeWidth={3} dot={{ r: 3 }} connectNulls />
-                                         <Line type="monotone" dataKey={`${m} ${type} (Hist)`} name={`${m} Hist.`} stroke={color} strokeWidth={1} strokeDasharray="3 3" dot={false} connectNulls opacity={0.4} />
+                                         <Line type="monotone" dataKey={`${m} ${type} (Hist)`} name={`${m} ${comparisonMode === 'dow' ? 'Prom. DOW' : 'Prom. Gral.'}`} stroke={color} strokeWidth={1} strokeDasharray="3 3" dot={false} connectNulls opacity={0.4} />
                                      </React.Fragment>
                                  );
                              })}
@@ -1226,7 +1226,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                                  return (
                                      <React.Fragment key={m}>
                                          <Line type="monotone" dataKey={`${m} ${type} (Hoy)`} name={`${m} Hoy`} stroke={color} strokeWidth={3} dot={{ r: 3 }} connectNulls />
-                                         <Line type="monotone" dataKey={`${m} ${type} (Hist)`} name={`${m} Hist.`} stroke={color} strokeWidth={1} strokeDasharray="3 3" dot={false} connectNulls opacity={0.4} />
+                                         <Line type="monotone" dataKey={`${m} ${type} (Hist)`} name={`${m} ${comparisonMode === 'dow' ? 'Prom. DOW' : 'Prom. Gral.'}`} stroke={color} strokeWidth={1} strokeDasharray="3 3" dot={false} connectNulls opacity={0.4} />
                                      </React.Fragment>
                                  );
                              })}
