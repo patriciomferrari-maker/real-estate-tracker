@@ -1,88 +1,15 @@
 "use server"
 
-import prisma from "@/lib/prisma"
-import { scrapeCommuteTime } from "@/lib/scrapers/mapsScraper"
-import puppeteer from 'puppeteer'
+// import puppeteer from 'puppeteer'
 import { revalidatePath } from "next/cache"
 
 const ZONES = [
-  // Escobar
-  "Barrio San Matias, Escobar, Buenos Aires",
-  "Puertos de Escobar, Buenos Aires",
-  "Barrio El Canton, Escobar, Buenos Aires",
-  "Barrio Santa Ana, Villa Nueva, Buenos Aires",
-  "Barrio San Marco, Villa Nueva, Buenos Aires",
-  // Nordelta / Cercanias
-  "Barrio Santa Barbara, General Pacheco, Buenos Aires",
-  "Barrio Castaños, Nordelta, Buenos Aires",
-  "Barrio Las Glorietas, Nordelta, Buenos Aires",
-  "Barrio Barbarita, General Pacheco, Buenos Aires",
-  // Tigre
-  "Barrio La Escondida, Tigre, Buenos Aires",
-  // San Isidro
-  "Avenida Sucre y Avenida Dardo Rocha, San Isidro, Buenos Aires", // Usamos Dardo Rocha / Avellaneda que cruzan
-  // San Fernando
-  "Barrio Buenavista, Victoria, San Fernando, Buenos Aires",
-  // Tortugas
-  "Barrio Las Liebres, Tortuguitas, Buenos Aires",
-  "Barrio Los Boulevares, Tortuguitas, Buenos Aires",
-  // Benavidez / Pacheco
-  "Barrio El Encuentro, Benavidez, Buenos Aires",
-  "Barrio Altos de Pacheco, General Pacheco, Buenos Aires"
+  "Barrio San Marco, Villa Nueva, Buenos Aires"
 ]
 
-const DOT = "Shopping DOT Baires, Vedia, CABA";
-const MICROCENTRO = "Obelisco, CABA";
-const DESTINATIONS = [DOT, MICROCENTRO];
-
 export async function syncAllData() {
-  const browser = await puppeteer.launch({ 
-    headless: true,
-    args: ['--no-sandbox']
-  });
-  
-  try {
-    const page = await browser.newPage();
-    // Ajustamos a hora de Argentina (GMT-3) para decidir el sentido
-    const now = new Date();
-    const argHour = (now.getUTCHours() - 3 + 24) % 24; 
-    
-    const isMorning = argHour < 13; // Hasta la 1 PM es ida
-    const isPeakHour = (argHour >= 7 && argHour <= 10) || (argHour >= 16 && argHour <= 20);
-
-    for (const zone of ZONES) {
-      for (const dest of DESTINATIONS) {
-         const runOrigin = isMorning ? zone : dest;
-         const runDest = isMorning ? dest : zone;
-
-         console.log(`[Sync] Realizando ${isMorning ? 'IDA' : 'VUELTA'}: ${runOrigin} -> ${runDest} (Hora ARG: ${argHour})`);
-         const { durationMins, distanceKm } = await scrapeCommuteTime(runOrigin, runDest, page);
-         
-         if (durationMins > 0) {
-            await prisma.commuteRecord.create({
-              data: {
-                origin: runOrigin,
-                destination: runDest,
-                durationMins,
-                distanceKm,
-                isPeakHour
-              }
-            });
-         }
-         // Pequeña pausa aleatoria para no ser detectado como bot
-         await new Promise(r => setTimeout(r, 1000 + Math.random() * 2000));
-      }
-    }
-
-  } catch (err) {
-    console.error("Sync error:", err);
-  } finally {
-    await browser.close()
-  }
-  
+  console.log("Sync deshabilitado temporalmente para diagnóstico.");
   try {
     revalidatePath("/");
-  } catch (e) {
-    // This might fail if run from a standalone script (like daemon.ts), which is fine
-  }
+  } catch (e) {}
 }
