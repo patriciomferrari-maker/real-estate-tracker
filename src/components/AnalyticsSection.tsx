@@ -408,9 +408,9 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
   }, [weeklyDowData]);
 
   // Local state for Weekly Pulse
-  const [pulseMacro, setPulseMacro] = useState<string>("Todas las Zonas");
-  const [pulseBarrio, setPulseBarrio] = useState<string>("Todos los Barrios");
-  const [pulseShift, setPulseShift] = useState<"mañana" | "tarde" | "todo">("todo");
+  const [pulseMacro, setPulseMacro] = useState<string>(allMacros[0] || "Nordelta");
+  const [pulseBarrio, setPulseBarrio] = useState<string>(shortenBarrioName(zones.filter(z => getMacro(z) === (allMacros[0] || "Nordelta"))[0]) || "Todos los Barrios");
+  const [pulseShift, setPulseShift] = useState<"mañana" | "tarde">("mañana");
   const [pulseDest, setPulseDest] = useState<"DOT" | "Obelisco">("Obelisco");
 
   const weeklyPulseData = useMemo(() => {
@@ -1754,24 +1754,26 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                         <Filter size={14} className="text-slate-500" />
                         <select value={pulseShift} onChange={(e) => setPulseShift(e.target.value as any)}
                                 className="bg-transparent text-[10px] font-black text-slate-300 outline-none border-r border-white/10 pr-2 cursor-pointer uppercase">
-                            <option value="todo" className="bg-slate-900">Todo el Día</option>
                             <option value="mañana" className="bg-slate-900">Mañana</option>
                             <option value="tarde" className="bg-slate-900">Tarde</option>
                         </select>
                     </div>
                     {/* Macro Select */}
                     <div className="flex items-center gap-2">
-                        <select value={pulseMacro} onChange={(e) => { setPulseMacro(e.target.value); setPulseBarrio("Todos los Barrios"); }}
+                        <select value={pulseMacro} onChange={(e) => { 
+                                const nextMacro = e.target.value;
+                                setPulseMacro(nextMacro); 
+                                const firstBarrio = zones.find(z => getMacro(z) === nextMacro) || "";
+                                setPulseBarrio(firstBarrio);
+                            }}
                                 className="bg-transparent text-[10px] font-black text-slate-300 outline-none border-r border-white/10 pr-2 cursor-pointer uppercase">
-                            <option value="Todas las Zonas">Todas las Zonas</option>
                             {allMacros.map(m => <option key={m} value={m} className="bg-slate-900 text-white">{m}</option>)}
                         </select>
                     </div>
                     {/* Barrio Select */}
                     <select value={pulseBarrio} onChange={(e) => setPulseBarrio(e.target.value)}
                             className="bg-transparent text-[10px] font-black text-slate-300 outline-none pr-2 cursor-pointer uppercase">
-                        <option value="Todos los Barrios">Todos los Barrios</option>
-                        {zones.filter(z => pulseMacro === "Todas las Zonas" ? true : getMacro(z) === pulseMacro).map(z => {
+                        {zones.filter(z => getMacro(z) === pulseMacro).map(z => {
                             const b = shortenBarrioName(z);
                             return <option key={shortenBarrioName(z)} value={z} className="bg-slate-900 text-white">{shortenBarrioName(z)}</option>
                         })}
@@ -1781,24 +1783,24 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
 
           <div className="h-[400px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={weeklyPulseData} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
-                        <defs>
-                            <linearGradient id="colorDuration" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
-                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                            </linearGradient>
-                        </defs>
+                    <BarChart data={weeklyPulseData} margin={{ top: 25, right: 30, left: 0, bottom: 20 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
                         <XAxis 
                             dataKey="key" 
                             stroke="#475569" 
                             fontSize={9} 
-                            tickFormatter={(v:string) => v.split(' ')[1] === "06:00" ? v.split(' ')[0] : (v.split(' ')[1] === "13:00" ? v.split(' ')[1] : '')}
-                            interval={5}
+                            tickFormatter={(v:string) => {
+                                const [day, time] = v.split(' ');
+                                if (time === "06:00" || time === "13:00") return `${day} ${time}`;
+                                if (time.endsWith(':00')) return time;
+                                return "";
+                            }}
+                            interval={1}
                             tick={{ fill: '#64748b', fontWeight: 'bold' }}
                         />
                         <YAxis stroke="#475569" fontSize={10} unit="m" />
                         <Tooltip 
+                            cursor={{fill: 'rgba(255,255,255,0.05)'}}
                             content={({ active, payload }: any) => {
                                 if (active && payload && payload.length) {
                                     const d = payload[0].payload;
@@ -1806,8 +1808,8 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                                         <div className="bg-[#0f172a]/95 p-3 rounded-xl border border-slate-700 shadow-2xl backdrop-blur-md">
                                             <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">{d.day} {d.hour}:{d.min === 0 ? '00' : '30'}</p>
                                             <p className="text-xl font-black text-white">{d.duration > 0 ? `${d.duration} min` : 'Sin datos'}</p>
-                                            <p className="text-[9px] text-slate-500 italic mt-1">
-                                                {pulseMacro === "Todas las Zonas" ? "Promedio todas las macro-zonas" : `${pulseBarrio === "Todos los Barrios" ? pulseMacro : shortenBarrioName(pulseBarrio)}`}
+                                            <p className="text-[9px] text-slate-500 italic mt-1 uppercase">
+                                                {shortenBarrioName(pulseBarrio)}
                                             </p>
                                         </div>
                                     );
@@ -1815,17 +1817,20 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                                 return null;
                             }}
                         />
-                        <Area 
-                            type="monotone" 
+                        <Bar 
                             dataKey="duration" 
-                            stroke="#818cf8" 
-                            strokeWidth={3}
-                            fillOpacity={1} 
-                            fill="url(#colorDuration)" 
-                            activeDot={{ r: 6, stroke: '#fff', strokeWidth: 2 }}
-                            connectNulls
-                        />
-                    </AreaChart>
+                            fill="#818cf8" 
+                            radius={[4, 4, 0, 0]}
+                            activeBar={{ fill: '#6366f1' }}
+                        >
+                            <LabelList 
+                                dataKey="duration" 
+                                position="top" 
+                                formatter={(v:any) => v > 0 ? `${v}m` : ''} 
+                                style={{ fill: '#6366f1', fontSize: '9px', fontWeight: 'bold' }} 
+                            />
+                        </Bar>
+                    </BarChart>
                 </ResponsiveContainer>
           </div>
       </div>
