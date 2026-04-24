@@ -111,6 +111,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const [barMacro, setBarMacro] = useState<string>("Todas las Zonas");
   const [evoMacro, setEvoMacro] = useState<string>("Todas las Zonas");
   const [evoDest, setEvoDest] = useState<string>("Ambos");
+  const [evoTimeMode, setEvoTimeMode] = useState<"mañana" | "tarde" | "todo">("todo");
   
   // Helpers derived from global selection
   const allMacros = useMemo(() => Array.from(new Set(zones.map(z => getMacro(z)))).sort(), [zones]);
@@ -189,6 +190,10 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
         if (globalDestination === "DOT" && !r.isDOT) return;
         if (globalDestination === "Obelisco" && r.isDOT) return;
 
+        // Time Filter for Evolution
+        if (evoTimeMode === "mañana" && r.hours >= 12) return;
+        if (evoTimeMode === "tarde" && r.hours < 12) return;
+
         const bin = Math.floor(r.minutes / 30) * 30; 
         const key = `${r.hours.toString().padStart(2,'0')}:${bin.toString().padStart(2,'0')}`;
         if (!map.has(key)) map.set(key, { timeTick: key, timeHourNum: r.hours + (bin/60) });
@@ -203,8 +208,23 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
         p[dataKey + '_c']++;
         p[dataKey] = Math.round(p[dataKey + '_s'] / p[dataKey + '_c']);
     });
-    return Array.from(map.values()).sort((a,b) => a.timeHourNum - b.timeHourNum);
-  }, [enrichedRecords, evoMacro, evoDest, globalDestination]);
+    
+    // Calculate aggregate metrics per tick
+    const result = Array.from(map.values()).sort((a,b) => a.timeHourNum - b.timeHourNum);
+    result.forEach(d => {
+        const vals: number[] = Object.keys(d)
+            .filter(k => k !== "timeTick" && k !== "timeHourNum" && !k.endsWith('_s') && !k.endsWith('_c'))
+            .map(k => d[k]);
+        
+        if (vals.length > 0) {
+            d["__avg"] = Math.round(vals.reduce((a,b) => a+b, 0) / vals.length);
+            d["__min"] = Math.min(...vals);
+            d["__max"] = Math.max(...vals);
+        }
+    });
+
+    return result;
+  }, [enrichedRecords, evoMacro, evoDest, evoTimeMode, globalDestination]);
 
   // BARS: Ranking data
   const comparisonData = useMemo(() => {
@@ -547,6 +567,19 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                </div>
                <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-slate-500 font-bold uppercase">Turno:</span>
+                        <select 
+                            value={evoTimeMode} 
+                            onChange={(e) => setEvoTimeMode(e.target.value as any)}
+                            className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white outline-none cursor-pointer hover:bg-slate-800 transition-colors"
+                        >
+                            <option value="todo">Día Completo</option>
+                            <option value="mañana">Mañana (Ida)</option>
+                            <option value="tarde">Tarde (Vuelta)</option>
+                        </select>
+                    </div>
+
+                    <div className="flex items-center gap-2">
                         <span className="text-[10px] text-slate-500 font-bold uppercase">Destino:</span>
                         <select 
                             value={evoDest} 
@@ -582,8 +615,12 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                       <YAxis fontSize={10} stroke="#475569" unit="m" />
                       <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px' }} />
                       <Legend iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
+                      <Line type="monotone" dataKey="__avg" name="PROMEDIO GRAL." stroke="#ffffff" strokeWidth={4} dot={false} connectNulls />
+                      <Line type="monotone" dataKey="__min" name="MEJOR TIEMPO" stroke="#00ff88" strokeWidth={1} dot={false} strokeDasharray="3 3" opacity={0.5} connectNulls />
+                      <Line type="monotone" dataKey="__max" name="PEOR TIEMPO" stroke="#ff4d4d" strokeWidth={1} dot={false} strokeDasharray="3 3" opacity={0.5} connectNulls />
+
                       {Object.keys(evolutivoData[0] || {}).map((k, idx) => {
-                          if (k === 'timeTick' || k === 'timeHourNum' || k.endsWith('_s') || k.endsWith('_c')) return null;
+                          if (k === 'timeTick' || k === 'timeHourNum' || k.endsWith('_s') || k.endsWith('_c') || k.startsWith('__')) return null;
                           return <Line key={k} type="monotone" dataKey={k} stroke={LINE_COLORS[idx % LINE_COLORS.length]} strokeWidth={2} dot={false} connectNulls />;
                       })}
                     </LineChart>
