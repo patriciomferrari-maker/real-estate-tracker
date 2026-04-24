@@ -77,17 +77,29 @@ export default async function Dashboard({ searchParams }: any) {
       entry.count++;
   });
 
-  const serializableRecords = Array.from(aggregatedMap.values()).map(e => ({
-      id: e.id,
-      origin: e.origin,
-      destination: e.destination,
-      timestamp: e.timestamp,
-      durationMins: Math.round(e.durationSum / e.count),
-      isAggregate: true,
-      // Metadatos para consistencia total en el dashboard
-      isIda: e.destination.includes("DOT") || e.destination.includes("Microcentro") || e.destination.includes("Florida") || e.destination.includes("Obelisco"),
-      isDOT: e.origin.includes("DOT") || e.destination.includes("DOT")
-  }));
+  const serializableRecords = Array.from(aggregatedMap.values()).map(e => {
+      const cleanOrigin = formatZoneName(e.origin);
+      const cleanDest = formatZoneName(e.destination);
+      
+      const isIda = cleanDest === "Shopping DOT" || cleanDest === "Microcentro" || cleanDest.includes("Obelisco");
+      const isDOT = cleanOrigin === "Shopping DOT" || cleanDest === "Shopping DOT";
+      
+      return {
+          id: e.id,
+          origin: e.origin,
+          destination: e.destination,
+          timestamp: e.timestamp,
+          durationMins: Math.round(e.durationSum / e.count),
+          isAggregate: true,
+          // Metadatos calculados en servidor para consistencia total
+          isIda,
+          isDOT,
+          barrio: isIda ? cleanOrigin : cleanDest,
+          zona: (isIda ? cleanOrigin : cleanDest).includes("Escobar") ? "Escobar" : 
+                (isIda ? cleanOrigin : cleanDest).includes("Nordelta") ? "Nordelta" : 
+                (isIda ? cleanOrigin : cleanDest).includes("Tigre") || (isIda ? cleanOrigin : cleanDest).includes("Pacheco") ? "Tigre/Pacheco" : "Zona Norte"
+      };
+  });
 
   // Calculate aggregates based on direction and destination
   interface DualAgg {

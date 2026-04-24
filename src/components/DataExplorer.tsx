@@ -21,14 +21,9 @@ export default function DataExplorer({ records }: { records: any[] }) {
         const dow = d.toLocaleDateString('es-ES', { weekday: 'long' });
         
         return {
-            year: d.getFullYear().toString(),
-            month: (d.getMonth() + 1).toString().padStart(2, '0'),
+            ...r,
             diaDeSemana: dow.charAt(0).toUpperCase() + dow.slice(1),
             fecha: d.toLocaleDateString('es-AR'),
-            zona: barrioCrudo?.includes("Escobar") ? "Escobar" : barrioCrudo?.includes("Nordelta") ? "Nordelta" : barrioCrudo?.includes("Tigre") || barrioCrudo?.includes("Pacheco") || barrioCrudo?.includes("Benavidez") ? "Tigre/Pacheco" : barrioCrudo?.includes("San Isidro") ? "San Isidro" : barrioCrudo?.includes("Tortuguitas") ? "Tortugas" : "Otro",
-            barrio,
-            isIda: r.isIda,
-            isDOT: r.isDOT,
             sentido: r.isIda ? 'Ida' : 'Vuelta',
             destino: r.isDOT ? 'Shopping DOT' : 'Microcentro',
             tiempo: r.durationMins
@@ -162,28 +157,13 @@ export default function DataExplorer({ records }: { records: any[] }) {
                         <td colSpan={7} className="p-20 text-center">
                             <div className="flex flex-col items-center gap-4">
                                 <p className="text-slate-500">No se encontraron datos para estos filtros.</p>
-                                <div className="bg-slate-900/50 p-4 rounded border border-white/5 text-left w-full max-w-xl mx-auto shadow-2xl">
-                                    <p className="text-[10px] text-amber-500 font-bold mb-4 uppercase tracking-widest flex items-center gap-2">
-                                        <div className="w-1 h-1 rounded-full bg-amber-500 animate-pulse"/> 
-                                        Matriz de Disponibilidad (Día vs Tipo):
-                                    </p>
-                                    <div className="grid grid-cols-8 gap-1 mb-6 text-[9px] font-mono border border-white/5 p-2 rounded bg-black/40">
-                                        <div className="text-slate-500">Tipo</div>
-                                        {matrix.map(m => <div key={m.day} className="text-center text-slate-400 font-bold">{m.day.slice(0,2)}</div>)}
-                                        <div className="text-blue-400">IDA</div>
-                                        {matrix.map(m => <div key={m.day} className={`text-center ${m.ida === 0 ? 'text-red-900' : 'text-blue-300'}`}>{m.ida}</div>)}
-                                        <div className="text-purple-400">VUELTA</div>
-                                        {matrix.map(m => <div key={m.day} className={`text-center ${m.vuelta === 0 ? 'text-red-900 border border-red-500/20 bg-red-500/5' : 'text-purple-300'}`}>{m.vuelta}</div>)}
-                                    </div>
-
-                                    <p className="text-[10px] text-amber-500 font-bold mb-2 uppercase tracking-widest flex items-center gap-2">
-                                        <div className="w-1 h-1 rounded-full bg-amber-500 animate-pulse"/> 
-                                        Diagnóstico de Memoria (Primeros 3):
-                                    </p>
-                                    <pre className="text-[10px] text-slate-300 font-mono overflow-x-auto bg-black/20 p-2 rounded">
-                                        {JSON.stringify(gridData.slice(0, 3) || "No hay datos en memoria", null, 2)}
-                                    </pre>
-                                </div>
+                                {fDay === 'Viernes' && fSentido === 'Vuelta' && (
+                                   <div className="bg-blue-500/10 border border-blue-500/30 p-4 rounded-lg mt-2 max-w-sm text-left mx-auto">
+                                      <p className="text-blue-300 text-xs">
+                                         💡 <b>Nota:</b> La matriz indica que hoy (Viernes) todavía no se han registrado viajes de Vuelta. Probá seleccionando <b>Jueves</b> para ver datos completos.
+                                      </p>
+                                   </div>
+                                )}
                             </div>
                         </td>
                     </tr>
