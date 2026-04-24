@@ -292,34 +292,6 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
     return { dot: fmt(dotMap), centro: fmt(centroMap) };
   }, [enrichedRecords, globalMacro, globalBarrio, globalDestination, todayStr, timeBinSize]);
 
-  const radarData = useMemo(() => {
-    const macroIda = new Map<string, any>();
-    const macroVuelta = new Map<string, any>();
-    enrichedRecords.forEach(r => {
-        if (r.macro === "Otras Zonas") return;
-
-        // Destination Filter
-        if (globalDestination === "DOT" && !r.isDOT) return;
-        if (globalDestination === "Obelisco" && r.isDOT) return;
-
-        const map = r.isIda ? macroIda : macroVuelta;
-        if (!map.has(r.macro)) map.set(r.macro, { hMin:999, hMax:0, tMin:999, tMax:0 });
-        const o = map.get(r.macro)!;
-        if (r.durationMins < o.hMin) o.hMin = r.durationMins;
-        if (r.durationMins > o.hMax) o.hMax = r.durationMins;
-        if (r.dateStr === todayStr) {
-            if (r.durationMins < o.tMin) o.tMin = r.durationMins;
-            if (r.durationMins > o.tMax) o.tMax = r.durationMins;
-        }
-    });
-    const fmt = (m: Map<string, any>) => Array.from(m.entries()).map(([k,v]) => ({ 
-        subject: k, 
-        "Peor (Histórico)": v.hMax, "Mejor (Histórico)": v.hMin === 999 ? 0 : v.hMin,
-        "Peor (Hoy)": v.tMax === 0 ? null : v.tMax, "Mejor (Hoy)": v.tMin === 999 ? null : v.tMin
-    }));
-    return { ida: fmt(macroIda), vuelta: fmt(macroVuelta) };
-  }, [enrichedRecords, globalDestination, todayStr]);
-
   const LINE_COLORS = [
       "#3b82f6", "#10b981", "#f59e0b", "#f43f5e", "#a855f7", "#06b6d4", "#f97316", "#84cc16",
       "#6366f1", "#14b8a6", "#eab308", "#ec4899", "#8b5cf6", "#3b82f6", "#10b981", "#f59e0b"
@@ -764,59 +736,6 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                 </div>
             </div>
         </div>
-      </div>
-
-      {/* VOLATILITY RADAR CHARTS */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-          <div className="glass-card border-purple-500/10 border">
-              <h3 className="text-lg font-bold mb-1 flex items-center gap-2">
-                <Crosshair size={18} className="text-emerald-400"/> Volatilidad: IDA (Mañana)
-              </h3>
-              <p className="text-xs text-slate-400 mb-6">Brecha entre mejor y peor tiempo hacia CABA.</p>
-              
-              <div className="h-[320px] w-full">
-                 {radarData.ida.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
-                     <ResponsiveContainer width="100%" height="100%">
-                        <RadarChart data={radarData.ida}>
-                          <PolarGrid stroke="rgba(255,255,255,0.1)" />
-                          <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 10 }} />
-                          <PolarRadiusAxis angle={30} domain={[0, 'dataMax']} tick={{ fill: '#64748b', fontSize: 9 }} />
-                          <Radar name="Peor (Histórico)" dataKey="Peor (Histórico)" stroke="#ef4444" fill="#ef4444" fillOpacity={0.1} />
-                          <Radar name="Mejor (Histórico)" dataKey="Mejor (Histórico)" stroke="#10b981" fill="#10b981" fillOpacity={0.2} />
-                          <Radar name="Peor (Hoy)" dataKey="Peor (Hoy)" stroke="#f87171" fill="#f87171" fillOpacity={0.6} strokeWidth={3} />
-                          <Radar name="Mejor (Hoy)" dataKey="Mejor (Hoy)" stroke="#34d399" fill="#34d399" fillOpacity={0.6} strokeWidth={3} />
-                          <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
-                          <Legend />
-                        </RadarChart>
-                     </ResponsiveContainer>
-                 )}
-              </div>
-          </div>
-
-          <div className="glass-card border-purple-500/10 border">
-              <h3 className="text-lg font-bold mb-1 flex items-center gap-2">
-                <Crosshair size={18} className="text-amber-400"/> Volatilidad: VUELTA (Tarde)
-              </h3>
-              <p className="text-xs text-slate-400 mb-6">Brecha entre mejor y peor tiempo hacia Provincia.</p>
-              
-              <div className="h-[320px] w-full">
-                 {radarData.vuelta.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
-                     <ResponsiveContainer width="100%" height="100%">
-                        <RadarChart data={radarData.vuelta}>
-                          <PolarGrid stroke="rgba(255,255,255,0.1)" />
-                          <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 10 }} />
-                          <PolarRadiusAxis angle={30} domain={[0, 'dataMax']} tick={{ fill: '#64748b', fontSize: 10 }} />
-                          <Radar name="Peor (Histórico)" dataKey="Peor (Histórico)" stroke="#ef4444" fill="#ef4444" fillOpacity={0.1} />
-                          <Radar name="Mejor (Histórico)" dataKey="Mejor (Histórico)" stroke="#10b981" fill="#10b981" fillOpacity={0.2} />
-                          <Radar name="Peor (Hoy)" dataKey="Peor (Hoy)" stroke="#fcd34d" fill="#fcd34d" fillOpacity={0.6} strokeWidth={3} />
-                          <Radar name="Mejor (Hoy)" dataKey="Mejor (Hoy)" stroke="#fbbf24" fill="#fbbf24" fillOpacity={0.6} strokeWidth={3} />
-                          <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
-                          <Legend />
-                        </RadarChart>
-                     </ResponsiveContainer>
-                 )}
-              </div>
-          </div>
       </div>
 
       {/* COMPARISON BAR CHARTS (MOVED TO END) */}
