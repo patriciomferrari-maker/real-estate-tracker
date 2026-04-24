@@ -85,20 +85,19 @@ export default async function Dashboard({ searchParams }: any) {
       const isDOT = cleanOrigin === "Shopping DOT" || cleanDest === "Shopping DOT";
       
       return {
-          id: e.id,
-          origin: e.origin,
-          destination: e.destination,
-          timestamp: e.timestamp,
+          id: String(e.id),
+          origin: String(e.origin),
+          destination: String(e.destination),
+          timestamp: String(e.timestamp),
           durationMins: Math.round(e.durationSum / e.count),
           isAggregate: true,
-          // Metadatos calculados en servidor para consistencia total
-          isIda,
-          isDOT,
-          barrio: isIda ? cleanOrigin : cleanDest,
-          zona: (isIda ? cleanOrigin : cleanDest).includes("Escobar") ? "Escobar" : 
+          isIda: Boolean(isIda),
+          isDOT: Boolean(isDOT),
+          barrio: String(isIda ? cleanOrigin : cleanDest),
+          zona: String((isIda ? cleanOrigin : cleanDest).includes("Escobar") ? "Escobar" : 
                 (isIda ? cleanOrigin : cleanDest).includes("Nordelta") ? "Nordelta" : 
                 (isIda ? cleanOrigin : cleanDest).includes("Villa Nueva") || (isIda ? cleanOrigin : cleanDest).includes("San Marco") ? "Tigre/Villa Nueva" :
-                (isIda ? cleanOrigin : cleanDest).includes("Tigre") || (isIda ? cleanOrigin : cleanDest).includes("Pacheco") ? "Tigre/Pacheco" : "Zona Norte"
+                (isIda ? cleanOrigin : cleanDest).includes("Tigre") || (isIda ? cleanOrigin : cleanDest).includes("Pacheco") ? "Tigre/Pacheco" : "Zona Norte")
       };
   });
 
