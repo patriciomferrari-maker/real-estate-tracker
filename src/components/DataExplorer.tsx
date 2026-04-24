@@ -143,7 +143,12 @@ export default function DataExplorer({ records }: { records: any[] }) {
             <tbody>
                 {filteredData.length > 0 ? filteredData.slice(0, 500).map((row, i) => (
                 <tr key={i} className={`hover:bg-white/5 transition-colors border-b border-white/5 ${i % 2 === 0 ? 'bg-transparent' : 'bg-white/5'}`}>
-                    <td className="p-3 text-slate-300">{row.fecha}</td>
+                    <td className="p-3 text-slate-300">
+                      {new Date(row.timestamp).toLocaleDateString('es-AR')} {' '}
+                      <span className="text-slate-500 text-[10px]">
+                        {new Date(row.timestamp).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </td>
                     <td className="p-3 text-slate-400">{row.diaDeSemana}</td>
                     <td className="p-3 text-emerald-400 font-medium">{row.zona}</td>
                     <td className="p-3 text-blue-300">{row.barrio}</td>
