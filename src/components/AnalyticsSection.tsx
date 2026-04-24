@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { 
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   ScatterChart, Scatter, ZAxis, Cell, ReferenceLine, Label, LabelList
 } from "recharts";
@@ -406,6 +406,66 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       });
       return Array.from(keys).sort();
   }, [weeklyDowData]);
+
+  // Local state for Weekly Pulse
+  const [pulseMacro, setPulseMacro] = useState<string>("Todas las Zonas");
+  const [pulseBarrio, setPulseBarrio] = useState<string>("Todos los Barrios");
+  const [pulseShift, setPulseShift] = useState<"mañana" | "tarde" | "todo">("todo");
+  const [pulseDest, setPulseDest] = useState<"DOT" | "Obelisco">("Obelisco");
+
+  const weeklyPulseData = useMemo(() => {
+    const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+    const timeline: any[] = [];
+    
+    // Generar el esqueleto de la semana laboral (L-V, 06hs a 21hs)
+    for(let d=1; d<=5; d++) {
+        for(let h=6; h<=20; h++) {
+            for(let m of [0, 30]) {
+                const timeStr = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+                timeline.push({
+                    key: `${dayNames[d]} ${timeStr}`,
+                    day: dayNames[d],
+                    hour: h,
+                    min: m,
+                    dayIdx: d,
+                    absMin: (d * 24 * 60) + (h * 60) + m,
+                    val_s: 0,
+                    val_c: 0,
+                    duration: 0
+                });
+            }
+        }
+    }
+
+    enrichedRecords.forEach(r => {
+        if (r.dayOfWeek === 0 || r.dayOfWeek === 6) return;
+        if (r.hours < 6 || r.hours > 20) return;
+
+        // Destination Filter
+        if (pulseDest === "DOT" && !r.isDOT) return;
+        if (pulseDest === "Obelisco" && r.isDOT) return;
+
+        // Parent Filters
+        if (pulseMacro !== "Todas las Zonas" && r.macro !== pulseMacro) return;
+        if (pulseBarrio !== "Todos los Barrios" && r.barrioRaw !== pulseBarrio) return;
+
+        // Shift Filter
+        if (pulseShift === "mañana" && r.hours >= 13) return;
+        if (pulseShift === "tarde" && r.hours < 13) return;
+
+        const binMins = Math.floor(r.minutes / 30) * 30;
+        const absMin = (r.dayOfWeek * 24 * 60) + (r.hours * 60) + binMins;
+        
+        const point = timeline.find(t => t.absMin === absMin);
+        if (point) {
+            point.val_s += r.durationMins;
+            point.val_c++;
+            point.duration = Math.round(point.val_s / point.val_c);
+        }
+    });
+
+    return timeline;
+  }, [enrichedRecords, pulseMacro, pulseBarrio, pulseShift, pulseDest]);
 
   const highlightStats = useMemo(() => {
       const cats = {
@@ -1664,6 +1724,108 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                       </ResponsiveContainer>
                   </div>
               </div>
+          </div>
+      </div>
+
+      {/* WEEKLY PULSE ANALYSIS (30 MIN PRECISION) */}
+      <div className="glass-card mt-8 border-indigo-500/10 border pb-8">
+          <div className="border-b border-white/5 pb-4 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h3 className="text-xl font-bold flex items-center gap-2">
+                        <TrendingUp size={20} className="text-indigo-400" />
+                        Pulso Semanal de Tráfico (Detallado)
+                    </h3>
+                    <p className="text-xs text-slate-400">Evolución de tiempos de viaje por cada bloque de 30 min de Lunes a Viernes.</p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 bg-slate-900/50 p-2 rounded-xl border border-white/5 self-start md:self-auto">
+                    {/* Destination Select */}
+                    <div className="flex items-center gap-2">
+                        <MapPin size={14} className="text-indigo-500 ml-1" />
+                        <select value={pulseDest} onChange={(e) => setPulseDest(e.target.value as any)} 
+                                className="bg-transparent text-[10px] font-black text-indigo-300 outline-none border-r border-white/10 pr-2 cursor-pointer uppercase">
+                            <option value="Obelisco">Obelisco</option>
+                            <option value="DOT">Shopping DOT</option>
+                        </select>
+                    </div>
+                    {/* Shift Select */}
+                    <div className="flex items-center gap-2">
+                        <Filter size={14} className="text-slate-500" />
+                        <select value={pulseShift} onChange={(e) => setPulseShift(e.target.value as any)}
+                                className="bg-transparent text-[10px] font-black text-slate-300 outline-none border-r border-white/10 pr-2 cursor-pointer uppercase">
+                            <option value="todo" className="bg-slate-900">Todo el Día</option>
+                            <option value="mañana" className="bg-slate-900">Mañana</option>
+                            <option value="tarde" className="bg-slate-900">Tarde</option>
+                        </select>
+                    </div>
+                    {/* Macro Select */}
+                    <div className="flex items-center gap-2">
+                        <select value={pulseMacro} onChange={(e) => { setPulseMacro(e.target.value); setPulseBarrio("Todos los Barrios"); }}
+                                className="bg-transparent text-[10px] font-black text-slate-300 outline-none border-r border-white/10 pr-2 cursor-pointer uppercase">
+                            <option value="Todas las Zonas">Todas las Zonas</option>
+                            {allMacros.map(m => <option key={m} value={m} className="bg-slate-900 text-white">{m}</option>)}
+                        </select>
+                    </div>
+                    {/* Barrio Select */}
+                    <select value={pulseBarrio} onChange={(e) => setPulseBarrio(e.target.value)}
+                            className="bg-transparent text-[10px] font-black text-slate-300 outline-none pr-2 cursor-pointer uppercase">
+                        <option value="Todos los Barrios">Todos los Barrios</option>
+                        {zones.filter(z => pulseMacro === "Todas las Zonas" ? true : getMacro(z) === pulseMacro).map(z => {
+                            const b = shortenBarrioName(z);
+                            return <option key={shortenBarrioName(z)} value={z} className="bg-slate-900 text-white">{shortenBarrioName(z)}</option>
+                        })}
+                    </select>
+                </div>
+          </div>
+
+          <div className="h-[400px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={weeklyPulseData} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
+                        <defs>
+                            <linearGradient id="colorDuration" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
+                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                        <XAxis 
+                            dataKey="key" 
+                            stroke="#475569" 
+                            fontSize={9} 
+                            tickFormatter={(v:string) => v.split(' ')[1] === "06:00" ? v.split(' ')[0] : (v.split(' ')[1] === "13:00" ? v.split(' ')[1] : '')}
+                            interval={5}
+                            tick={{ fill: '#64748b', fontWeight: 'bold' }}
+                        />
+                        <YAxis stroke="#475569" fontSize={10} unit="m" />
+                        <Tooltip 
+                            content={({ active, payload }: any) => {
+                                if (active && payload && payload.length) {
+                                    const d = payload[0].payload;
+                                    return (
+                                        <div className="bg-[#0f172a]/95 p-3 rounded-xl border border-slate-700 shadow-2xl backdrop-blur-md">
+                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">{d.day} {d.hour}:{d.min === 0 ? '00' : '30'}</p>
+                                            <p className="text-xl font-black text-white">{d.duration > 0 ? `${d.duration} min` : 'Sin datos'}</p>
+                                            <p className="text-[9px] text-slate-500 italic mt-1">
+                                                {pulseMacro === "Todas las Zonas" ? "Promedio todas las macro-zonas" : `${pulseBarrio === "Todos los Barrios" ? pulseMacro : shortenBarrioName(pulseBarrio)}`}
+                                            </p>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            }}
+                        />
+                        <Area 
+                            type="monotone" 
+                            dataKey="duration" 
+                            stroke="#818cf8" 
+                            strokeWidth={3}
+                            fillOpacity={1} 
+                            fill="url(#colorDuration)" 
+                            activeDot={{ r: 6, stroke: '#fff', strokeWidth: 2 }}
+                            connectNulls
+                        />
+                    </AreaChart>
+                </ResponsiveContainer>
           </div>
       </div>
     </section>
