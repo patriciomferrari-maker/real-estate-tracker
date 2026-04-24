@@ -9,33 +9,51 @@ export const dynamic = 'force-dynamic';
 
 function formatZoneName(raw: string | null | undefined) {
   if (!raw) return "Desconocido";
-  if (raw.includes("San Matias")) return "San Matías";
-  if (raw.includes("Puertos")) return "Puertos";
-  if (raw.includes("Canton") || raw.includes("Cantón")) return "El Cantón";
-  if (raw.includes("Santa Ana")) return "Santa Ana";
-  if (raw.includes("San Marco")) return "San Marco";
-  if (raw.includes("Villa Nueva")) return "Villa Nueva";
-  if (raw.includes("Santa Barbara")) return "Santa Bárbara";
-  if (raw.includes("Castaños")) return "Castaños";
-  if (raw.includes("Glorietas")) return "Glorietas";
-  if (raw.includes("Barbarita")) return "Barbarita";
-  if (raw.includes("Escondida") || raw.includes("Milberg")) return "La Escondida";
-  if (raw.includes("Liebres")) return "Las Liebres";
-  if (raw.includes("Boulevares") || raw.includes("Bulevares")) return "Los Boulevares";
-  if (raw.includes("Encuentro")) return "El Encuentro";
-  if (raw.includes("Altos de Pacheco")) return "Altos de Pacheco";
-  if (raw.includes("Sucre") || raw.includes("Rocha")) return "San Isidro";
-  if (raw.includes("Buenavista")) return "Buenavista";
-  if (raw.includes("Tortugas")) return "Pilar (Tortugas)";
+  const str = raw.toLowerCase();
   
-  if (raw.includes("DOT")) return "Shopping DOT";
-  if (raw.includes("Florida") || raw.includes("Microcentro") || raw.includes("Obelisco")) return "Microcentro";
+  // Barrios específicos
+  if (str.includes("san matias")) return "San Matías";
+  if (str.includes("puertos")) return "Puertos";
+  if (str.includes("canton")) return "El Cantón";
+  if (str.includes("santa ana")) return "Santa Ana";
+  if (str.includes("san marco")) return "San Marco";
+  if (str.includes("santa barbara")) return "Santa Bárbara";
+  if (str.includes("castaños")) return "Castaños";
+  if (str.includes("glorietas")) return "Glorietas";
+  if (str.includes("barbarita")) return "Barbarita";
+  if (str.includes("escondida")) return "La Escondida";
+  if (str.includes("liebres")) return "Las Liebres";
+  if (str.includes("boulevares") || str.includes("bulevares")) return "Los Boulevares";
+  if (str.includes("encuentro")) return "El Encuentro";
+  if (str.includes("altos de pacheco")) return "Altos de Pacheco";
+  if (str.includes("buenavista")) return "Buenavista";
+  if (str.includes("sucre") || str.includes("dardo rocha")) return "San Isidro";
+
+  // Destinos
+  if (str.includes("dot")) return "Shopping DOT";
+  if (str.includes("obelisco") || str.includes("microcentro")) return "Microcentro";
+  
+  // Si dice Villa Nueva y no sabemos que barrio es, lo dejamos como "Villa Nueva (Gral)"
+  if (str.includes("villa nueva")) return "Villa Nueva (Gral)";
+  
   return raw.split(',')[0].replace("Barrio", "").trim();
 }
 
+function getMacroZona(barrio: string) {
+    if (barrio.includes("San Matías") || barrio.includes("Puertos") || barrio.includes("El Cantón") || barrio.includes("Escobar")) return "Escobar";
+    if (barrio.includes("Castaños") || barrio.includes("Glorietas") || barrio.includes("Nordelta")) return "Nordelta";
+    if (barrio.includes("San Marco") || barrio.includes("Santa Ana") || barrio.includes("Villa Nueva")) return "Tigre / Villa Nueva";
+    if (barrio.includes("Santa Bárbara") || barrio.includes("Barbarita") || barrio.includes("Altos de Pacheco") || barrio.includes("Pacheco")) return "Pacheco";
+    if (barrio.includes("La Escondida") || barrio.includes("Tigre")) return "Tigre Centro";
+    if (barrio.includes("El Encuentro") || barrio.includes("Benavidez")) return "Benavidez";
+    if (barrio.includes("Las Liebres") || barrio.includes("Los Boulevares") || barrio.includes("Tortuguitas")) return "Pilar / Tortugas";
+    if (barrio.includes("Buenavista") || barrio.includes("San Isidro")) return "San Isidro / San Fernando";
+    return "Otras Zonas";
+}
+
 interface DualAgg {
-  countDOT: number; totalMinsDOT: number; minDOT: number; maxDOT: number;
-  countMicro: number; totalMinsMicro: number; minMicro: number; maxMicro: number;
+  countDOT: number; totalMinsDOT: number;
+  countMicro: number; totalMinsMicro: number;
 }
 
 export default async function Dashboard({ searchParams }: any) {
@@ -43,15 +61,13 @@ export default async function Dashboard({ searchParams }: any) {
     const resolvedParams = await (searchParams || {});
     const currentTab = resolvedParams?.tab || "dashboard";
 
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const records = await prisma.commuteRecord.findMany({
-      where: { timestamp: { gte: sevenDaysAgo } },
+      where: { timestamp: { gte: thirtyDaysAgo } },
       orderBy: { timestamp: 'desc' }
     });
-
-    try { await prisma.$disconnect(); } catch(e) {}
 
     const aggregatedMap = new Map<string, any>();
     records.forEach(r => {
@@ -77,11 +93,10 @@ export default async function Dashboard({ searchParams }: any) {
     });
 
     const serializableRecords = Array.from(aggregatedMap.values()).map(e => {
-        const cleanOrigin = formatZoneName(e.origin);
-        const cleanDest = formatZoneName(e.destination);
-        const isIda = cleanDest === "Shopping DOT" || cleanDest === "Microcentro" || cleanDest.includes("Obelisco");
-        const isDOT = cleanOrigin === "Shopping DOT" || cleanDest === "Shopping DOT";
-        const barrio = isIda ? cleanOrigin : cleanDest;
+        const bOrigin = formatZoneName(e.origin);
+        const bDest = formatZoneName(e.destination);
+        const isIda = bDest === "Shopping DOT" || bDest === "Microcentro";
+        const barrio = isIda ? bOrigin : bDest;
         
         return {
             id: String(e.id),
@@ -89,69 +104,106 @@ export default async function Dashboard({ searchParams }: any) {
             destination: String(e.destination),
             timestamp: String(e.timestamp),
             durationMins: Math.round(e.durationSum / e.count),
-            isAggregate: true,
             isIda,
-            isDOT,
+            isDOT: bOrigin === "Shopping DOT" || bDest === "Shopping DOT",
             barrio,
-            zona: (barrio.includes("Escobar") || barrio.includes("San Matías") || barrio.includes("Cantón")) ? "Escobar" : 
-                  (barrio.includes("Nordelta") || barrio.includes("Castaños") || barrio.includes("Glorietas")) ? "Nordelta" : 
-                  (barrio.includes("Villa Nueva") || barrio.includes("San Marco") || barrio.includes("Santa Ana")) ? "Tigre/Villa Nueva" :
-                  (barrio.includes("Tigre") || barrio.includes("Pacheco") || barrio.includes("Encuentro")) ? "Tigre/Pacheco" : "Zona Norte"
+            zona: getMacroZona(barrio)
         };
     });
 
-    const groups = { morning: new Map<string, DualAgg>(), afternoon: new Map<string, DualAgg>() };
-    records.forEach(r => {
-      const orig = formatZoneName(r.origin);
-      const dest = formatZoneName(r.destination);
-      const isDOT = orig === "Shopping DOT" || dest === "Shopping DOT";
-      const isMicro = orig === "Microcentro" || dest === "Microcentro" || orig.includes("Obelisco") || dest.includes("Obelisco");
-      const isIda = dest === "Shopping DOT" || dest === "Microcentro" || dest.includes("Obelisco");
-      const zone = isIda ? orig : dest;
-      const target = isIda ? groups.morning : groups.afternoon;
+    const buildGroupData = (isIda: boolean) => {
+        const zoneMap = new Map<string, Map<string, DualAgg>>();
+        
+        serializableRecords.filter(r => r.isIda === isIda).forEach(r => {
+            const macro = r.zona;
+            const barrio = r.barrio;
+            const isToDOT = r.isIda ? r.destination.includes("DOT") : r.origin.includes("DOT");
+            
+            if (!zoneMap.has(macro)) zoneMap.set(macro, new Map());
+            const barriosInMacro = zoneMap.get(macro)!;
+            
+            if (!barriosInMacro.has(barrio)) {
+                barriosInMacro.set(barrio, { countDOT: 0, totalMinsDOT: 0, countMicro: 0, totalMinsMicro: 0 });
+            }
+            
+            const agg = barriosInMacro.get(barrio)!;
+            if (isToDOT) {
+                agg.countDOT++;
+                agg.totalMinsDOT += r.durationMins;
+            } else {
+                agg.countMicro++;
+                agg.totalMinsMicro += r.durationMins;
+            }
+        });
+        return zoneMap;
+    };
 
-      if (!target.has(zone)) {
-        target.set(zone, { countDOT: 0, totalMinsDOT: 0, minDOT: 999, maxDOT: 0, countMicro: 0, totalMinsMicro: 0, minMicro: 999, maxMicro: 0 });
-      }
-      const g = target.get(zone)!;
-      if (isDOT) { g.countDOT++; g.totalMinsDOT += r.durationMins; }
-      else if (isMicro) { g.countMicro++; g.totalMinsMicro += r.durationMins; }
-    });
+    const generateMacroSection = (data: Map<string, Map<string, DualAgg>>) => {
+        const sortedMacros = Array.from(data.entries()).map(([macro, barrios]) => {
+            let sumDOT = 0, cDOT = 0, sumMicro = 0, cMicro = 0;
+            const barrioList = Array.from(barrios.entries()).map(([name, bData]) => {
+                const avgD = bData.countDOT > 0 ? Math.round(bData.totalMinsDOT / bData.countDOT) : 0;
+                const avgM = bData.countMicro > 0 ? Math.round(bData.totalMinsMicro / bData.countMicro) : 0;
+                if (avgD > 0) { sumDOT += avgD; cDOT++; }
+                if (avgM > 0) { sumMicro += avgM; cMicro++; }
+                return { name, avgDOT: avgD, avgMicro: avgM };
+            });
+            
+            const mAvgDOT = cDOT > 0 ? Math.round(sumDOT / cDOT) : 0;
+            const mAvgMicro = cMicro > 0 ? Math.round(sumMicro / cMicro) : 0;
+            return { macro, mAvgDOT, mAvgMicro, barrios: barrioList };
+        }).sort((a,b) => (a.mAvgDOT + a.mAvgMicro) - (b.mAvgDOT + b.mAvgMicro));
 
-    const generateDualBars = (mapToRender: Map<string, DualAgg>) => {
-      const items = Array.from(mapToRender.entries()).map(([name, d]) => ({
-        name,
-        avgDOT: d.countDOT > 0 ? Math.round(d.totalMinsDOT / d.countDOT) : 0,
-        avgMicro: d.countMicro > 0 ? Math.round(d.totalMinsMicro / d.countMicro) : 0,
-      })).filter(i => i.avgDOT > 0 || i.avgMicro > 0);
+        if (sortedMacros.length === 0) return <p className="text-slate-500 text-sm py-4">Sin datos suficientes.</p>;
 
-      if (items.length === 0) return <p className="text-slate-500 text-sm py-4">No hay datos suficientes.</p>;
-
-      return (
-        <div className="space-y-4">
-          {items.map(i => (
-            <div key={i.name} className="bg-slate-900/40 p-3 rounded-lg border border-white/5">
-              <p className="text-xs font-bold text-slate-300 mb-2">{i.name}</p>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-[10px]">
-                  <span className="w-10 text-blue-400">DOT</span>
-                  <div className="flex-1 h-1.5 bg-black/40 rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-500" style={{ width: `${Math.min(100, (i.avgDOT/100)*100)}%` }} />
-                  </div>
-                  <span className="w-8 text-right font-bold">{i.avgDOT}m</span>
-                </div>
-                <div className="flex items-center gap-2 text-[10px]">
-                  <span className="w-10 text-purple-400">Centro</span>
-                  <div className="flex-1 h-1.5 bg-black/40 rounded-full overflow-hidden">
-                    <div className="h-full bg-purple-500" style={{ width: `${Math.min(100, (i.avgMicro/100)*100)}%` }} />
-                  </div>
-                  <span className="w-8 text-right font-bold">{i.avgMicro}m</span>
-                </div>
-              </div>
+        return (
+            <div className="space-y-4">
+                {sortedMacros.map(m => (
+                    <details key={m.macro} className="group bg-slate-900/40 rounded-xl border border-white/5 overflow-hidden transition-all">
+                        <summary className="p-4 cursor-pointer hover:bg-white/5 list-none outline-none">
+                            <div className="flex justify-between items-center mb-3">
+                                <span className="font-black text-slate-200 flex items-center gap-2">
+                                    <span className="text-blue-400 group-open:rotate-90 transition-transform">▶</span>
+                                    {m.macro}
+                                </span>
+                                <span className="text-[10px] bg-white/5 px-2 py-1 rounded text-slate-400">
+                                    {m.barrios.length} barrios
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <p className="text-[9px] uppercase tracking-wider text-blue-400 font-bold">Prom. DOT</p>
+                                    <p className="text-xl font-black text-white">{m.mAvgDOT}m</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[9px] uppercase tracking-wider text-purple-400 font-bold">Prom. Centro</p>
+                                    <p className="text-xl font-black text-white">{m.mAvgMicro}m</p>
+                                </div>
+                            </div>
+                        </summary>
+                        <div className="p-4 bg-black/40 border-t border-white/5 space-y-4">
+                            {m.barrios.map(b => (
+                                <div key={b.name} className="flex flex-col gap-1.5 pl-3 border-l border-white/10">
+                                    <p className="text-xs font-bold text-slate-300">{b.name}</p>
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex-1 flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                            <span className="text-[10px] text-slate-400 w-8">DOT</span>
+                                            <span className="text-xs font-bold">{b.avgDOT}m</span>
+                                        </div>
+                                        <div className="flex-1 flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                                            <span className="text-[10px] text-slate-400 w-10">Centro</span>
+                                            <span className="text-xs font-bold">{b.avgMicro}m</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </details>
+                ))}
             </div>
-          ))}
-        </div>
-      );
+        );
     };
 
     return (
@@ -159,7 +211,7 @@ export default async function Dashboard({ searchParams }: any) {
         <header className="mb-8 flex justify-between items-center pb-6 border-b border-white/10">
           <h1 className="text-3xl font-black bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Commute Matrix</h1>
           <form action={syncAllData}>
-            <button type="submit" className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-full text-sm font-bold transition-all shadow-lg shadow-blue-900/20">
+            <button type="submit" className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-full text-sm font-bold transition-all">
               <RefreshCw size={16} /> Sync
             </button>
           </form>
@@ -174,14 +226,18 @@ export default async function Dashboard({ searchParams }: any) {
         </nav>
 
         {currentTab === 'dashboard' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
             <section>
-              <h2 className="text-lg font-bold mb-4 text-emerald-400 flex items-center gap-2"><Clock size={18}/> IDA (MAÑANA)</h2>
-              {generateDualBars(groups.morning)}
+              <h2 className="text-xl font-black mb-6 text-emerald-400 flex items-center gap-2 uppercase tracking-tighter">
+                <Clock size={20}/> Trayectos Mañana (Ida)
+              </h2>
+              {generateMacroSection(buildGroupData(true))}
             </section>
             <section>
-              <h2 className="text-lg font-bold mb-4 text-amber-400 flex items-center gap-2"><ArrowRightLeft size={18}/> VUELTA (TARDE)</h2>
-              {generateDualBars(groups.afternoon)}
+              <h2 className="text-xl font-black mb-6 text-amber-400 flex items-center gap-2 uppercase tracking-tighter">
+                <ArrowRightLeft size={20}/> Trayectos Tarde (Vuelta)
+              </h2>
+              {generateMacroSection(buildGroupData(false))}
             </section>
           </div>
         )}
@@ -191,19 +247,18 @@ export default async function Dashboard({ searchParams }: any) {
         {currentTab === 'datos' && <DataExplorer records={serializableRecords} />}
 
         <footer className="mt-12 pt-8 border-t border-white/5 text-center text-[10px] text-slate-600">
-          {records.length} registros cargados. Argentina Time enforced (GMT-3).
+            Engine v3.2 | Sync Local Enforced (GMT-3) | {serializableRecords.length} records parsed.
         </footer>
       </main>
     );
   } catch (e: any) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-10">
-        <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-xl max-w-md text-center">
-          <p className="text-red-400 font-bold mb-2">Error de Sistema</p>
-          <p className="text-xs text-slate-400 mb-4 font-mono">{e.message}</p>
-          <Link href="/" className="text-xs underline">Reintentar carga</Link>
+     return (
+      <div className="p-10 text-center bg-slate-950 text-white min-h-screen flex items-center justify-center">
+        <div className="max-w-md p-6 bg-red-500/10 border border-red-500/20 rounded-xl">
+           <p className="font-bold text-red-500 mb-2">Error de Sinergia</p>
+           <p className="text-xs font-mono text-slate-400">{e.message}</p>
         </div>
       </div>
-    );
+     )
   }
 }
