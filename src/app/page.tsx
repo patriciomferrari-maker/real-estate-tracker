@@ -114,6 +114,10 @@ export default async function Dashboard({ searchParams }: any) {
         serializableRecords.filter(r => r.isIda === isIda).forEach(r => {
             const macro = r.zona;
             const barrio = r.barrio;
+            
+            // Si el barrio es exactamente Villa Nueva (genérico), lo ignoramos
+            if (barrio === "Villa Nueva" || barrio === "Villa Nueva (Gral)") return;
+
             const isToDOT = r.isIda ? r.destination.includes("DOT") : r.origin.includes("DOT");
             
             if (!zoneMap.has(macro)) zoneMap.set(macro, new Map());
