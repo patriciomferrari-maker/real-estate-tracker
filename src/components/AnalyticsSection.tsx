@@ -7,7 +7,7 @@ import {
   ScatterChart, Scatter, ZAxis, Cell, ReferenceLine, Label, LabelList
 } from "recharts";
 import { 
-  Activity, Search, BarChart3, Crosshair, Map as MapIcon, Filter, TrendingUp,
+  Activity, Search, BarChart3, Crosshair, Map as MapIcon, Filter, TrendingUp, TrendingDown,
   Sun, Moon, Zap, Navigation, MapPin, Calendar 
 } from "lucide-react";
 
@@ -407,9 +407,11 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       return Array.from(keys).sort();
   }, [weeklyDowData]);
 
+  const [viewMode, setViewMode] = useState<"dashboard" | "charts" | "report" | "data" | "vivo">("dashboard");
+
   // Local state for Weekly Pulse
   const [pulseMacro, setPulseMacro] = useState<string>(allMacros[0] || "Nordelta");
-  const [pulseBarrio, setPulseBarrio] = useState<string>(shortenBarrioName(zones.filter(z => getMacro(z) === (allMacros[0] || "Nordelta"))[0]) || "Todos los Barrios");
+  const [pulseBarrio, setPulseBarrio] = useState<string>(zones.find(z => getMacro(z) === (allMacros[0] || "Nordelta")) || "Todos los Barrios");
   const [pulseShift, setPulseShift] = useState<"mañana" | "tarde">("mañana");
   const [pulseDest, setPulseDest] = useState<"DOT" | "Obelisco">("Obelisco");
 
@@ -417,30 +419,33 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
     const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
     const timeline: any[] = [];
     
-    // Generar el esqueleto de la semana laboral (L-V, 06hs a 21hs)
+    // Generar el esqueleto de la semana laboral enfocado en PICOS (6-9hs y 16.30-19.30hs)
     for(let d=1; d<=5; d++) {
-        for(let h=6; h<=20; h++) {
+        // Ventana Mañana
+        for(let h=6; h<=8; h++) {
             for(let m of [0, 30]) {
                 const timeStr = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
-                timeline.push({
-                    key: `${dayNames[d]} ${timeStr}`,
-                    day: dayNames[d],
-                    hour: h,
-                    min: m,
-                    dayIdx: d,
-                    absMin: (d * 24 * 60) + (h * 60) + m,
-                    val_s: 0,
-                    val_c: 0,
-                    duration: 0
-                });
+                timeline.push({ key: `${dayNames[d]} ${timeStr}`, day: dayNames[d], hour: h, min: m, dayIdx: d, absMin: (d * 24 * 60) + (h * 60) + m, val_s: 0, val_c: 0, duration: 0 });
             }
         }
+        // Mañana termina a las 9:00 exactas
+        timeline.push({ key: `${dayNames[d]} 09:00`, day: dayNames[d], hour: 9, min: 0, dayIdx: d, absMin: (d * 24 * 60) + (9 * 60), val_s: 0, val_c: 0, duration: 0 });
+
+        // Ventana Tarde (16:30 a 19:30)
+        for(let h=16; h<=19; h++) {
+            for(let m of [0, 30]) {
+                if (h === 16 && m === 0) continue; // Empezar 16:30
+                if (h === 19 && m === 30) continue; // Cortar antes
+                const timeStr = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+                timeline.push({ key: `${dayNames[d]} ${timeStr}`, day: dayNames[d], hour: h, min: m, dayIdx: d, absMin: (d * 24 * 60) + (h * 60) + m, val_s: 0, val_c: 0, duration: 0 });
+            }
+        }
+        timeline.push({ key: `${dayNames[d]} 19:30`, day: dayNames[d], hour: 19, min: 30, dayIdx: d, absMin: (d * 24 * 60) + (19 * 60) + 30, val_s: 0, val_c: 0, duration: 0 });
     }
 
     enrichedRecords.forEach(r => {
         if (r.dayOfWeek === 0 || r.dayOfWeek === 6) return;
-        if (r.hours < 6 || r.hours > 20) return;
-
+        
         // Destination Filter
         if (pulseDest === "DOT" && !r.isDOT) return;
         if (pulseDest === "Obelisco" && r.isDOT) return;
@@ -464,7 +469,11 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
         }
     });
 
-    return timeline;
+    // Filtrar timeline para mostrar solo el turno seleccionado
+    return timeline.filter(t => {
+        if (pulseShift === "mañana") return t.hour < 12;
+        return t.hour >= 12;
+    });
   }, [enrichedRecords, pulseMacro, pulseBarrio, pulseShift, pulseDest]);
 
   const highlightStats = useMemo(() => {
@@ -848,16 +857,15 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                                                 </span>
                                             </div>
                                             <h4 className="text-3xl font-black text-white leading-none tracking-tight">{shortenBarrioName(s.bestBarrio)}</h4>
-                                            <p className="text-xs text-slate-500 font-bold">Tiempo Base: <span className="text-white">{s.avgTotal}m</span> promedio global</p>
+                                            <p className="text-xs text-slate-500 font-bold uppercase tracking-tighter">Promedio Histórico: <span className="text-white">{s.avgTotal}m</span></p>
                                         </div>
                                         <div className={`p-4 rounded-2xl border text-center min-w-[80px] ${s.reliability > 85 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 shadow-[0_0_20px_-10px_rgba(16,185,129,0.3)]' : 'bg-amber-500/10 border-amber-500/20 text-amber-400 shadow-[0_0_20px_-10px_rgba(245,158,11,0.3)]'}`}>
                                             <div className="text-[9px] font-black uppercase tracking-widest mb-1 opacity-60">SCORE</div>
                                             <div className="text-2xl font-black">{s.reliability}%</div>
                                         </div>
                                     </div>
-
                                     <div className="grid grid-cols-1 gap-3">
-                                        <div className="flex items-center justify-between bg-slate-900/50 p-3 rounded-xl border border-white/5 group-hover:border-amber-500/20 transition-colors">
+                                        <div className="flex items-center justify-between bg-slate-900/50 p-3 rounded-xl border border-white/5 group-hover:border-indigo-500/20 transition-colors">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
                                                     <Zap size={16} className="text-amber-400" />
@@ -1022,27 +1030,39 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
     <section className="space-y-8 mb-12 animate-in fade-in duration-700">
       {/* MASTER CONTROL PANEL (Sticky & Ultra-Compact) */}
       <div className="sticky top-2 z-50 glass-card border-blue-500/10 bg-slate-900/40 backdrop-blur-md p-2 px-4 flex flex-wrap gap-4 items-center justify-between shadow-2xl rounded-xl">
-          <div className="flex gap-3 items-center border-r border-white/10 pr-4">
-            <div className="p-1 bg-blue-600 rounded">
-              <Filter size={14} className="text-white" />
-            </div>
-            
-            {/* Toggle de Vista */}
-            <div className="flex bg-slate-900/60 p-0.5 rounded-lg border border-white/5">
+             {/* Navegación Principal */}
+             <div className="flex bg-slate-900/60 p-0.5 rounded-lg border border-white/5">
+                {[
+                  {id: 'dashboard', label: 'DASHBOARD'},
+                  {id: 'charts', label: 'GRÁFICOS'},
+                  {id: 'report', label: 'REPORTE'},
+                  {id: 'data', label: 'DATOS'},
+                  {id: 'vivo', label: 'VIVO'}
+                ].map(tab => (
+                  <button 
+                    key={tab.id}
+                    onClick={() => setViewMode(tab.id as any)}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === tab.id ? "bg-blue-600 text-white shadow-lg" : "text-slate-400 hover:text-white"} ${tab.id === 'vivo' ? 'animate-pulse text-rose-400' : ''}`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+             </div>
+
+             <div className="flex gap-3 items-center border-l border-white/10 pl-4">
                 <button 
                   onClick={() => setGlobalMode("macro")}
-                  className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${globalMode === 'macro' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                  className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${globalMode === 'macro' ? 'bg-slate-700 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
                 >
                   Zonas
                 </button>
                 <button 
                   onClick={() => setGlobalMode("barrio")}
-                  className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${globalMode === 'barrio' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                  className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${globalMode === 'barrio' ? 'bg-slate-700 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
                 >
                   Barrios
                 </button>
             </div>
-          </div>
 
           <div className="flex flex-1 flex-wrap gap-3 items-center">
               {/* Macro Zona */}
@@ -1834,6 +1854,65 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                 </ResponsiveContainer>
           </div>
       </div>
+
+      {/* VIVO VIEW MODE */}
+      {viewMode === "vivo" && (
+         <div className="glass-card mt-8 animate-in slide-in-from-bottom duration-500 border-rose-500/20 border-2">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+                <div>
+                   <h3 className="text-xl font-bold flex items-center gap-3">
+                      <div className="w-3 h-3 bg-rose-500 rounded-full animate-ping" />
+                      Monitor de Tráfico en VIVO (Hoy)
+                   </h3>
+                   <p className="text-slate-400 text-sm">Registro cronológico de los últimos viajes capturados hoy.</p>
+                </div>
+                <div className="bg-slate-900 px-4 py-2 rounded-xl border border-white/5">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase block">Registros Hoy</span>
+                    <span className="text-xl font-black text-white">{enrichedRecords.filter(r => r.isToday).length}</span>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2">
+                {enrichedRecords.filter(r => r.isToday).sort((a,b) => b.timestamp.getTime() - a.timestamp.getTime()).map((r, idx) => {
+                    const dowMatch = enrichedRecords.filter(old => !old.isToday && old.dayOfWeek === r.dayOfWeek && old.hours === r.hours && Math.abs(old.minutes - r.minutes) < 15 && old.barrioRaw === r.barrioRaw && old.isDOT === r.isDOT);
+                    const avg = dowMatch.length > 0 ? Math.round(dowMatch.reduce((acc, curr) => acc + curr.durationMins, 0) / dowMatch.length) : 0;
+                    const diff = avg > 0 ? r.durationMins - avg : 0;
+
+                    return (
+                        <div key={idx} className="flex items-center justify-between p-4 bg-slate-900/40 rounded-xl border border-white/5 hover:bg-slate-800/40 transition-all">
+                            <div className="flex items-center gap-6">
+                                <div className="text-lg font-black text-slate-500 font-mono w-16">{`${r.hours.toString().padStart(2,'0')}:${r.minutes.toString().padStart(2,'0')}`}</div>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] text-indigo-400 font-black uppercase tracking-wider">{r.macro}</span>
+                                    <span className="text-white font-bold">{shortenBarrioName(r.barrioRaw)}</span>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] text-slate-500 font-bold uppercase">Hacia</span>
+                                    <span className="text-xs text-slate-300 font-bold">{r.isDOT ? 'Shopping DOT' : 'Microcentro'}</span>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-8">
+                                <div className="flex flex-col items-end">
+                                    <span className="text-[10px] text-slate-500 font-bold uppercase">Viaje Hoy</span>
+                                    <span className="text-xl font-black text-white">{r.durationMins}m</span>
+                                </div>
+                                <div className="flex flex-col items-end min-w-[80px]">
+                                    <span className="text-[10px] text-slate-500 font-bold uppercase">Vs Promedio</span>
+                                    {avg > 0 ? (
+                                        <div className={`flex items-center gap-1 font-black ${diff > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                            {diff > 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                                            {diff > 0 ? `+${diff}m` : `${diff}m`}
+                                        </div>
+                                    ) : <span className="text-[10px] text-slate-700 font-bold uppercase tracking-tighter">Sin historial</span>}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+         </div>
+      )}
     </section>
       )}
     </div>
