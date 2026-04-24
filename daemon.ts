@@ -1,30 +1,37 @@
 import cron from "node-cron";
-import { syncAllData } from "./src/app/actions";
+import { runFullSync } from "./src/lib/scraper-engine";
 
-console.log("🚦 Arrancando Servidor de Automatización (Daemon) 🚦");
-console.log("- Los horarios configurados son: Lun-Dom, 6:00-10:59 y 15:00-19:59");
-console.log("- Frecuencia: Cada 5 minutos dentro de esa franja.");
+console.log("🚦 Arrancando Servidor de Automatización (Daemon v2) 🚦");
+console.log("- Los horarios configurados son: Lun-Dom, 6:00-11:00 y 15:00-20:00");
+console.log("- Corriendo ahora motor independiente del Dashboard.");
 
-// Cron 1: Mañana (6 AM a 10:59 AM) cada 5 minutos
-cron.schedule("*/5 6-10 * * *", async () => {
-  console.log(`\n[MAÑANA] ⏰ Cron ejecutado a las ${new Date().toLocaleTimeString()}...`);
+// Mañana
+cron.schedule("*/10 6-11 * * *", async () => {
+  console.log(`\n[DAEMON] ⏰ Iniciando Ciclo Mañana: ${new Date().toLocaleString()}`);
   try {
-    await syncAllData();
-    console.log("✅ Ciclo de extracción exitoso.");
+    await runFullSync();
+    console.log("✅ Ciclo completado.");
   } catch (e) {
-    console.error("❌ Fallo en extracción:", e);
+    console.error("❌ Fallo:", e);
   }
 });
 
-// Cron 2: Tarde (15 PM a 19:59 PM) cada 5 minutos
-cron.schedule("*/5 15-19 * * *", async () => {
-  console.log(`\n[TARDE] ⏰ Cron ejecutado a las ${new Date().toLocaleTimeString()}...`);
+// Tarde
+cron.schedule("*/10 15-20 * * *", async () => {
+  console.log(`\n[DAEMON] ⏰ Iniciando Ciclo Tarde: ${new Date().toLocaleString()}`);
   try {
-    await syncAllData();
-    console.log("✅ Ciclo de extracción exitoso.");
+    await runFullSync();
+    console.log("✅ Ciclo completado.");
   } catch (e) {
-    console.error("❌ Fallo en extracción:", e);
+    console.error("❌ Fallo:", e);
   }
 });
 
-console.log("Esperando la próxima ventana de ejecución cron...\n");
+// Ejecución inmediata si estamos en franja
+const hour = (new Date().getUTCHours() - 3 + 24) % 24;
+if ((hour >= 7 && hour <= 11) || (hour >= 15 && hour <= 20)) {
+    console.log("🚀 Estamos en franja horaria. Iniciando primer ciclo inmediato...");
+    runFullSync();
+}
+
+console.log("Esperando cron...\n");
