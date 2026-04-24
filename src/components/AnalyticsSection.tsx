@@ -112,6 +112,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const [evoMacro, setEvoMacro] = useState<string>("Todas las Zonas");
   const [evoDest, setEvoDest] = useState<string>("Ambos");
   const [evoTimeMode, setEvoTimeMode] = useState<"mañana" | "tarde" | "todo">("todo");
+  const [trendTimeMode, setTrendTimeMode] = useState<"mañana" | "tarde">("mañana");
   
   // Helpers derived from global selection
   const allMacros = useMemo(() => Array.from(new Set(zones.map(z => getMacro(z)))).sort(), [zones]);
@@ -763,16 +764,30 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
 
 
       {/* COMPARATIVE TREND CHARTS (TODAY VS HISTORY) */}
-      <div className="glass-card mt-8 border-orange-500/20 border-2">
-        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center border-b border-white/10 pb-4 mb-6">
-           <div>
-              <h3 className="text-xl font-bold flex items-center gap-2 mb-1">
-                  <Activity size={20} className="text-orange-400" /> 
-                  Comparativa de Tendencia: Hoy vs. Histórico
-              </h3>
-              <p className="text-slate-400 text-sm">Comparativa del comportamiento de <b>{globalBarrio === "Todos los Barrios" ? globalMacro : globalBarrio}</b> hoy vs promedio.</p>
-           </div>
-        </div>
+      <div className="glass-card mb-8 border-amber-500/10 border">
+          <div className="flex flex-col md:flex-row justify-between items-center border-b border-white/5 pb-4 mb-6">
+              <div>
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                    <Activity size={20} className="text-amber-400" />
+                    Comparativa de Tendencia: Hoy vs. Histórico
+                </h3>
+                <p className="text-xs text-slate-400 italic">Comparativa del comportamiento de <b>{globalMacro}</b> hoy vs promedio.</p>
+              </div>
+              <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1 mt-4 md:mt-0">
+                  <button 
+                    onClick={() => setTrendTimeMode("mañana")}
+                    className={`px-4 py-1 text-[10px] font-bold rounded transition-all ${trendTimeMode === 'mañana' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    HORARIO MAÑANA
+                  </button>
+                  <button 
+                    onClick={() => setTrendTimeMode("tarde")}
+                    className={`px-4 py-1 text-[10px] font-bold rounded transition-all ${trendTimeMode === 'tarde' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    HORARIO TARDE
+                  </button>
+              </div>
+          </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
             {/* CHART DESTINO: DOT */}
@@ -787,17 +802,14 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                             <XAxis dataKey="timeTick" stroke="#475569" fontSize={10} tick={{ fill: '#64748b' }} />
                             <YAxis stroke="#475569" fontSize={10} unit="m" tick={{ fill: '#64748b' }} />
                             <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' }} />
-                            <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
                             
                             {allMacros.map((m, mIdx) => {
                                  const color = LINE_COLORS[mIdx % LINE_COLORS.length];
+                                 const type = trendTimeMode === 'mañana' ? 'Ida' : 'Vuelta';
                                  return (
                                      <React.Fragment key={m}>
-                                         <Line type="monotone" dataKey={`${m} Ida (Hoy)`} name={`${m} Hoy`} stroke={color} strokeWidth={3} dot={{ r: 3 }} connectNulls />
-                                         <Line type="monotone" dataKey={`${m} Ida (Hist)`} name={`${m} Hist.`} stroke={color} strokeWidth={1} strokeDasharray="3 3" dot={false} connectNulls opacity={0.4} />
-                                         
-                                         <Line type="monotone" dataKey={`${m} Vuelta (Hoy)`} name={`${m} Hoy (V)`} stroke={color} strokeWidth={3} dot={{ r: 3 }} connectNulls />
-                                         <Line type="monotone" dataKey={`${m} Vuelta (Hist)`} name={`${m} Hist. (V)`} stroke={color} strokeWidth={1} strokeDasharray="3 3" dot={false} connectNulls opacity={0.4} />
+                                         <Line type="monotone" dataKey={`${m} ${type} (Hoy)`} name={`${m} Hoy`} stroke={color} strokeWidth={3} dot={{ r: 3 }} connectNulls />
+                                         <Line type="monotone" dataKey={`${m} ${type} (Hist)`} name={`${m} Hist.`} stroke={color} strokeWidth={1} strokeDasharray="3 3" dot={false} connectNulls opacity={0.4} />
                                      </React.Fragment>
                                  );
                              })}
@@ -818,17 +830,14 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                             <XAxis dataKey="timeTick" stroke="#475569" fontSize={10} tick={{ fill: '#64748b' }} />
                             <YAxis stroke="#475569" fontSize={10} unit="m" tick={{ fill: '#64748b' }} />
                             <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' }} />
-                            <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
                             
                             {allMacros.map((m, mIdx) => {
                                  const color = LINE_COLORS[mIdx % LINE_COLORS.length];
+                                 const type = trendTimeMode === 'mañana' ? 'Ida' : 'Vuelta';
                                  return (
                                      <React.Fragment key={m}>
-                                         <Line type="monotone" dataKey={`${m} Ida (Hoy)`} name={`${m} Hoy`} stroke={color} strokeWidth={3} dot={{ r: 3 }} connectNulls />
-                                         <Line type="monotone" dataKey={`${m} Ida (Hist)`} name={`${m} Hist.`} stroke={color} strokeWidth={1} strokeDasharray="3 3" dot={false} connectNulls opacity={0.4} />
-                                         
-                                         <Line type="monotone" dataKey={`${m} Vuelta (Hoy)`} name={`${m} Hoy (V)`} stroke={color} strokeWidth={3} dot={{ r: 3 }} connectNulls />
-                                         <Line type="monotone" dataKey={`${m} Vuelta (Hist)`} name={`${m} Hist. (V)`} stroke={color} strokeWidth={1} strokeDasharray="3 3" dot={false} connectNulls opacity={0.4} />
+                                         <Line type="monotone" dataKey={`${m} ${type} (Hoy)`} name={`${m} Hoy`} stroke={color} strokeWidth={3} dot={{ r: 3 }} connectNulls />
+                                         <Line type="monotone" dataKey={`${m} ${type} (Hist)`} name={`${m} Hist.`} stroke={color} strokeWidth={1} strokeDasharray="3 3" dot={false} connectNulls opacity={0.4} />
                                      </React.Fragment>
                                  );
                              })}
