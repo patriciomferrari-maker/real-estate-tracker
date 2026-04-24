@@ -54,6 +54,29 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
   const enrichedRecords = useMemo(() => {
     return records.map(r => {
         const d = new Date(r.timestamp);
+        
+        // Extraemos componentes en hora local de Argentina para evitar desfasajes UTC
+        const formatter = new Intl.DateTimeFormat('es-AR', {
+            hour: 'numeric',
+            minute: 'numeric',
+            weekday: 'long',
+            day: 'numeric',
+            month: 'numeric',
+            year: 'numeric',
+            timeZone: 'America/Argentina/Buenos_Aires'
+        });
+        
+        const parts = formatter.formatToParts(d);
+        const getPart = (type: string) => parts.find(p => p.type === type)?.value;
+        
+        const hour = parseInt(getPart('hour') || '0');
+        const min = parseInt(getPart('minute') || '0');
+        
+        // Mapear día lucide-style (0=Dom, 1=Lun...)
+        const dayMap: Record<string, number> = { 'domingo': 0, 'lunes': 1, 'martes': 2, 'miércoles': 3, 'jueves': 4, 'viernes': 5, 'sábado': 6 };
+        const dayStr = getPart('weekday')?.toLowerCase() || 'lunes';
+        const dayOfWeek = dayMap[dayStr] ?? d.getDay();
+
         const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
         const isDOT = isIda ? r.destination.includes("DOT") : r.origin.includes("DOT");
         const relevantBarrioRaw = isIda ? r.origin : r.destination;
@@ -62,15 +85,14 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
             ...r,
             isIda,
             isDOT,
-            dayOfWeek: d.getDay(),
+            dayOfWeek,
             month: d.getMonth(),
             macro: getMacro(relevantBarrioRaw),
             barrio: shortenBarrioName(relevantBarrioRaw),
-            barrioRaw: relevantBarrioRaw, // Mantenemos el nombre original para filtrado exacto
-            hours: d.getHours(),
-            minutes: d.getMinutes(),
-            // Usamos formato DD/MM/YYYY para la UI y la tabla
-            dateStr: d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+            barrioRaw: relevantBarrioRaw,
+            hours: hour,
+            minutes: min,
+            dateStr: d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Argentina/Buenos_Aires' }),
             timestampDate: d
         };
     }).filter(r => {
