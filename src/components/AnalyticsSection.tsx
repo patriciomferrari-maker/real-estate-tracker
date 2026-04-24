@@ -505,31 +505,6 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           </div>
       </div>
 
-      {/* KPI SUMMARY CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-          <div className="glass-card border-blue-500/20 bg-blue-500/5">
-              <p className="text-[10px] uppercase font-bold text-blue-400/70 tracking-widest mb-1">Promedio Globlal DOT</p>
-              <div className="flex items-end gap-2">
-                  <span className="text-3xl font-black text-white">{summaryStats.dot.avg}</span>
-                  <span className="text-xs text-slate-400 mb-1.5">min</span>
-              </div>
-          </div>
-          <div className="glass-card border-purple-500/20 bg-purple-500/5">
-              <p className="text-[10px] uppercase font-bold text-purple-400/70 tracking-widest mb-1">Promedio Global Centro</p>
-              <div className="flex items-end gap-2">
-                  <span className="text-3xl font-black text-white">{summaryStats.centro.avg}</span>
-                  <span className="text-xs text-slate-400 mb-1.5">min</span>
-              </div>
-          </div>
-          <div className="glass-card border-emerald-500/20 bg-emerald-500/5">
-              <p className="text-[10px] uppercase font-bold text-emerald-400/70 tracking-widest mb-1">Mejor Barrio (Cerca DOT)</p>
-              <span className="text-lg font-bold text-white block truncate">{summaryStats.dot.best}</span>
-          </div>
-          <div className="glass-card border-amber-500/20 bg-amber-500/5">
-              <p className="text-[10px] uppercase font-bold text-amber-400/70 tracking-widest mb-1">Muestras Analizadas</p>
-              <span className="text-2xl font-black text-white block">{summaryStats.total}</span>
-          </div>
-      </div>
 
       {/* MULTI-BARRIO EVOLUTION CHART */}
       <div className="glass-card border-white/5 space-y-6">
