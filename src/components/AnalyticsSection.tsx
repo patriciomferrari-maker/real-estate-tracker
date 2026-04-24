@@ -159,44 +159,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           point[`_sum_${seriesKey}`] += r.durationMins;
           point[`_count_${seriesKey}`]++;
       });
-... (rest removed for brevity, will continue in next chunk)
 
-  const barriosForLine = useMemo(() => {
-      if (lineMacro === "Todas las Zonas" || lineModoView === "promediado") return [];
-      return zones.filter(z => getMacro(z) === lineMacro).map(shortenBarrioName);
-  }, [lineMacro, zones, lineModoView]);
-
-  const evolutivoData = useMemo(() => {
-      const timeMap = new Map<string, any>();
-      
-      records.forEach(r => {
-          const date = new Date(r.timestamp);
-          const dateStr = date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-          if (lineDate !== "Histórico Promediado" && dateStr !== lineDate) return;
-
-          const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
-          if (lineSentido === "ida" && !isIda) return;
-          if (lineSentido === "vuelta" && isIda) return;
-
-          const isDOT = isIda ? r.destination.includes("DOT") : r.origin.includes("DOT");
-          if (lineDestino === "dot" && !isDOT) return;
-          if (lineDestino === "centro" && isDOT) return;
-
-          const relevantBarrioRaw = isIda ? r.origin : r.destination;
-          const relevantBarrio = shortenBarrioName(relevantBarrioRaw);
-          const macro = getMacro(relevantBarrioRaw);
-          if (macro === "Otras Zonas") return;
-          
-          if (lineMacro !== "Todas las Zonas" && macro !== lineMacro) return;
-
-          const mRounded = Math.floor(date.getMinutes() / timeBinSize) * timeBinSize; 
-          const key = `${date.getHours().toString().padStart(2,'0')}:${mRounded.toString().padStart(2,'0')}`;
-
-          if (!timeMap.has(key)) timeMap.set(key, { timeHourNum: date.getHours() + (mRounded/60), timeTick: key });
-          const point = timeMap.get(key);
-          
-          let seriesKey = (lineMacro === "Todas las Zonas" || lineModoView === "promediado") ? macro : relevantBarrio;
-          if (lineDestino === "todos") {
       return Array.from(timeMap.values()).map(pt => {
           const finalPt: any = { timeTick: pt.timeTick, timeHourNum: pt.timeHourNum };
           Object.keys(pt).forEach(k => {

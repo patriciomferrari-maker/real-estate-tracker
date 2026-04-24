@@ -49,10 +49,39 @@ export default async function Dashboard({ searchParams }: any) {
     orderBy: { timestamp: 'desc' }
   });
 
-  // Convert dates to string for Client Components
-  const serializableRecords = records.map(r => ({
-     ...r,
-     timestamp: r.timestamp.toISOString()
+  // SERVER-SIDE AGGREGATION: Reduce 10,000+ records to ~1/3 size using 15-min buckets
+  const aggregatedMap = new Map<string, any>();
+  
+  records.forEach(r => {
+      const d = new Date(r.timestamp);
+      const dateKey = d.toLocaleDateString('en-CA'); 
+      const hourBucket = d.getHours();
+      const minuteBucket = Math.floor(d.getMinutes() / 15) * 15; 
+      
+      const key = `${r.origin}|${r.destination}|${dateKey}|${hourBucket}|${minuteBucket}`;
+      
+      if (!aggregatedMap.has(key)) {
+          aggregatedMap.set(key, {
+              id: `${r.id}_agg`,
+              origin: r.origin,
+              destination: r.destination,
+              timestamp: new Date(`${dateKey}T${hourBucket.toString().padStart(2,'0')}:${minuteBucket.toString().padStart(2,'0')}:00`).toISOString(),
+              durationSum: 0,
+              count: 0
+          });
+      }
+      const entry = aggregatedMap.get(key)!;
+      entry.durationSum += r.durationMins;
+      entry.count++;
+  });
+
+  const serializableRecords = Array.from(aggregatedMap.values()).map(e => ({
+      id: e.id,
+      origin: e.origin,
+      destination: e.destination,
+      timestamp: e.timestamp,
+      durationMins: Math.round(e.durationSum / e.count),
+      isAggregate: true 
   }));
 
   // Calculate aggregates based on direction and destination
