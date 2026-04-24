@@ -78,5 +78,10 @@ export async function syncAllData() {
   } finally {
     await browser.close()
   }
-  revalidatePath("/");
+  
+  try {
+    revalidatePath("/");
+  } catch (e) {
+    // This might fail if run from a standalone script (like daemon.ts), which is fine
+  }
 }

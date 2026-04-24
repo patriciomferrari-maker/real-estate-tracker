@@ -9,27 +9,29 @@ import DataExplorer from "@/components/DataExplorer"
 
 // Helper to clean up names for the UI
 function formatZoneName(raw: string) {
-  if (raw.includes("San Matias")) return "Escobar (San Matías)";
-  if (raw.includes("Puertos")) return "Escobar (Puertos)";
-  if (raw.includes("Canton") || raw.includes("Cantón")) return "Escobar (El Cantón)";
-  if (raw.includes("Santa Ana")) return "Escobar (Santa Ana)";
-  if (raw.includes("Santa Barbara")) return "Nordelta (Santa Bárbara)";
-  if (raw.includes("Castaños")) return "Nordelta (Castaños)";
-  if (raw.includes("Glorietas")) return "Nordelta (Glorietas)";
-  if (raw.includes("Barbarita")) return "Nordelta (Barbarita)";
-  if (raw.includes("Escondida") || raw.includes("Milberg")) return "Tigre (La Escondida)";
-  if (raw.includes("Liebres")) return "Tortugas (Las Liebres)";
-  if (raw.includes("Boulevares") || raw.includes("Bulevares")) return "Tortugas (Los Boulevares)";
-  if (raw.includes("Encuentro")) return "Benavidez (El Encuentro)";
-  if (raw.includes("Altos de Pacheco")) return "Pacheco (Altos de Pacheco)";
-  if (raw.includes("Sucre") || raw.includes("Rocha")) return "San Isidro (Lomas)";
-  if (raw.includes("Buenavista")) return "Buenavista (Bancalari)";
+  if (raw.includes("San Matias")) return "San Matías";
+  if (raw.includes("Puertos")) return "Puertos";
+  if (raw.includes("Canton") || raw.includes("Cantón")) return "El Cantón";
+  if (raw.includes("Santa Ana")) return "Santa Ana";
+  if (raw.includes("San Marco")) return "San Marco";
+  if (raw.includes("Villa Nueva")) return "Villa Nueva";
+  if (raw.includes("Santa Barbara")) return "Santa Bárbara";
+  if (raw.includes("Castaños")) return "Castaños";
+  if (raw.includes("Glorietas")) return "Glorietas";
+  if (raw.includes("Barbarita")) return "Barbarita";
+  if (raw.includes("Escondida") || raw.includes("Milberg")) return "La Escondida";
+  if (raw.includes("Liebres")) return "Las Liebres";
+  if (raw.includes("Boulevares") || raw.includes("Bulevares")) return "Los Boulevares";
+  if (raw.includes("Encuentro")) return "El Encuentro";
+  if (raw.includes("Altos de Pacheco")) return "Altos de Pacheco";
+  if (raw.includes("Sucre") || raw.includes("Rocha")) return "San Isidro";
+  if (raw.includes("Buenavista")) return "Buenavista";
   if (raw.includes("Tortugas")) return "Pilar (Tortugas)";
   if (raw.includes("Vicente Lopez")) return "Vicente Lopez";
   
   if (raw.includes("DOT")) return "Shopping DOT";
   if (raw.includes("Florida") || raw.includes("Microcentro") || raw.includes("Obelisco")) return "Microcentro";
-  return raw;
+  return raw.split(',')[0].replace("Barrio", "").trim();
 }
 
 export default async function Dashboard({ searchParams }: any) {
@@ -56,7 +58,7 @@ export default async function Dashboard({ searchParams }: any) {
       const d = new Date(r.timestamp);
       const dateKey = d.toLocaleDateString('en-CA'); 
       const hourBucket = d.getHours();
-      const minuteBucket = Math.floor(d.getMinutes() / 15) * 15; 
+      const minuteBucket = Math.floor(d.getMinutes() / 5) * 5; 
       
       const key = `${r.origin}|${r.destination}|${dateKey}|${hourBucket}|${minuteBucket}`;
       
@@ -137,10 +139,11 @@ export default async function Dashboard({ searchParams }: any) {
         avgDOT,
         avgMicro,
         sortVal: (avgDOT || 0) + (avgMicro || 0), // Use sum for robust sorting
-        macro: name.includes("Escobar") ? "Corredor Escobar" : 
-               name.includes("Nordelta") ? "Nordelta" : 
-               name.includes("Tortugas") ? "Tortugas / Pilar" : 
-               (name.includes("Tigre") || name.includes("Pacheco") || name.includes("Benavidez")) ? "Tigre / Pacheco / Benav." : 
+        macro: (name.includes("Escobar") || name.includes("San Matías") || name.includes("El Cantón") || name.includes("Puertos")) ? "Escobar" : 
+               (name.includes("Nordelta") || name.includes("Glorietas") || name.includes("Castaños") || name.includes("Santa Bárbara") || name.includes("Barbarita")) ? "Nordelta" : 
+               (name.includes("Villa Nueva") || name.includes("San Marco") || name.includes("Santa Ana")) ? "Villa Nueva" :
+               (name.includes("Tortugas") || name.includes("Liebres") || name.includes("Boulevares")) ? "Tortugas" : 
+               (name.includes("Tigre") || name.includes("Pacheco") || name.includes("Benavidez") || name.includes("Encuentro")) ? "Benavidez / Pacheco" : 
                (name.includes("San Isidro") || name.includes("Buenavista")) ? "San Isidro / Bancalari" : "Otros",
         ...data
       };

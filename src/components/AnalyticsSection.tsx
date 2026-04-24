@@ -107,127 +107,96 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const [barTimeMode, setBarTimeMode] = useState<"mañana" | "tarde">("mañana");
   const [timeBinSize, setTimeBinSize] = useState<number>(30); 
 
-  // 2. Optimized Sub-Memos
+  const todayStr = useMemo(() => new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }), []);
+
+  // BARS: Ranking data
   const comparisonData = useMemo(() => {
-      const groups = new Map<string, { zone: string, totalDOT: number, countDOT: number, totalMicro: number, countMicro: number }>();
+    const groups = new Map<string, any>();
+    enrichedRecords.forEach(r => {
+        if (barTimeMode === "mañana" && !r.isIda) return;
+        if (barTimeMode === "tarde" && r.isIda) return;
+        if (!groups.has(r.barrio)) groups.set(r.barrio, { 
+            zone: r.barrio, tDOT: 0, cDOT: 0, tMicro: 0, cMicro: 0,
+            tdDOT: 0, cdDOT: 0, tdMicro: 0, cdMicro: 0 
+        });
+        const s = groups.get(r.barrio)!;
+        const isToday = r.dateStr === todayStr;
+        if (r.isDOT) { 
+            s.tDOT += r.durationMins; s.cDOT++; 
+            if (isToday) { s.tdDOT += r.durationMins; s.cdDOT++; }
+        } else { 
+            s.tMicro += r.durationMins; s.cMicro++; 
+            if (isToday) { s.tdMicro += r.durationMins; s.cdMicro++; }
+        }
+    });
+    return Array.from(groups.values()).map(s => ({
+        zone: s.zone,
+        "Histórico (DOT)": s.cDOT > 0 ? Math.round(s.tDOT / s.cDOT) : 0,
+        "Hoy (DOT)": s.cdDOT > 0 ? Math.round(s.tdDOT / s.cdDOT) : 0,
+        "Histórico (Centro)": s.cMicro > 0 ? Math.round(s.tMicro / s.cMicro) : 0,
+        "Hoy (Centro)": s.cdMicro > 0 ? Math.round(s.tdMicro / s.cdMicro) : 0,
+    })).sort((a,b) => (a["Histórico (DOT)"] + a["Histórico (Centro)"]) - (b["Histórico (DOT)"] + b["Histórico (Centro)"]));
+  }, [enrichedRecords, barTimeMode, todayStr]);
+
+  const [trendBarrio, setTrendBarrio] = useState<string>("");
+  React.useEffect(() => {
+    if (!trendBarrio && zones.length > 0) setTrendBarrio(zones[0]);
+  }, [zones, trendBarrio]);
+
+
+  const trendData = useMemo(() => {
+      const dotMap = new Map<string, any>();
+      const centroMap = new Map<string, any>();
       enrichedRecords.forEach(r => {
-          if (barTimeMode === "mañana" && !r.isIda) return;
-          if (barTimeMode === "tarde" && r.isIda) return;
-          if (!groups.has(r.barrio)) groups.set(r.barrio, { zone: r.barrio, totalDOT: 0, countDOT: 0, totalMicro: 0, countMicro: 0 });
-          const stat = groups.get(r.barrio)!;
-          if (r.isDOT) { stat.totalDOT += r.durationMins; stat.countDOT++; } 
-          else { stat.totalMicro += r.durationMins; stat.countMicro++; }
-      });
-      return Array.from(groups.values()).map(s => ({
-          zone: s.zone,
-          "Al DOT": s.countDOT > 0 ? Math.round(s.totalDOT / s.countDOT) : 0,
-          "Al Microcentro": s.countMicro > 0 ? Math.round(s.totalMicro / s.countMicro) : 0,
-      })).filter(s => s["Al DOT"] > 0 || s["Al Microcentro"] > 0).sort((a,b) => (a["Al DOT"] + a["Al Microcentro"]) - (b["Al DOT"] + b["Al Microcentro"]));
-  }, [enrichedRecords, barTimeMode]);
-
-  const [lineSentido, setLineSentido] = useState<"ida" | "vuelta">("ida");
-  const [lineDestino, setLineDestino] = useState<"todos" | "dot" | "centro">("todos");
-  const [lineMacro, setLineMacro] = useState<string>("Todas las Zonas");
-  const [lineDate, setLineDate] = useState<string>("Histórico Promediado");
-  const [lineModoView, setLineModoView] = useState<"desglosado" | "promediado">("desglosado");
-
-  const barriosForLine = useMemo(() => {
-    if (lineMacro === "Todas las Zonas" || lineModoView === "promediado") return [];
-    return zones.filter(z => getMacro(z) === lineMacro).map(shortenBarrioName);
-  }, [lineMacro, zones, lineModoView]);
-
-  const evolutivoData = useMemo(() => {
-      const timeMap = new Map<string, any>();
-      enrichedRecords.forEach(r => {
-          if (lineDate !== "Histórico Promediado" && r.dateStr !== lineDate) return;
-          if (lineSentido === "ida" && !r.isIda) return;
-          if (lineSentido === "vuelta" && r.isIda) return;
-          if (lineDestino === "dot" && !r.isDOT) return;
-          if (lineDestino === "centro" && r.isDOT) return;
-          if (r.macro === "Otras Zonas") return;
-          if (lineMacro !== "Todas las Zonas" && r.macro !== lineMacro) return;
-
+          if (r.barrio !== trendBarrio) return;
           const mRounded = Math.floor(r.minutes / timeBinSize) * timeBinSize; 
           const key = `${r.hours.toString().padStart(2,'0')}:${mRounded.toString().padStart(2,'0')}`;
-          if (!timeMap.has(key)) timeMap.set(key, { timeHourNum: r.hours + (mRounded/60), timeTick: key });
-          const point = timeMap.get(key);
-          
-          let seriesKey = (lineMacro === "Todas las Zonas" || lineModoView === "promediado") ? r.macro : r.barrio;
-          if (lineDestino === "todos") seriesKey += r.isDOT ? " (DOT)" : " (Centro)";
-          
-          if (!point[`_sum_${seriesKey}`]) { point[`_sum_${seriesKey}`] = 0; point[`_count_${seriesKey}`] = 0; }
-          point[`_sum_${seriesKey}`] += r.durationMins;
-          point[`_count_${seriesKey}`]++;
+          const isToday = r.dateStr === todayStr;
+          const targetMap = r.isDOT ? dotMap : centroMap;
+          if (!targetMap.has(key)) targetMap.set(key, { 
+              timeTick: key, timeHourNum: r.hours + (mRounded/60),
+              idaSum: 0, idaCount: 0, idaHoy: null, vueltaSum: 0, vueltaCount: 0, vueltaHoy: null
+          });
+          const p = targetMap.get(key);
+          if (r.isIda) { p.idaSum += r.durationMins; p.idaCount++; if (isToday) p.idaHoy = r.durationMins; }
+          else { p.vueltaSum += r.durationMins; p.vueltaCount++; if (isToday) p.vueltaHoy = r.durationMins; }
       });
+      const finalize = (m: Map<string, any>) => Array.from(m.values()).map(p => ({
+          timeTick: p.timeTick, timeHourNum: p.timeHourNum,
+          "Ida (Hoy)": p.idaHoy, "Ida (Promedio)": p.idaCount > 0 ? Math.round(p.idaSum / p.idaCount) : null,
+          "Vuelta (Hoy)": p.vueltaHoy, "Vuelta (Promedio)": p.vueltaCount > 0 ? Math.round(p.vueltaSum / p.vueltaCount) : null
+      })).sort((a,b) => a.timeHourNum - b.timeHourNum);
+      return { dot: finalize(dotMap), centro: finalize(centroMap) };
+  }, [enrichedRecords, trendBarrio, todayStr, timeBinSize]);
 
-      return Array.from(timeMap.values()).map(pt => {
-          const finalPt: any = { timeTick: pt.timeTick, timeHourNum: pt.timeHourNum };
-          Object.keys(pt).forEach(k => {
-              if (k.startsWith("_sum_")) {
-                  const series = k.replace("_sum_", "");
-                  finalPt[series] = Math.round(pt[k] / pt[`_count_${series}`]);
-              }
-          });
-          return finalPt;
-      }).sort((a,b) => a.timeHourNum - b.timeHourNum);
-  }, [enrichedRecords, lineSentido, lineDestino, lineMacro, lineDate, lineModoView, timeBinSize]);
-
-  const dynamicLineKeys = useMemo(() => {
-      let baseKeys: string[] = [];
-      if (lineMacro === "Todas las Zonas" || lineModoView === "promediado") {
-          baseKeys = Array.from(new Set(zones.map(z => getMacro(z)))).filter(m => m !== "Otras Zonas");
-          if (lineMacro !== "Todas las Zonas") baseKeys = [lineMacro];
-      } else {
-          baseKeys = Array.from(new Set(barriosForLine));
-      }
-
-      if (lineDestino === "todos") {
-          const expanded: string[] = [];
-          baseKeys.forEach(k => {
-              expanded.push(`${k} (DOT)`);
-              expanded.push(`${k} (Centro)`);
-          });
-          return expanded;
-      }
-      return baseKeys;
-  }, [lineMacro, zones, barriosForLine, lineDestino]);
+  const radarData = useMemo(() => {
+    const macroIda = new Map<string, any>();
+    const macroVuelta = new Map<string, any>();
+    enrichedRecords.forEach(r => {
+        if (r.macro === "Otras Zonas") return;
+        const map = r.isIda ? macroIda : macroVuelta;
+        if (!map.has(r.macro)) map.set(r.macro, { hMin:999, hMax:0, tMin:999, tMax:0 });
+        const o = map.get(r.macro)!;
+        if (r.durationMins < o.hMin) o.hMin = r.durationMins;
+        if (r.durationMins > o.hMax) o.hMax = r.durationMins;
+        if (r.dateStr === todayStr) {
+            if (r.durationMins < o.tMin) o.tMin = r.durationMins;
+            if (r.durationMins > o.tMax) o.tMax = r.durationMins;
+        }
+    });
+    const fmt = (m: Map<string, any>) => Array.from(m.entries()).map(([k,v]) => ({ 
+        subject: k, 
+        "Peor (Histórico)": v.hMax, "Mejor (Histórico)": v.hMin === 999 ? 0 : v.hMin,
+        "Peor (Hoy)": v.tMax === 0 ? null : v.tMax, "Mejor (Hoy)": v.tMin === 999 ? null : v.tMin
+    }));
+    return { ida: fmt(macroIda), vuelta: fmt(macroVuelta) };
+  }, [enrichedRecords, todayStr]);
 
   const LINE_COLORS = [
       "#3b82f6", "#10b981", "#f59e0b", "#f43f5e", "#a855f7", "#06b6d4", "#f97316", "#84cc16",
       "#6366f1", "#14b8a6", "#eab308", "#ec4899", "#8b5cf6", "#3b82f6", "#10b981", "#f59e0b"
   ];
 
-  const radarIdaData = useMemo(() => {
-      const macro = new Map<string, { name: string, min: number, max: number }>();
-      enrichedRecords.forEach(r => {
-          if (!r.isIda || r.durationMins < 10 || r.originMacro === "Otras Zonas") return;
-          if (!macro.has(r.originMacro)) macro.set(r.originMacro, { name: r.originMacro, min: 999, max: 0 });
-          const obj = macro.get(r.originMacro)!;
-          if (r.durationMins < obj.min) obj.min = r.durationMins;
-          if (r.durationMins > obj.max) obj.max = r.durationMins;
-      });
-      return Array.from(macro.values()).map(m => ({
-          subject: m.name,
-          "Mejor Tiempo": m.min === 999 ? 0 : m.min,
-          "Peor Tránsito": m.max
-      }));
-  }, [enrichedRecords]);
-
-  const radarVueltaData = useMemo(() => {
-      const macro = new Map<string, { name: string, min: number, max: number }>();
-      enrichedRecords.forEach(r => {
-          if (r.isIda || r.durationMins < 10 || r.destMacro === "Otras Zonas") return;
-          if (!macro.has(r.destMacro)) macro.set(r.destMacro, { name: r.destMacro, min: 999, max: 0 });
-          const obj = macro.get(r.destMacro)!;
-          if (r.durationMins < obj.min) obj.min = r.durationMins;
-          if (r.durationMins > obj.max) obj.max = r.durationMins;
-      });
-      return Array.from(macro.values()).map(m => ({
-          subject: m.name,
-          "Mejor Tiempo": m.min === 999 ? 0 : m.min,
-          "Peor Tránsito": m.max
-      }));
-  }, [enrichedRecords]);
 
   const allMacros = useMemo(() => Array.from(new Set(zones.map(z => getMacro(z)))).sort(), [zones]);
   const barriosInSelectedMacro = useMemo(() => {
@@ -236,19 +205,15 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   }, [scatterMacro, zones]);
   
   const rawScatterPoints = useMemo(() => {
-      return enrichedRecords.map(r => {
-         const minutesRounded = Math.floor(r.minutes / timeBinSize) * timeBinSize;
-         return {
-            id: r.id,
-            isIda: r.isIda,
-            isDOT: r.isDOT,
-            duration: r.durationMins,
-            timeHour: r.hours + (minutesRounded / 60),
-            barrio: r.barrio,
-            macro: r.macro
-         };
-      });
-  }, [enrichedRecords, timeBinSize]);
+    return enrichedRecords.map(r => {
+      const bin = Math.floor(r.minutes / timeBinSize) * timeBinSize;
+      return { 
+          id: r.id, isIda: r.isIda, isDOT: r.isDOT, duration: r.durationMins, 
+          timeHour: r.hours + (bin / 60), barrio: r.barrio, macro: r.macro,
+          isToday: r.dateStr === todayStr
+      };
+    });
+  }, [enrichedRecords, timeBinSize, todayStr]);
 
   const filteredScatter = useMemo(() => {
       let filtered = rawScatterPoints.filter(p => {
@@ -349,41 +314,6 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
     return null;
   };
 
-  const evolutivoStats = useMemo(() => {
-      let dotMin = 999, dotMax = 0, dotSum = 0, dotCount = 0;
-      let centroMin = 999, centroMax = 0, centroSum = 0, centroCount = 0;
-
-      evolutivoData.forEach(pt => {
-         Object.keys(pt).forEach(k => {
-             if (k !== 'timeTick' && k !== 'timeHourNum') {
-                 const v = pt[k];
-                 if (lineDestino === 'todos') {
-                     if (k.includes('(DOT)')) {
-                         if (v > dotMax) dotMax = v;
-                         if (v < dotMin) dotMin = v;
-                         dotSum += v; dotCount++;
-                     } else if (k.includes('(Centro)')) {
-                         if (v > centroMax) centroMax = v;
-                         if (v < centroMin) centroMin = v;
-                         centroSum += v; centroCount++;
-                     }
-                 } else if (lineDestino === 'dot') {
-                     if (v > dotMax) dotMax = v;
-                     if (v < dotMin) dotMin = v;
-                     dotSum += v; dotCount++;
-                 } else {
-                     if (v > centroMax) centroMax = v;
-                     if (v < centroMin) centroMin = v;
-                     centroSum += v; centroCount++;
-                 }
-             }
-         });
-      });
-      return { 
-          dot: { min: dotMin === 999 ? 0 : dotMin, max: dotMax, avg: dotCount > 0 ? Math.round(dotSum/dotCount) : 0 },
-          centro: { min: centroMin === 999 ? 0 : centroMin, max: centroMax, avg: centroCount > 0 ? Math.round(centroSum/centroCount) : 0 }
-      };
-  }, [evolutivoData, lineDestino]);
 
   const scatterIdaStats = useMemo(() => {
       let min = 999, max = 0, sum = 0, count = 0;
@@ -536,14 +466,22 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                                 {scatterIdaStats.min > 0 && <ReferenceLine y={scatterIdaStats.min} stroke="#10b981" strokeDasharray="3 3" opacity={0.3}><Label value={`MIN ${scatterIdaStats.min}m`} position="insideBottomLeft" fill="#10b981" fontSize={10} /></ReferenceLine>}
 
                                 {scatterSeriesIda.map((series, idx) => (
-                                    <Scatter 
-                                        key={`ida-${series.macro}-${series.isDOT}-${idx}`}
-                                        name={series.macro} 
-                                        data={series.data} 
-                                        fill={getColorByZone(series.macro, series.isDOT)}
-                                        opacity={0.6}
-                                        shape="circle"
-                                    />
+                                    <React.Fragment key={`ida-${series.macro}-${idx}`}>
+                                        <Scatter 
+                                            name={`${series.macro} (Historial)`} 
+                                            data={series.data.filter(p => !p.isToday)} 
+                                            fill={getColorByZone(series.macro, series.isDOT)}
+                                            opacity={0.1}
+                                            shape="circle"
+                                        />
+                                        <Scatter 
+                                            name={`${series.macro} (HOY)`} 
+                                            data={series.data.filter(p => p.isToday)} 
+                                            fill={getColorByZone(series.macro, series.isDOT)}
+                                            opacity={1}
+                                            shape="circle"
+                                        />
+                                    </React.Fragment>
                                 ))}
                             </ScatterChart>
                         </ResponsiveContainer>
@@ -569,14 +507,22 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                                 {scatterVueltaStats.min > 0 && <ReferenceLine y={scatterVueltaStats.min} stroke="#10b981" strokeDasharray="3 3" opacity={0.3}><Label value={`MIN ${scatterVueltaStats.min}m`} position="insideBottomLeft" fill="#10b981" fontSize={10} /></ReferenceLine>}
 
                                 {scatterSeriesVuelta.map((series, idx) => (
-                                    <Scatter 
-                                        key={`vuelta-${series.macro}-${series.isDOT}-${idx}`}
-                                        name={series.macro} 
-                                        data={series.data} 
-                                        fill={getColorByZone(series.macro, series.isDOT)}
-                                        opacity={0.6}
-                                        shape="circle"
-                                    />
+                                    <React.Fragment key={`vuelta-${series.macro}-${idx}`}>
+                                        <Scatter 
+                                            name={`${series.macro} (Historial)`} 
+                                            data={series.data.filter(p => !p.isToday)} 
+                                            fill={getColorByZone(series.macro, series.isDOT)}
+                                            opacity={0.1}
+                                            shape="circle"
+                                        />
+                                        <Scatter 
+                                            name={`${series.macro} (HOY)`} 
+                                            data={series.data.filter(p => p.isToday)} 
+                                            fill={getColorByZone(series.macro, series.isDOT)}
+                                            opacity={1}
+                                            shape="circle"
+                                        />
+                                    </React.Fragment>
                                 ))}
                             </ScatterChart>
                         </ResponsiveContainer>
@@ -588,130 +534,79 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       </div>
 
 
-      {/* INDIVIDUAL EVOLUTION LINE CHART */}
+      {/* COMPARATIVE TREND CHARTS (TODAY VS HISTORY) */}
       <div className="glass-card mt-8 border-orange-500/20 border-2">
         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center border-b border-white/10 pb-4 mb-6">
            <div>
               <h3 className="text-xl font-bold flex items-center gap-2 mb-1">
                   <Activity size={20} className="text-orange-400" /> 
-                  Evolución Minuto a Minuto
+                  Comparativa de Tendencia: Hoy vs. Histórico
               </h3>
-              <p className="text-slate-400 text-sm">Compara la línea en el tiempo para cada barrio dentro de una zona (o compara las macro-zonas enteras).</p>
+              <p className="text-slate-400 text-sm">Viendo el comportamiento de <b>{trendBarrio}</b> hoy comparado con el promedio acumulado.</p>
            </div>
            
-           <div className="mt-4 xl:mt-0 flex gap-4 flex-wrap">
-               <div className="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1">
-                  <button 
-                    onClick={() => setLineSentido("ida")}
-                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${lineSentido === 'ida' ? 'bg-orange-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    IDA (A Capital)
-                  </button>
-                  <button 
-                    onClick={() => setLineSentido("vuelta")}
-                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${lineSentido === 'vuelta' ? 'bg-orange-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    VUELTA (A Provincia)
-                  </button>
-               </div>
-
-               <div className="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1">
-                  <button 
-                    onClick={() => setLineDestino("todos")}
-                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${lineDestino === 'todos' ? 'bg-slate-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    Ambos
-                  </button>
-                  <button 
-                    onClick={() => setLineDestino("dot")}
-                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${lineDestino === 'dot' ? 'bg-blue-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    Solo DOT
-                  </button>
-                  <button 
-                    onClick={() => setLineDestino("centro")}
-                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${lineDestino === 'centro' ? 'bg-green-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    Solo Centro
-                  </button>
-               </div>
-               
-               <div className="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1">
-                  <button 
-                    onClick={() => setLineModoView("desglosado")}
-                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${lineModoView === 'desglosado' ? 'bg-slate-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    Ver Barrios
-                  </button>
-                  <button 
-                    onClick={() => setLineModoView("promediado")}
-                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${lineModoView === 'promediado' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    Promedio Zonal
-                  </button>
-               </div>
-
-               <div className="relative min-w-[200px]">
+           <div className="mt-4 xl:mt-0 flex gap-4 items-center">
+               <span className="text-xs text-slate-500 uppercase font-bold tracking-wider">Filtrar Barrio:</span>
+               <div className="relative min-w-[250px]">
                    <select 
-                      className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-4 py-1.5 text-sm appearance-none focus:outline-none focus:ring-1 focus:ring-orange-500"
-                      value={lineMacro}
-                      onChange={(e) => setLineMacro(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-4 py-2 text-sm appearance-none focus:outline-none focus:ring-1 focus:ring-orange-500"
+                      value={trendBarrio}
+                      onChange={(e) => setTrendBarrio(e.target.value)}
                    >
-                       <option value="Todas las Zonas">Todas las Zonas</option>
-                       {Array.from(new Set(zones.map(z => getMacro(z)))).filter(m => m !== "Otras Zonas").sort().map(z => <option key={z} value={z}>{z}</option>)}
-                   </select>
-               </div>
-               
-               <div className="relative min-w-[150px]">
-                   <select 
-                      className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-4 py-1.5 text-sm appearance-none focus:outline-none focus:ring-1 focus:ring-slate-500"
-                      value={lineDate}
-                      onChange={(e) => setLineDate(e.target.value)}
-                   >
-                       <option value="Histórico Promediado">Histórico</option>
-                       {uniqueDates.map(d => <option key={d} value={d}>{d}</option>)}
+                       {zones.map(z => <option key={z} value={z}>{z}</option>)}
                    </select>
                </div>
            </div>
         </div>
 
-        <div className="w-full h-[400px]">
-             {evolutivoData.length === 0 ? <p className="text-center text-slate-500 pt-20">No hay datos acumulados en estos parámetros.</p> : (
-                 <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={evolutivoData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                    <XAxis dataKey="timeTick" stroke="#64748b" fontSize={11} tickMargin={10} tick={{ fill: '#64748b' }} />
-                    <YAxis stroke="#64748b" fontSize={11} domain={['dataMin - 5', 'dataMax + 10']} tick={{ fill: '#64748b' }} unit="m" />
-                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
-                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                    
-                    {/* DOT STATS */}
-                    {['dot', 'todos'].includes(lineDestino) && evolutivoStats.dot.max > 0 && <ReferenceLine y={evolutivoStats.dot.max} stroke="#ef4444" strokeDasharray="3 3" opacity={0.6}><Label value={`MAX (DOT): ${evolutivoStats.dot.max}m`} position="insideTopLeft" fill="#ef4444" fontSize={10} /></ReferenceLine>}
-                    {['dot', 'todos'].includes(lineDestino) && evolutivoStats.dot.avg > 0 && <ReferenceLine y={evolutivoStats.dot.avg} stroke="#eab308" strokeDasharray="3 3" opacity={0.6}><Label value={`AVG (DOT): ${evolutivoStats.dot.avg}m`} position="insideTopLeft" fill="#eab308" fontSize={10} /></ReferenceLine>}
-                    {['dot', 'todos'].includes(lineDestino) && evolutivoStats.dot.min > 0 && <ReferenceLine y={evolutivoStats.dot.min} stroke="#10b981" strokeDasharray="3 3" opacity={0.6}><Label value={`MIN (DOT): ${evolutivoStats.dot.min}m`} position="insideBottomLeft" fill="#10b981" fontSize={10} /></ReferenceLine>}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            {/* CHART DESTINO: DOT */}
+            <div className="bg-slate-900/30 p-4 rounded-xl border border-white/5">
+                <h4 className="text-sm font-bold uppercase tracking-widest text-blue-400 mb-4 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-400" /> Destino: Shopping DOT
+                </h4>
+                <div className="h-[350px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={trendData.dot} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                            <XAxis dataKey="timeTick" stroke="#475569" fontSize={10} tick={{ fill: '#64748b' }} />
+                            <YAxis stroke="#475569" fontSize={10} unit="m" tick={{ fill: '#64748b' }} />
+                            <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' }} />
+                            <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                            
+                            <Line type="monotone" dataKey="Ida (Hoy)" stroke="#60a5fa" strokeWidth={4} dot={{ r: 4, fill: '#60a5fa' }} connectNulls />
+                            <Line type="monotone" dataKey="Ida (Promedio)" stroke="#3b82f6" strokeWidth={2} strokeDasharray="5 5" dot={false} connectNulls opacity={0.5} />
+                            
+                            <Line type="monotone" dataKey="Vuelta (Hoy)" stroke="#f472b6" strokeWidth={4} dot={{ r: 4, fill: '#f472b6' }} connectNulls />
+                            <Line type="monotone" dataKey="Vuelta (Promedio)" stroke="#db2777" strokeWidth={2} strokeDasharray="5 5" dot={false} connectNulls opacity={0.5} />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
 
-                    {/* CENTRO STATS */}
-                    {['centro', 'todos'].includes(lineDestino) && evolutivoStats.centro.max > 0 && <ReferenceLine y={evolutivoStats.centro.max} stroke="#ef4444" strokeDasharray="3 3" opacity={0.6}><Label value={`MAX (Centro): ${evolutivoStats.centro.max}m`} position="insideTopRight" fill="#ef4444" fontSize={10} /></ReferenceLine>}
-                    {['centro', 'todos'].includes(lineDestino) && evolutivoStats.centro.avg > 0 && <ReferenceLine y={evolutivoStats.centro.avg} stroke="#eab308" strokeDasharray="3 3" opacity={0.6}><Label value={`AVG (Centro): ${evolutivoStats.centro.avg}m`} position="insideTopRight" fill="#eab308" fontSize={10} /></ReferenceLine>}
-                    {['centro', 'todos'].includes(lineDestino) && evolutivoStats.centro.min > 0 && <ReferenceLine y={evolutivoStats.centro.min} stroke="#10b981" strokeDasharray="3 3" opacity={0.6}><Label value={`MIN (Centro): ${evolutivoStats.centro.min}m`} position="insideBottomRight" fill="#10b981" fontSize={10} /></ReferenceLine>}
-
-
-                    {dynamicLineKeys.map((k, i) => (
-                        <Line 
-                           key={k} 
-                           type="monotone" 
-                           dataKey={k} 
-                           name={k} 
-                           stroke={LINE_COLORS[i % LINE_COLORS.length]} 
-                           strokeWidth={3} 
-                           dot={{ r: 4 }} 
-                           activeDot={{ r: 6 }} 
-                           connectNulls 
-                        />
-                    ))}
-                    </LineChart>
-                </ResponsiveContainer>
-             )}
+            {/* CHART DESTINO: CENTRO */}
+            <div className="bg-slate-900/30 p-4 rounded-xl border border-white/5">
+                <h4 className="text-sm font-bold uppercase tracking-widest text-purple-400 mb-4 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-purple-400" /> Destino: Obelisco / Centro
+                </h4>
+                <div className="h-[350px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={trendData.centro} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                            <XAxis dataKey="timeTick" stroke="#475569" fontSize={10} tick={{ fill: '#64748b' }} />
+                            <YAxis stroke="#475569" fontSize={10} unit="m" tick={{ fill: '#64748b' }} />
+                            <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' }} />
+                            <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                            
+                            <Line type="monotone" dataKey="Ida (Hoy)" stroke="#a855f7" strokeWidth={4} dot={{ r: 4, fill: '#a855f7' }} connectNulls />
+                            <Line type="monotone" dataKey="Ida (Promedio)" stroke="#7e22ce" strokeWidth={2} strokeDasharray="5 5" dot={false} connectNulls opacity={0.5} />
+                            
+                            <Line type="monotone" dataKey="Vuelta (Hoy)" stroke="#fbbf24" strokeWidth={4} dot={{ r: 4, fill: '#fbbf24' }} connectNulls />
+                            <Line type="monotone" dataKey="Vuelta (Promedio)" stroke="#d97706" strokeWidth={2} strokeDasharray="5 5" dot={false} connectNulls opacity={0.5} />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
         </div>
       </div>
 
@@ -724,14 +619,16 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
               <p className="text-xs text-slate-400 mb-6">Brecha entre mejor y peor tiempo hacia CABA.</p>
               
               <div className="h-[320px] w-full">
-                 {radarIdaData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
+                 {radarData.ida.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
                      <ResponsiveContainer width="100%" height="100%">
-                        <RadarChart data={radarIdaData}>
+                        <RadarChart data={radarData.ida}>
                           <PolarGrid stroke="rgba(255,255,255,0.1)" />
                           <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 10 }} />
                           <PolarRadiusAxis angle={30} domain={[0, 'dataMax']} tick={{ fill: '#64748b', fontSize: 9 }} />
-                          <Radar name="Peor Tránsito" dataKey="Peor Tránsito" stroke="#ef4444" fill="#ef4444" fillOpacity={0.3} />
-                          <Radar name="Mejor Tiempo" dataKey="Mejor Tiempo" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
+                          <Radar name="Peor (Histórico)" dataKey="Peor (Histórico)" stroke="#ef4444" fill="#ef4444" fillOpacity={0.1} />
+                          <Radar name="Mejor (Histórico)" dataKey="Mejor (Histórico)" stroke="#10b981" fill="#10b981" fillOpacity={0.2} />
+                          <Radar name="Peor (Hoy)" dataKey="Peor (Hoy)" stroke="#f87171" fill="#f87171" fillOpacity={0.6} strokeWidth={3} />
+                          <Radar name="Mejor (Hoy)" dataKey="Mejor (Hoy)" stroke="#34d399" fill="#34d399" fillOpacity={0.6} strokeWidth={3} />
                           <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
                           <Legend />
                         </RadarChart>
@@ -747,14 +644,16 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
               <p className="text-xs text-slate-400 mb-6">Brecha entre mejor y peor tiempo hacia Provincia.</p>
               
               <div className="h-[320px] w-full">
-                 {radarVueltaData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
+                 {radarData.vuelta.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
                      <ResponsiveContainer width="100%" height="100%">
-                        <RadarChart data={radarVueltaData}>
+                        <RadarChart data={radarData.vuelta}>
                           <PolarGrid stroke="rgba(255,255,255,0.1)" />
                           <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 10 }} />
                           <PolarRadiusAxis angle={30} domain={[0, 'dataMax']} tick={{ fill: '#64748b', fontSize: 10 }} />
-                          <Radar name="Peor Tránsito" dataKey="Peor Tránsito" stroke="#ef4444" fill="#ef4444" fillOpacity={0.3} />
-                          <Radar name="Mejor Tiempo" dataKey="Mejor Tiempo" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
+                          <Radar name="Peor (Histórico)" dataKey="Peor (Histórico)" stroke="#ef4444" fill="#ef4444" fillOpacity={0.1} />
+                          <Radar name="Mejor (Histórico)" dataKey="Mejor (Histórico)" stroke="#10b981" fill="#10b981" fillOpacity={0.2} />
+                          <Radar name="Peor (Hoy)" dataKey="Peor (Hoy)" stroke="#fcd34d" fill="#fcd34d" fillOpacity={0.6} strokeWidth={3} />
+                          <Radar name="Mejor (Hoy)" dataKey="Mejor (Hoy)" stroke="#fbbf24" fill="#fbbf24" fillOpacity={0.6} strokeWidth={3} />
                           <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
                           <Legend />
                         </RadarChart>
@@ -797,12 +696,14 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                   <div className="h-[350px] w-full">
                       {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
                           <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={comparisonData.filter(d => d["Al DOT"] > 0).sort((a,b) => a["Al DOT"] - b["Al DOT"])} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
+                            <BarChart data={comparisonData.filter(d => d["Histórico (DOT)"] > 0).sort((a,b) => a["Histórico (DOT)"] - b["Histórico (DOT)"])} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
                               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false}/>
                               <XAxis type="number" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} />
                               <YAxis dataKey="zone" type="category" stroke="#64748b" width={90} tick={{ fill: '#94a3b8', fontSize: 11 }} />
                               <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
-                              <Bar dataKey="Al DOT" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={16} />
+                              <Legend />
+                              <Bar dataKey="Histórico (DOT)" fill="#1e40af" radius={[0, 4, 4, 0]} barSize={10} />
+                              <Bar dataKey="Hoy (DOT)" fill="#60a5fa" radius={[0, 4, 4, 0]} barSize={14} />
                             </BarChart>
                           </ResponsiveContainer>
                       )}
@@ -814,12 +715,14 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                   <div className="h-[350px] w-full">
                       {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
                           <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={comparisonData.filter(d => d["Al Microcentro"] > 0).sort((a,b) => a["Al Microcentro"] - b["Al Microcentro"])} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
+                            <BarChart data={comparisonData.filter(d => d["Histórico (Centro)"] > 0).sort((a,b) => a["Histórico (Centro)"] - b["Histórico (Centro)"])} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
                               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false}/>
                               <XAxis type="number" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} />
                               <YAxis dataKey="zone" type="category" stroke="#64748b" width={90} tick={{ fill: '#94a3b8', fontSize: 11 }} />
                               <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
-                              <Bar dataKey="Al Microcentro" fill="#a855f7" radius={[0, 4, 4, 0]} barSize={16} />
+                              <Legend />
+                              <Bar dataKey="Histórico (Centro)" fill="#6b21a8" radius={[0, 4, 4, 0]} barSize={10} />
+                              <Bar dataKey="Hoy (Centro)" fill="#a855f7" radius={[0, 4, 4, 0]} barSize={14} />
                             </BarChart>
                           </ResponsiveContainer>
                       )}
