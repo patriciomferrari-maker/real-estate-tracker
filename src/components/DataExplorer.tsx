@@ -34,6 +34,8 @@ export default function DataExplorer({ records }: { records: any[] }) {
    }, [records]);
 
    const totalCount = records.length;
+   const idaCount = records.filter(r => r.isIda).length;
+   const vueltaCount = records.filter(r => !r.isIda).length;
 
   // Extracts lists for selects
   const uniqueDays = Array.from(new Set(gridData.map(d => d.diaDeSemana))).sort();
@@ -51,10 +53,16 @@ export default function DataExplorer({ records }: { records: any[] }) {
 
   return (
     <div className="glass-card mb-12">
-        <div className="border-b border-white/10 pb-4 mb-6">
-            <h3 className="text-xl font-bold text-emerald-400 mb-1">Explorador de Base de Datos ({totalCount} registros)</h3>
-            <p className="text-sm text-slate-400">Filtrá y analizá cada viaje individual guardado en el sistema.</p>
+      <div className="flex flex-col md:flex-row justify-between md:items-end gap-2 border-b border-white/10 pb-4 mb-6">
+        <div>
+          <h3 className="text-xl font-bold text-emerald-400 mb-1">Explorador de Base de Datos ({totalCount})</h3>
+          <p className="text-sm text-slate-400">Filtrá y analizá cada viaje individual guardado en el sistema.</p>
         </div>
+        <div className="flex gap-4 text-[11px] font-bold mb-1">
+          <span className="text-blue-400 bg-blue-400/10 px-3 py-1.5 rounded-full border border-blue-400/20">IDA: {idaCount}</span>
+          <span className="text-purple-400 bg-purple-400/10 px-3 py-1.5 rounded-full border border-purple-400/20">VUELTA: {vueltaCount}</span>
+        </div>
+      </div>
 
         {/* FILTERS REDESIGNED */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
