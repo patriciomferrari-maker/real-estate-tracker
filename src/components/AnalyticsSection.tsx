@@ -885,41 +885,38 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       ) : (
 
     <section className="space-y-8 mb-12 animate-in fade-in duration-700">
-      {/* MASTER CONTROL PANEL (Sticky) */}
-      <div className="sticky top-2 z-50 glass-card border-blue-500/30 bg-slate-900/80 backdrop-blur-xl p-4 flex flex-wrap gap-6 items-center justify-between shadow-2xl rounded-2xl">
-          <div className="flex gap-4 items-center">
-            <div className="p-2 bg-blue-600 rounded-lg shadow-lg shadow-blue-900/50">
-              <Filter size={20} className="text-white" />
+      {/* MASTER CONTROL PANEL (Sticky & Ultra-Compact) */}
+      <div className="sticky top-2 z-50 glass-card border-blue-500/10 bg-slate-900/40 backdrop-blur-md p-2 px-4 flex flex-wrap gap-4 items-center justify-between shadow-2xl rounded-xl">
+          <div className="flex gap-3 items-center border-r border-white/10 pr-4">
+            <div className="p-1 bg-blue-600 rounded">
+              <Filter size={14} className="text-white" />
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-white leading-tight">Consola de Control</h2>
-              <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">Filtros Globales Sincronizados</p>
-            </div>
-            <div className="h-8 w-[1px] bg-white/10 mx-2 hidden md:block"></div>
-            <div className="flex bg-slate-800 rounded-lg p-1 border border-white/5">
-                <button onClick={() => setGlobalMode("macro")} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${globalMode === 'macro' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Zonas Agrupadas</button>
-                <button onClick={() => setGlobalMode("barrio")} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${globalMode === 'barrio' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Barrios</button>
+            
+            {/* Toggle de Vista */}
+            <div className="flex bg-slate-900/60 p-0.5 rounded-lg border border-white/5">
+                <button 
+                  onClick={() => setGlobalMode("macro")}
+                  className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${globalMode === 'macro' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  Zonas
+                </button>
+                <button 
+                  onClick={() => setGlobalMode("barrio")}
+                  className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${globalMode === 'barrio' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  Barrios
+                </button>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-4 items-center flex-1 justify-end">
-              {/* Group Every */}
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-slate-500 font-bold uppercase ml-1">Precisión</span>
-                <div className="flex bg-slate-800 rounded-lg p-1 border border-white/5">
-                    {[5, 15, 30, 60].map(val => (
-                        <button key={val} onClick={() => setTimeBinSize(val)} className={`px-3 py-1 text-[10px] font-bold rounded ${timeBinSize === val ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-white transition-colors'}`}>{val}m</button>
-                    ))}
-                </div>
-              </div>
-
-              {/* Macro Select */}
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-slate-500 font-bold uppercase ml-1">Macro Zona</span>
+          <div className="flex flex-1 flex-wrap gap-3 items-center">
+              {/* Macro Zona */}
+              <div className="flex flex-col">
+                <span className="text-[7px] text-slate-500 font-bold uppercase ml-0.5 mb-0.5">Macro</span>
                 <select 
                     value={globalMacro} 
                     onChange={(e) => { setGlobalMacro(e.target.value); setGlobalBarrio("Todos los Barrios"); }}
-                    className="bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none hover:bg-slate-700 transition-colors cursor-pointer"
+                    className="bg-slate-800/80 border border-white/10 rounded px-2 py-1 text-[10px] text-white outline-none hover:bg-slate-700 transition-colors cursor-pointer min-w-[100px]"
                 >
                     <option value="Todas las Zonas">Todas las Zonas</option>
                     {allMacros.map(m => <option key={m} value={m}>{m}</option>)}
@@ -927,12 +924,12 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
               </div>
 
               {/* Barrio Select */}
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-slate-500 font-bold uppercase ml-1">Barrio Específico</span>
+              <div className="flex flex-col">
+                <span className="text-[7px] text-slate-500 font-bold uppercase ml-0.5 mb-0.5">Barrio</span>
                 <select 
                     value={globalBarrio} 
                     onChange={(e) => setGlobalBarrio(e.target.value)}
-                    className="bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none min-w-[150px] hover:bg-slate-700 transition-colors cursor-pointer"
+                    className="bg-slate-800/80 border border-white/10 rounded px-2 py-1 text-[10px] text-white outline-none min-w-[120px] hover:bg-slate-700 transition-colors cursor-pointer"
                 >
                     <option value="Todos los Barrios">Todos los Barrios</option>
                     {barriosInSelectedMacro.map(b => <option key={b} value={b}>{b}</option>)}
@@ -940,29 +937,41 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
               </div>
 
               {/* Destination Select */}
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-slate-500 font-bold uppercase ml-1">Destino</span>
+              <div className="flex flex-col">
+                <span className="text-[7px] text-slate-500 font-bold uppercase ml-0.5 mb-0.5">Destino</span>
                 <select 
                     value={globalDestination} 
                     onChange={(e) => setGlobalDestination(e.target.value)}
-                    className="bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none hover:bg-slate-700 transition-colors cursor-pointer"
+                    className="bg-slate-800/80 border border-white/10 rounded px-2 py-1 text-[10px] text-white outline-none hover:bg-slate-700 transition-colors cursor-pointer"
                 >
                     <option value="Ambos">Ambos</option>
                     <option value="DOT">Shopping DOT</option>
                     <option value="Obelisco">Obelisco / Centro</option>
                 </select>
               </div>
+          </div>
+
+          <div className="flex gap-4 items-center border-l border-white/10 pl-4">
+              {/* Precisión */}
+              <div className="flex flex-col items-center">
+                <span className="text-[7px] text-slate-500 font-bold uppercase mb-0.5">Precisión</span>
+                <div className="flex bg-slate-950/40 p-0.5 rounded-lg border border-white/5">
+                    {[5, 15, 30, 60].map(val => (
+                        <button key={val} onClick={() => setTimeBinSize(val)} className={`px-2 py-0.5 text-[9px] font-bold rounded ${timeBinSize === val ? 'bg-slate-600 text-white' : 'text-slate-600 hover:text-slate-300'}`}>{val}m</button>
+                    ))}
+                </div>
+              </div>
 
               {/* Comparison Mode Select */}
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-amber-500 font-bold uppercase ml-1">Referencia Histórica</span>
+              <div className="flex flex-col">
+                <span className="text-[7px] text-amber-500/70 font-bold uppercase ml-0.5 mb-0.5">Referencia</span>
                 <select 
                     value={comparisonMode} 
                     onChange={(e) => setComparisonMode(e.target.value as any)}
-                    className="bg-amber-900/20 border border-amber-500/30 rounded-lg px-3 py-2 text-xs text-amber-200 focus:ring-1 focus:ring-amber-500 outline-none hover:bg-amber-900/40 transition-colors cursor-pointer font-bold"
+                    className="bg-amber-900/10 border border-amber-500/20 rounded px-2 py-1 text-[10px] text-amber-500 focus:ring-1 focus:ring-amber-500 outline-none hover:bg-amber-900/20 transition-colors cursor-pointer font-bold"
                 >
                     <option value="all">Todo el Histórico</option>
-                    <option value="dow">Mismo Día (Semana)</option>
+                    <option value="dow">Mismo Día</option>
                     <option value="month">Mismo Mes</option>
                 </select>
               </div>
