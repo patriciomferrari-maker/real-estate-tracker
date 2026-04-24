@@ -164,7 +164,7 @@ export default async function Dashboard({ searchParams }: any) {
         </header>
 
         <nav className="flex gap-2 mb-8 overflow-x-auto pb-2">
-          {["dashboard", "graficos", "reporte", "datos"].map(t => (
+          {["dashboard", "datos"].map(t => (
             <Link key={t} href={`?tab=${t}`} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${currentTab === t ? 'bg-white/10 text-white border border-white/20' : 'text-slate-500 hover:text-slate-300'}`}>
               {t.toUpperCase()}
             </Link>
@@ -184,9 +184,17 @@ export default async function Dashboard({ searchParams }: any) {
           </div>
         )}
 
-        {currentTab === 'graficos' && <AnalyticsSection records={serializableRecords} mode="charts" />}
-        {currentTab === 'reporte' && <AnalyticsSection records={serializableRecords} mode="report" />}
-        {currentTab === 'datos' && <DataExplorer records={serializableRecords} />}
+        {currentTab === 'datos' && (
+          <div className="p-8 bg-black/20 rounded-xl border border-white/5">
+             <p className="text-emerald-400 font-bold mb-4">Modo Diagnóstico Activo</p>
+             <p className="text-slate-400 text-sm">Se han detectado {serializableRecords.length} registros agregados.</p>
+             <ul className="mt-4 space-y-2">
+                {serializableRecords.slice(0, 10).map(r => (
+                  <li key={r.id} className="text-[10px] text-slate-500">{r.timestamp} - {r.barrio}: {r.durationMins}m</li>
+                ))}
+             </ul>
+          </div>
+        )}
 
         <footer className="mt-12 pt-8 border-t border-white/5 text-center text-[10px] text-slate-600">
           {records.length} registros cargados. Argentina Time enforced (GMT-3).
