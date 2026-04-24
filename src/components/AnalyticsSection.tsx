@@ -108,6 +108,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const [timeBinSize, setTimeBinSize] = useState<number>(15);
   const [barTimeMode, setBarTimeMode] = useState<"mañana" | "tarde">("mañana");
   const [barMacro, setBarMacro] = useState<string>("Todas las Zonas");
+  const [evoMacro, setEvoMacro] = useState<string>("Todas las Zonas");
   
   // Helpers derived from global selection
   const allMacros = useMemo(() => Array.from(new Set(zones.map(z => getMacro(z)))).sort(), [zones]);
@@ -171,21 +172,25 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const evolutivoData = useMemo(() => {
     const map = new Map<string, any>();
     enrichedRecords.forEach(r => {
-        // Global Filter
-        if (globalMacro !== "Todas las Zonas" && r.macro !== globalMacro) return;
+        // Local Filter for Evolution
+        if (evoMacro !== "Todas las Zonas" && r.macro !== evoMacro) return;
         
         const bin = Math.floor(r.minutes / 30) * 30; 
         const key = `${r.hours.toString().padStart(2,'0')}:${bin.toString().padStart(2,'0')}`;
         if (!map.has(key)) map.set(key, { timeTick: key, timeHourNum: r.hours + (bin/60) });
         const p = map.get(key);
-        const dataKey = `${r.barrio} (${r.isDOT ? 'DOT' : 'Centro'})`;
+
+        // Agrupación dinámica: Macro si es 'Todas', Barrio si selecciono una zona
+        const labelBase = evoMacro === "Todas las Zonas" ? r.macro : r.barrio;
+        const dataKey = `${labelBase} (${r.isDOT ? 'DOT' : 'Centro'})`;
+
         if (!p[dataKey]) p[dataKey + '_s'] = 0, p[dataKey + '_c'] = 0;
         p[dataKey + '_s'] += r.durationMins;
         p[dataKey + '_c']++;
         p[dataKey] = Math.round(p[dataKey + '_s'] / p[dataKey + '_c']);
     });
     return Array.from(map.values()).sort((a,b) => a.timeHourNum - b.timeHourNum);
-  }, [enrichedRecords, globalMacro]);
+  }, [enrichedRecords, evoMacro]);
 
   // BARS: Ranking data
   const comparisonData = useMemo(() => {
@@ -513,7 +518,18 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                   <h3 className="text-lg font-bold flex items-center gap-2">
                     <TrendingUp size={18} className="text-blue-400"/> Comparativa de Evolución Multibarrio
                   </h3>
-                  <p className="text-xs text-slate-400 italic">Mostrando evolución de todos los barrios en <b>{globalMacro}</b></p>
+                  <p className="text-xs text-slate-400 italic">Mostrando evolución de <b>{evoMacro === 'Todas las Zonas' ? 'todas las zonas' : evoMacro}</b></p>
+               </div>
+               <div className="flex items-center gap-3">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase">Filtrar Gráfico:</span>
+                  <select 
+                    value={evoMacro} 
+                    onChange={(e) => setEvoMacro(e.target.value)}
+                    className="bg-slate-800 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none"
+                  >
+                      <option value="Todas las Zonas">Todas las Zonas (Vista Macro)</option>
+                      {allMacros.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
                </div>
           </div>
           
