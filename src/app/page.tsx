@@ -43,13 +43,15 @@ export default async function Dashboard({ searchParams }: any) {
     const resolvedParams = await (searchParams || {});
     const currentTab = resolvedParams?.tab || "dashboard";
 
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const records = await prisma.commuteRecord.findMany({
-      where: { timestamp: { gte: thirtyDaysAgo } },
+      where: { timestamp: { gte: sevenDaysAgo } },
       orderBy: { timestamp: 'desc' }
     });
+
+    try { await prisma.$disconnect(); } catch(e) {}
 
     const aggregatedMap = new Map<string, any>();
     records.forEach(r => {
