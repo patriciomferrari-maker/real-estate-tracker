@@ -1,7 +1,15 @@
 import { PrismaClient } from '@prisma/client'
 
 const prismaClientSingleton = () => {
-  return new PrismaClient()
+  return new PrismaClient({
+    log: ['error'],
+    // Forzamos un pool pequeño para evitar saturar las 15 conexiones de la DB
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL + (process.env.DATABASE_URL?.includes('?') ? '&' : '?') + 'connection_limit=3&pool_timeout=20'
+      },
+    },
+  })
 }
 
 declare global {
