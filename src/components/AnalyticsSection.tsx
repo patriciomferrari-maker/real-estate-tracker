@@ -298,29 +298,46 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           return true;
       });
 
+      // SAMPLING: If too many points, sample them to keep UI responsive
+      const MAX_POINTS = 1200;
+      if (scatterMode === "barrio" && filtered.length > MAX_POINTS) {
+          const stride = Math.ceil(filtered.length / MAX_POINTS);
+          filtered = filtered.filter((_, i) => i % stride === 0);
+      }
+
       if (scatterMode === "macro") {
           const clustered = new Map<string, { total: number, count: number, point: any }>();
           filtered.forEach(p => {
              const key = `${p.macro}-${p.timeHour}-${p.isIda}-${p.isDOT}`;
              if (!clustered.has(key)) clustered.set(key, { total: 0, count: 0, point: { ...p, barrio: p.macro + " (Promedio)" } });
              const cluster = clustered.get(key)!;
-             cluster.total += p.duration;
-             cluster.count++;
+             cluster.total += p.duration; cluster.count++;
           });
-          return Array.from(clustered.values()).map(c => ({
-             ...c.point,
-             duration: Math.round(c.total / c.count)
-          }));
+          filtered = Array.from(clustered.values()).map(c => ({ ...c.point, duration: Math.round(c.total / c.count) }));
       }
 
-      return filtered;
+      // Group by macro and destination for more efficient rendering
+      const grouped = new Map<string, any[]>();
+      filtered.forEach(p => {
+          const key = `${p.macro}|${p.isIda}|${p.isDOT}`;
+          if (!grouped.has(key)) grouped.set(key, []);
+          grouped.get(key)!.push(p);
+      });
+
+      return Array.from(grouped.entries()).map(([key, data]) => {
+          const [macro, isIda, isDOT] = key.split('|');
+          return {
+              macro,
+              isIda: isIda === 'true',
+              isDOT: isDOT === 'true',
+              data
+          };
+      });
   }, [rawScatterPoints, scatterMacro, scatterBarrio, scatterMode, scatterDestino]);
 
-  const scatterIdaDOT = filteredScatter.filter(p => p.isIda && p.isDOT);
-  const scatterIdaCentro = filteredScatter.filter(p => p.isIda && !p.isDOT);
-  
-  const scatterVueltaDOT = filteredScatter.filter(p => !p.isIda && p.isDOT);
-  const scatterVueltaCentro = filteredScatter.filter(p => !p.isIda && !p.isDOT);
+  // Split the grouped series into high-level categories for the charts
+  const scatterSeriesIda = filteredScatter.filter(s => s.isIda);
+  const scatterSeriesVuelta = filteredScatter.filter(s => !s.isIda);
 
   const formatHourTick = (val: number) => {
       const h = Math.floor(val);
@@ -406,26 +423,28 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   }, [evolutivoData, lineDestino]);
 
   const scatterIdaStats = useMemo(() => {
-      let min = 999, max = 0, sum = 0;
-      const all = [...scatterIdaDOT, ...scatterIdaCentro];
-      all.forEach(p => {
-          if (p.duration > max) max = p.duration;
-          if (p.duration < min) min = p.duration;
-          sum += p.duration;
+      let min = 999, max = 0, sum = 0, count = 0;
+      scatterSeriesIda.forEach(s => {
+          s.data.forEach((p:any) => {
+            if (p.duration > max) max = p.duration;
+            if (p.duration < min) min = p.duration;
+            sum += p.duration; count++;
+          });
       });
-      return { min: min === 999 ? 0 : min, max, avg: all.length > 0 ? Math.round(sum/all.length) : 0 };
-  }, [scatterIdaDOT, scatterIdaCentro]);
+      return { min: min === 999 ? 0 : min, max, avg: count > 0 ? Math.round(sum/count) : 0 };
+  }, [scatterSeriesIda]);
 
   const scatterVueltaStats = useMemo(() => {
-      let min = 999, max = 0, sum = 0;
-      const all = [...scatterVueltaDOT, ...scatterVueltaCentro];
-      all.forEach(p => {
-          if (p.duration > max) max = p.duration;
-          if (p.duration < min) min = p.duration;
-          sum += p.duration;
+      let min = 999, max = 0, sum = 0, count = 0;
+      scatterSeriesVuelta.forEach(s => {
+          s.data.forEach((p:any) => {
+            if (p.duration > max) max = p.duration;
+            if (p.duration < min) min = p.duration;
+            sum += p.duration; count++;
+          });
       });
-      return { min: min === 999 ? 0 : min, max, avg: all.length > 0 ? Math.round(sum/all.length) : 0 };
-  }, [scatterVueltaDOT, scatterVueltaCentro]);
+      return { min: min === 999 ? 0 : min, max, avg: count > 0 ? Math.round(sum/count) : 0 };
+  }, [scatterSeriesVuelta]);
 
 
   return (
@@ -540,25 +559,29 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
             <div className="space-y-2">
                 <h4 className="text-emerald-400 font-semibold mb-4 text-center">☀️ Nube de IDA (Mañana)</h4>
                 <div className="h-[300px] w-full">
-                    {scatterIdaDOT.length === 0 && scatterIdaCentro.length === 0 ? <p className="text-center text-slate-500 pt-16">Sin registros para este filtro</p> : (
+                    {scatterSeriesIda.length === 0 ? <p className="text-center text-slate-500 pt-16">Sin registros para este filtro</p> : (
                         <ResponsiveContainer width="100%" height="100%">
                             <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: -20 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                                 <XAxis type="number" dataKey="timeHour" domain={[6, 12]} tickFormatter={formatHourTick} stroke="#64748b" tick={{ fill: '#64748b', fontSize: 11 }} name="Horario" />
                                 <YAxis type="number" dataKey="duration" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 11 }} name="Minutos" unit="m" />
                                 <Tooltip cursor={{ strokeDasharray: '3 3' }} content={<CustomScatterTooltip />} />
-                                <ZAxis type="number" range={[50, 50]} /> 
+                                <ZAxis type="number" range={[40, 40]} /> 
                                 
                                 {scatterIdaStats.max > 0 && <ReferenceLine y={scatterIdaStats.max} stroke="#ef4444" strokeDasharray="3 3" opacity={0.3}><Label value={`MAX ${scatterIdaStats.max}m`} position="insideTopLeft" fill="#ef4444" fontSize={10} /></ReferenceLine>}
                                 {scatterIdaStats.avg > 0 && <ReferenceLine y={scatterIdaStats.avg} stroke="#eab308" strokeDasharray="3 3" opacity={0.3}><Label value={`AVG ${scatterIdaStats.avg}m`} position="insideTopLeft" fill="#eab308" fontSize={10} /></ReferenceLine>}
                                 {scatterIdaStats.min > 0 && <ReferenceLine y={scatterIdaStats.min} stroke="#10b981" strokeDasharray="3 3" opacity={0.3}><Label value={`MIN ${scatterIdaStats.min}m`} position="insideBottomLeft" fill="#10b981" fontSize={10} /></ReferenceLine>}
 
-                                <Scatter name="Hacia DOT" data={scatterIdaDOT} opacity={0.8}>
-                                    {scatterIdaDOT.map((entry, index) => <Cell key={`cell-dot-${index}`} fill={getColorByZone(entry.macro, true)} />)}
-                                </Scatter>
-                                <Scatter name="Hacia Centro" data={scatterIdaCentro} opacity={0.8}>
-                                    {scatterIdaCentro.map((entry, index) => <Cell key={`cell-centro-${index}`} fill={getColorByZone(entry.macro, false)} />)}
-                                </Scatter>
+                                {scatterSeriesIda.map((series, idx) => (
+                                    <Scatter 
+                                        key={`ida-${series.macro}-${series.isDOT}-${idx}`}
+                                        name={series.macro} 
+                                        data={series.data} 
+                                        fill={getColorByZone(series.macro, series.isDOT)}
+                                        opacity={0.6}
+                                        shape="circle"
+                                    />
+                                ))}
                             </ScatterChart>
                         </ResponsiveContainer>
                     )}
@@ -569,25 +592,29 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
             <div className="space-y-2">
                 <h4 className="text-amber-400 font-semibold mb-4 text-center">🌙 Nube de VUELTA (Tarde)</h4>
                 <div className="h-[300px] w-full">
-                    {scatterVueltaDOT.length === 0 && scatterVueltaCentro.length === 0 ? <p className="text-center text-slate-500 pt-16">Sin registros para este filtro</p> : (
+                    {scatterSeriesVuelta.length === 0 ? <p className="text-center text-slate-500 pt-16">Sin registros para este filtro</p> : (
                         <ResponsiveContainer width="100%" height="100%">
                             <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: -20 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                                 <XAxis type="number" dataKey="timeHour" domain={[15, 20]} tickFormatter={formatHourTick} stroke="#64748b" tick={{ fill: '#64748b', fontSize: 11 }} name="Horario" />
                                 <YAxis type="number" dataKey="duration" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 11 }} name="Minutos" unit="m" />
                                 <Tooltip cursor={{ strokeDasharray: '3 3' }} content={<CustomScatterTooltip />} />
-                                <ZAxis type="number" range={[50, 50]} /> 
+                                <ZAxis type="number" range={[40, 40]} /> 
                                 
                                 {scatterVueltaStats.max > 0 && <ReferenceLine y={scatterVueltaStats.max} stroke="#ef4444" strokeDasharray="3 3" opacity={0.3}><Label value={`MAX ${scatterVueltaStats.max}m`} position="insideTopLeft" fill="#ef4444" fontSize={10} /></ReferenceLine>}
                                 {scatterVueltaStats.avg > 0 && <ReferenceLine y={scatterVueltaStats.avg} stroke="#eab308" strokeDasharray="3 3" opacity={0.3}><Label value={`AVG ${scatterVueltaStats.avg}m`} position="insideTopLeft" fill="#eab308" fontSize={10} /></ReferenceLine>}
                                 {scatterVueltaStats.min > 0 && <ReferenceLine y={scatterVueltaStats.min} stroke="#10b981" strokeDasharray="3 3" opacity={0.3}><Label value={`MIN ${scatterVueltaStats.min}m`} position="insideBottomLeft" fill="#10b981" fontSize={10} /></ReferenceLine>}
 
-                                <Scatter name="Desde DOT" data={scatterVueltaDOT} opacity={0.8}>
-                                    {scatterVueltaDOT.map((entry, index) => <Cell key={`cell-dot-v-${index}`} fill={getColorByZone(entry.macro, true)} />)}
-                                </Scatter>
-                                <Scatter name="Desde Centro" data={scatterVueltaCentro} opacity={0.8}>
-                                    {scatterVueltaCentro.map((entry, index) => <Cell key={`cell-centro-v-${index}`} fill={getColorByZone(entry.macro, false)} />)}
-                                </Scatter>
+                                {scatterSeriesVuelta.map((series, idx) => (
+                                    <Scatter 
+                                        key={`vuelta-${series.macro}-${series.isDOT}-${idx}`}
+                                        name={series.macro} 
+                                        data={series.data} 
+                                        fill={getColorByZone(series.macro, series.isDOT)}
+                                        opacity={0.6}
+                                        shape="circle"
+                                    />
+                                ))}
                             </ScatterChart>
                         </ResponsiveContainer>
                     )}
