@@ -33,9 +33,6 @@ function formatZoneName(raw: string | null | undefined) {
   if (str.includes("dot")) return "Shopping DOT";
   if (str.includes("obelisco") || str.includes("microcentro")) return "Microcentro";
   
-  // Si dice Villa Nueva y no sabemos que barrio es, lo dejamos como "Villa Nueva (Gral)"
-  if (str.includes("villa nueva")) return "Villa Nueva (Gral)";
-  
   return raw.split(',')[0].replace("Barrio", "").trim();
 }
 
