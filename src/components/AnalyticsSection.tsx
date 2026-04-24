@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
-  ScatterChart, Scatter, ZAxis, Cell, ReferenceLine, Label
+  ScatterChart, Scatter, ZAxis, Cell, ReferenceLine, Label, LabelList
 } from "recharts";
 import { Activity, Search, BarChart3, Crosshair, Map as MapIcon, Filter, TrendingUp } from "lucide-react";
 
@@ -215,13 +215,21 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
             if (isToday) { s.tdMicro += r.durationMins; s.cdMicro++; }
         }
     });
-    return Array.from(groups.values()).map(s => ({
-        zone: s.zone,
-        "Histórico (DOT)": s.cDOT > 0 ? Math.round(s.tDOT / s.cDOT) : 0,
-        "Hoy (DOT)": s.cdDOT > 0 ? Math.round(s.tdDOT / s.cdDOT) : 0,
-        "Histórico (Centro)": s.cMicro > 0 ? Math.round(s.tMicro / s.cMicro) : 0,
-        "Hoy (Centro)": s.cdMicro > 0 ? Math.round(s.tdMicro / s.cdMicro) : 0,
-    })).sort((a,b) => (a["Histórico (DOT)"] + a["Histórico (Centro)"]) - (b["Histórico (DOT)"] + b["Histórico (Centro)"]));
+    return Array.from(groups.values()).map(s => {
+        const hDOT = s.cDOT > 0 ? Math.round(s.tDOT / s.cDOT) : 0;
+        const hoyDOT = s.cdDOT > 0 ? Math.round(s.tdDOT / s.cdDOT) : 0;
+        const hMicro = s.cMicro > 0 ? Math.round(s.tMicro / s.cMicro) : 0;
+        const hoyMicro = s.cdMicro > 0 ? Math.round(s.tdMicro / s.cdMicro) : 0;
+        return {
+            zone: s.zone,
+            "Histórico (DOT)": hDOT,
+            "Hoy (DOT)": hoyDOT,
+            "deltaDOT": hoyDOT > 0 ? hoyDOT - hDOT : 0,
+            "Histórico (Centro)": hMicro,
+            "Hoy (Centro)": hoyMicro,
+            "deltaCentro": hoyMicro > 0 ? hoyMicro - hMicro : 0
+        };
+    }).sort((a,b) => (a["Histórico (DOT)"] + a["Histórico (Centro)"]) - (b["Histórico (DOT)"] + b["Histórico (Centro)"]));
   }, [enrichedRecords, barTimeMode, barMacro, globalMode, todayStr]);
 
 
@@ -417,7 +425,25 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       });
       return { min: min === 999 ? 0 : min, max, avg: count > 0 ? Math.round(sum/count) : 0 };
   }, [scatterSeriesVuelta]);
-
+  const DeltaLabel = (props: any) => {
+    const { x, y, width, deltaKey } = props;
+    const delta = props.payload[deltaKey];
+    if (!delta || delta === 0) return null;
+    const isBad = delta > 0;
+    return (
+      <g>
+        <text 
+          x={x + width + 8} 
+          y={y + 11} 
+          fill={isBad ? "#f87171" : "#4ade80"} 
+          fontSize={10} 
+          fontWeight="bold"
+        >
+          {isBad ? `+${delta}` : delta}m
+        </text>
+      </g>
+    );
+  };
 
   return (
     <section className="space-y-8 mb-12">
@@ -807,7 +833,9 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                               <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
                               <Legend />
                               <Bar dataKey="Histórico (DOT)" fill="#1e40af" radius={[0, 4, 4, 0]} barSize={10} />
-                              <Bar dataKey="Hoy (DOT)" fill="#60a5fa" radius={[0, 4, 4, 0]} barSize={14} />
+                              <Bar dataKey="Hoy (DOT)" fill="#60a5fa" radius={[0, 4, 4, 0]} barSize={14}>
+                                 <LabelList dataKey="Hoy (DOT)" content={<DeltaLabel deltaKey="deltaDOT" />} />
+                              </Bar>
                             </BarChart>
                           </ResponsiveContainer>
                       )}
@@ -826,7 +854,9 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                               <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
                               <Legend />
                               <Bar dataKey="Histórico (Centro)" fill="#6b21a8" radius={[0, 4, 4, 0]} barSize={10} />
-                              <Bar dataKey="Hoy (Centro)" fill="#a855f7" radius={[0, 4, 4, 0]} barSize={14} />
+                              <Bar dataKey="Hoy (Centro)" fill="#a855f7" radius={[0, 4, 4, 0]} barSize={14}>
+                                 <LabelList dataKey="Hoy (Centro)" content={<DeltaLabel deltaKey="deltaCentro" />} />
+                              </Bar>
                             </BarChart>
                           </ResponsiveContainer>
                       )}
