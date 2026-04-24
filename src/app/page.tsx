@@ -154,19 +154,16 @@ export default async function Dashboard({ searchParams }: any) {
                 const neighborhoodRecords = serializableRecords
                     .filter(r => r.barrio === name)
                     .sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-                    .slice(-10);
+                    .slice(-2);
                 
-                const trendDOT = neighborhoodRecords.filter(r => r.isDOT).map(r => r.durationMins);
-                const trendMicro = neighborhoodRecords.filter(r => !r.isDOT).map(r => r.durationMins);
-                
-                const lastVal = trendDOT[trendDOT.length - 1] || avgD;
-                const prevVal = trendDOT[trendDOT.length - 2] || lastVal;
+                const lastVal = neighborhoodRecords[neighborhoodRecords.length - 1]?.durationMins || avgD;
+                const prevVal = neighborhoodRecords[neighborhoodRecords.length - 2]?.durationMins || lastVal;
                 totalDelta += (lastVal - prevVal);
 
                 if (avgD > 0) { sumDOT += avgD; cDOT++; }
                 if (avgM > 0) { sumMicro += avgM; cMicro++; }
                 
-                return { name, avgDOT: avgD, avgMicro: avgM, delta: lastVal - prevVal, trendDOT, trendMicro };
+                return { name, avgDOT: avgD, avgMicro: avgM, delta: lastVal - prevVal };
             });
             
             const mAvgDOT = cDOT > 0 ? Math.round(sumDOT / cDOT) : 0;
@@ -182,55 +179,60 @@ export default async function Dashboard({ searchParams }: any) {
             <div className="space-y-3">
                 {sortedMacros.map(m => (
                     <details key={m.macro} className="group bg-white/[0.02] backdrop-blur-sm rounded-xl border border-white/5 overflow-hidden transition-all hover:bg-white/[0.04] hover:border-white/20">
-                        <summary className="p-3 cursor-pointer list-none outline-none">
-                            <div className="flex items-center gap-4">
-                                <div className="flex-1 min-w-[140px]">
-                                    <div className="flex items-center gap-2">
+                        <summary className="p-4 cursor-pointer list-none outline-none">
+                            <div className="flex items-center gap-6">
+                                <div className="w-[180px]">
+                                    <div className="flex items-center gap-2 mb-1">
                                         <TrendingUp size={14} className="text-blue-400 group-open:rotate-90 transition-transform" />
                                         <span className="text-sm font-black text-white truncate">{m.macro}</span>
                                     </div>
                                     {m.macroDelta !== 0 && (
                                         <span className={`text-[8px] font-bold px-1.5 rounded-sm ${m.macroDelta > 0 ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                                            {m.macroDelta > 0 ? '▲' : '▼'} {Math.abs(m.macroDelta)}m
+                                            {m.macroDelta > 0 ? '▲' : '▼'} {Math.abs(m.macroDelta)}m trend
                                         </span>
                                     )}
                                 </div>
 
-                                <div className="hidden md:flex flex-1 justify-center gap-4 px-2">
-                                    <Sparkline data={m.barrios[0]?.trendDOT} color="#3b82f6" />
-                                    <Sparkline data={m.barrios[0]?.trendMicro} color="#a855f7" />
-                                </div>
-
-                                <div className="flex items-center gap-2 text-right min-w-[120px]">
-                                    <div className="flex-1">
-                                        <p className="text-[8px] font-black text-blue-400 uppercase leading-none">DOT</p>
-                                        <p className="text-lg font-black text-white">{m.mAvgDOT}<span className="text-[10px] text-slate-500 ml-0.5">m</span></p>
+                                <div className="flex-1 flex flex-col gap-2">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+                                            <div className="h-full bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)] transition-all duration-1000" style={{ width: `${Math.min((m.mAvgDOT/120)*100, 100)}%` }} />
+                                        </div>
+                                        <span className="text-xs font-black text-blue-300 w-10 text-right">{m.mAvgDOT}m</span>
                                     </div>
-                                    <div className="w-px h-6 bg-white/10"></div>
-                                    <div className="flex-1">
-                                        <p className="text-[8px] font-black text-purple-400 uppercase leading-none">Ctr</p>
-                                        <p className="text-lg font-black text-white">{m.mAvgMicro}<span className="text-[10px] text-slate-500 ml-0.5">m</span></p>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+                                            <div className="h-full bg-purple-500 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.5)] transition-all duration-1000" style={{ width: `${Math.min((m.mAvgMicro/120)*100, 100)}%` }} />
+                                        </div>
+                                        <span className="text-xs font-black text-purple-300 w-10 text-right">{m.mAvgMicro}m</span>
                                     </div>
                                 </div>
                             </div>
                         </summary>
-                        <div className="px-3 pb-3 pt-1 bg-black/40 border-t border-white/5 space-y-2">
+                        <div className="px-4 pb-4 pt-1 bg-black/40 border-t border-white/5 space-y-3">
                             {m.barrios.map(b => (
-                                <div key={b.name} className="flex items-center gap-4 py-1 pl-4 border-l-2 border-white/5 hover:border-blue-500/30 transition-colors">
-                                    <div className="flex-1">
-                                        <p className="text-[10px] font-bold text-slate-300">{b.name}</p>
-                                    </div>
-                                    <div className="flex-1 hidden sm:block h-4">
-                                        <Sparkline data={b.trendDOT} color="#3b82f6" />
-                                    </div>
-                                    <div className="flex items-center gap-3 text-right">
-                                        <span className="text-[10px] font-black text-blue-300">{b.avgDOT}m</span>
-                                        <span className="text-[10px] font-black text-purple-300">{b.avgMicro}m</span>
+                                <div key={b.name} className="flex items-center gap-6 py-2 pl-4 border-l-2 border-white/5 hover:border-blue-500/30 transition-colors">
+                                    <div className="w-[140px]">
+                                        <p className="text-[11px] font-bold text-slate-300 leading-none">{b.name}</p>
                                         {b.delta !== 0 && (
-                                            <span className={`text-[8px] font-bold px-1 rounded-sm ${b.delta > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                            <span className={`text-[8px] font-bold ${b.delta > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                                                 {b.delta > 0 ? '▲' : '▼'} {Math.abs(b.delta)}m
                                             </span>
                                         )}
+                                    </div>
+                                    <div className="flex-1 flex flex-col gap-1.5 opacity-60">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1 h-1 bg-white/5 rounded-full">
+                                                <div className="h-full bg-blue-500/60 rounded-full" style={{ width: `${Math.min((b.avgDOT/120)*100, 100)}%` }} />
+                                            </div>
+                                            <span className="text-[9px] font-bold text-blue-400 w-8">{b.avgDOT}m</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1 h-1 bg-white/5 rounded-full">
+                                                <div className="h-full bg-purple-500/60 rounded-full" style={{ width: `${Math.min((b.avgMicro/120)*100, 100)}%` }} />
+                                            </div>
+                                            <span className="text-[9px] font-bold text-purple-400 w-8">{b.avgMicro}m</span>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
