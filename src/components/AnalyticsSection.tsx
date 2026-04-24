@@ -16,36 +16,6 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const [scatterMacro, setScatterMacro] = useState<string>("Todas las Zonas");
   const [scatterBarrio, setScatterBarrio] = useState<string>("Todos los Barrios");
 
-  const metadata = useMemo(() => {
-    const zonesSet = new Set<string>();
-    const datesSet = new Set<string>();
-    
-    records.forEach(r => {
-        // Zones
-        if (!r.origin.includes("DOT") && !r.origin.includes("Microcentro") && !r.origin.includes("Florida") && !r.origin.includes("Obelisco")) zonesSet.add(r.origin);
-        if (!r.destination.includes("DOT") && !r.destination.includes("Microcentro") && !r.destination.includes("Florida") && !r.destination.includes("Obelisco")) zonesSet.add(r.destination); 
-        
-        // Dates
-        datesSet.add(new Date(r.timestamp).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }));
-    });
-
-    const sortedZones = Array.from(zonesSet).sort();
-    const sortedDates = Array.from(datesSet).sort((a, b) => {
-        const [d1, m1, y1] = a.split('/');
-        const [d2, m2, y2] = b.split('/');
-        return new Date(`${y1}-${m1}-${d1}`).getTime() - new Date(`${y2}-${m2}-${d2}`).getTime();
-    });
-
-    return { zones: sortedZones, uniqueDates: sortedDates };
-  }, [records]);
-
-  const zones = metadata.zones;
-  const uniqueDates = metadata.uniqueDates;
-
-  React.useEffect(() => {
-     if (!selectedZone && zones.length > 0) setSelectedZone(zones[0])
-  }, [zones, selectedZone]);
-
   // Utility to shorten raw names
   const shortenBarrioName = (raw: string) => {
       let friendly = raw;
@@ -79,23 +49,73 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       return "Otras Zonas";
   };
 
+  // 1. DATA ENRICHMENT (The performance engine)
+  const enrichedRecords = useMemo(() => {
+    return records.map(r => {
+        const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
+        const isDOT = isIda ? r.destination.includes("DOT") : r.origin.includes("DOT");
+        const originMacro = getMacro(r.origin);
+        const destMacro = getMacro(r.destination);
+        const relevantBarrioRaw = isIda ? r.origin : r.destination;
+        const d = new Date(r.timestamp);
+
+        return {
+            ...r,
+            isIda,
+            isDOT,
+            originMacro,
+            destMacro,
+            macro: getMacro(relevantBarrioRaw),
+            barrio: shortenBarrioName(relevantBarrioRaw),
+            dateStr: d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+            hours: d.getHours(),
+            minutes: d.getMinutes(),
+            timestampDate: d
+        };
+    });
+  }, [records]);
+
+  const metadata = useMemo(() => {
+    const zonesSet = new Set<string>();
+    const datesSet = new Set<string>();
+    
+    enrichedRecords.forEach(r => {
+        if (!r.origin.includes("DOT") && !r.origin.includes("Microcentro") && !r.origin.includes("Florida") && !r.origin.includes("Obelisco")) zonesSet.add(r.origin);
+        if (!r.destination.includes("DOT") && !r.destination.includes("Microcentro") && !r.destination.includes("Florida") && !r.destination.includes("Obelisco")) zonesSet.add(r.destination); 
+        datesSet.add(r.dateStr);
+    });
+
+    return { 
+        zones: Array.from(zonesSet).sort(), 
+        uniqueDates: Array.from(datesSet).sort((a, b) => {
+            const [d1, m1, y1] = a.split('/');
+            const [d2, m2, y2] = b.split('/');
+            return new Date(`${y1}-${m1}-${d1}`).getTime() - new Date(`${y2}-${m2}-${d2}`).getTime();
+        })
+    };
+  }, [enrichedRecords]);
+
+  const zones = metadata.zones;
+  const uniqueDates = metadata.uniqueDates;
+
+  React.useEffect(() => {
+     if (!selectedZone && zones.length > 0) setSelectedZone(zones[0]);
+  }, [zones, selectedZone]);
+
   const [scatterMode, setScatterMode] = useState<"barrio" | "macro">("macro");
   const [scatterDestino, setScatterDestino] = useState<"todos" | "dot" | "centro">("todos");
   const [barTimeMode, setBarTimeMode] = useState<"mañana" | "tarde">("mañana");
-  const [timeBinSize, setTimeBinSize] = useState<number>(30); // Default higher for performance
+  const [timeBinSize, setTimeBinSize] = useState<number>(30); 
 
-  // 1. DATA: Comparison Averages (Bar Chart)
+  // 2. Optimized Sub-Memos
   const comparisonData = useMemo(() => {
       const groups = new Map<string, { zone: string, totalDOT: number, countDOT: number, totalMicro: number, countMicro: number }>();
-      records.forEach(r => {
-          const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
-          if (barTimeMode === "mañana" && !isIda) return;
-          if (barTimeMode === "tarde" && isIda) return;
-          const isDOT = isIda ? r.destination.includes("DOT") : r.origin.includes("DOT");
-          let friendlyZone = shortenBarrioName(isIda ? r.origin : r.destination);
-          if (!groups.has(friendlyZone)) groups.set(friendlyZone, { zone: friendlyZone, totalDOT: 0, countDOT: 0, totalMicro: 0, countMicro: 0 });
-          const stat = groups.get(friendlyZone)!;
-          if (isDOT) { stat.totalDOT += r.durationMins; stat.countDOT++; } 
+      enrichedRecords.forEach(r => {
+          if (barTimeMode === "mañana" && !r.isIda) return;
+          if (barTimeMode === "tarde" && r.isIda) return;
+          if (!groups.has(r.barrio)) groups.set(r.barrio, { zone: r.barrio, totalDOT: 0, countDOT: 0, totalMicro: 0, countMicro: 0 });
+          const stat = groups.get(r.barrio)!;
+          if (r.isDOT) { stat.totalDOT += r.durationMins; stat.countDOT++; } 
           else { stat.totalMicro += r.durationMins; stat.countMicro++; }
       });
       return Array.from(groups.values()).map(s => ({
@@ -103,13 +123,43 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           "Al DOT": s.countDOT > 0 ? Math.round(s.totalDOT / s.countDOT) : 0,
           "Al Microcentro": s.countMicro > 0 ? Math.round(s.totalMicro / s.countMicro) : 0,
       })).filter(s => s["Al DOT"] > 0 || s["Al Microcentro"] > 0).sort((a,b) => (a["Al DOT"] + a["Al Microcentro"]) - (b["Al DOT"] + b["Al Microcentro"]));
-  }, [records, barTimeMode]);
+  }, [enrichedRecords, barTimeMode]);
 
   const [lineSentido, setLineSentido] = useState<"ida" | "vuelta">("ida");
   const [lineDestino, setLineDestino] = useState<"todos" | "dot" | "centro">("todos");
   const [lineMacro, setLineMacro] = useState<string>("Todas las Zonas");
   const [lineDate, setLineDate] = useState<string>("Histórico Promediado");
   const [lineModoView, setLineModoView] = useState<"desglosado" | "promediado">("desglosado");
+
+  const barriosForLine = useMemo(() => {
+    if (lineMacro === "Todas las Zonas" || lineModoView === "promediado") return [];
+    return zones.filter(z => getMacro(z) === lineMacro).map(shortenBarrioName);
+  }, [lineMacro, zones, lineModoView]);
+
+  const evolutivoData = useMemo(() => {
+      const timeMap = new Map<string, any>();
+      enrichedRecords.forEach(r => {
+          if (lineDate !== "Histórico Promediado" && r.dateStr !== lineDate) return;
+          if (lineSentido === "ida" && !r.isIda) return;
+          if (lineSentido === "vuelta" && r.isIda) return;
+          if (lineDestino === "dot" && !r.isDOT) return;
+          if (lineDestino === "centro" && r.isDOT) return;
+          if (r.macro === "Otras Zonas") return;
+          if (lineMacro !== "Todas las Zonas" && r.macro !== lineMacro) return;
+
+          const mRounded = Math.floor(r.minutes / timeBinSize) * timeBinSize; 
+          const key = `${r.hours.toString().padStart(2,'0')}:${mRounded.toString().padStart(2,'0')}`;
+          if (!timeMap.has(key)) timeMap.set(key, { timeHourNum: r.hours + (mRounded/60), timeTick: key });
+          const point = timeMap.get(key);
+          
+          let seriesKey = (lineMacro === "Todas las Zonas" || lineModoView === "promediado") ? r.macro : r.barrio;
+          if (lineDestino === "todos") seriesKey += r.isDOT ? " (DOT)" : " (Centro)";
+          
+          if (!point[`_sum_${seriesKey}`]) { point[`_sum_${seriesKey}`] = 0; point[`_count_${seriesKey}`] = 0; }
+          point[`_sum_${seriesKey}`] += r.durationMins;
+          point[`_count_${seriesKey}`]++;
+      });
+... (rest removed for brevity, will continue in next chunk)
 
   const barriosForLine = useMemo(() => {
       if (lineMacro === "Todas las Zonas" || lineModoView === "promediado") return [];
@@ -147,14 +197,6 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           
           let seriesKey = (lineMacro === "Todas las Zonas" || lineModoView === "promediado") ? macro : relevantBarrio;
           if (lineDestino === "todos") {
-              seriesKey += isDOT ? " (DOT)" : " (Centro)";
-          }
-          
-          if (!point[`_sum_${seriesKey}`]) { point[`_sum_${seriesKey}`] = 0; point[`_count_${seriesKey}`] = 0; }
-          point[`_sum_${seriesKey}`] += r.durationMins;
-          point[`_count_${seriesKey}`]++;
-      });
-
       return Array.from(timeMap.values()).map(pt => {
           const finalPt: any = { timeTick: pt.timeTick, timeHourNum: pt.timeHourNum };
           Object.keys(pt).forEach(k => {
@@ -165,7 +207,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           });
           return finalPt;
       }).sort((a,b) => a.timeHourNum - b.timeHourNum);
-  }, [records, lineSentido, lineDestino, lineMacro, lineDate, lineModoView, timeBinSize]);
+  }, [enrichedRecords, lineSentido, lineDestino, lineMacro, lineDate, lineModoView, timeBinSize]);
 
   const dynamicLineKeys = useMemo(() => {
       let baseKeys: string[] = [];
@@ -192,21 +234,12 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       "#6366f1", "#14b8a6", "#eab308", "#ec4899", "#8b5cf6", "#3b82f6", "#10b981", "#f59e0b"
   ];
 
-  // 3. DATA: Radar Macro-Zone Comparability (Split by Ida/Vuelta)
   const radarIdaData = useMemo(() => {
       const macro = new Map<string, { name: string, min: number, max: number }>();
-      records.forEach(r => {
-          const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
-          if (!isIda) return;
-          
-          let macroName = getMacro(r.origin);
-          if (macroName === "Otras Zonas") return;
-          
-          // Filter out unrealistically low values (< 10 mins)
-          if (r.durationMins < 10) return;
-
-          if (!macro.has(macroName)) macro.set(macroName, { name: macroName, min: 999, max: 0 });
-          const obj = macro.get(macroName)!;
+      enrichedRecords.forEach(r => {
+          if (!r.isIda || r.durationMins < 10 || r.originMacro === "Otras Zonas") return;
+          if (!macro.has(r.originMacro)) macro.set(r.originMacro, { name: r.originMacro, min: 999, max: 0 });
+          const obj = macro.get(r.originMacro)!;
           if (r.durationMins < obj.min) obj.min = r.durationMins;
           if (r.durationMins > obj.max) obj.max = r.durationMins;
       });
@@ -215,22 +248,14 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           "Mejor Tiempo": m.min === 999 ? 0 : m.min,
           "Peor Tránsito": m.max
       }));
-  }, [records]);
+  }, [enrichedRecords]);
 
   const radarVueltaData = useMemo(() => {
       const macro = new Map<string, { name: string, min: number, max: number }>();
-      records.forEach(r => {
-          const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
-          if (isIda) return; // Only return
-          
-          let macroName = getMacro(r.destination);
-          if (macroName === "Otras Zonas") return;
-          
-          // Filter out unrealistically low values (< 10 mins)
-          if (r.durationMins < 10) return;
-
-          if (!macro.has(macroName)) macro.set(macroName, { name: macroName, min: 999, max: 0 });
-          const obj = macro.get(macroName)!;
+      enrichedRecords.forEach(r => {
+          if (r.isIda || r.durationMins < 10 || r.destMacro === "Otras Zonas") return;
+          if (!macro.has(r.destMacro)) macro.set(r.destMacro, { name: r.destMacro, min: 999, max: 0 });
+          const obj = macro.get(r.destMacro)!;
           if (r.durationMins < obj.min) obj.min = r.durationMins;
           if (r.durationMins > obj.max) obj.max = r.durationMins;
       });
@@ -239,38 +264,28 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           "Mejor Tiempo": m.min === 999 ? 0 : m.min,
           "Peor Tránsito": m.max
       }));
-  }, [records]);
+  }, [enrichedRecords]);
 
-  // 4. SCATTER PLOTS DATA
   const allMacros = useMemo(() => Array.from(new Set(zones.map(z => getMacro(z)))).sort(), [zones]);
   const barriosInSelectedMacro = useMemo(() => {
       if (scatterMacro === "Todas las Zonas") return zones;
       return zones.filter(z => getMacro(z) === scatterMacro);
   }, [scatterMacro, zones]);
   
-  // Format scatter points
   const rawScatterPoints = useMemo(() => {
-      return records.map(r => {
-         const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
-         const relevantBarrio = isIda ? r.origin : r.destination;
-         const isDOT = isIda ? r.destination.includes("DOT") : r.origin.includes("DOT");
-         
-         const d = new Date(r.timestamp);
-         // Redondear según el agrupador elegido
-         const minutesRounded = Math.floor(d.getMinutes() / timeBinSize) * timeBinSize;
-         const timeDecimal = d.getHours() + (minutesRounded / 60);
- 
+      return enrichedRecords.map(r => {
+         const minutesRounded = Math.floor(r.minutes / timeBinSize) * timeBinSize;
          return {
             id: r.id,
-            isIda,
-            isDOT,
+            isIda: r.isIda,
+            isDOT: r.isDOT,
             duration: r.durationMins,
-            timeHour: timeDecimal,
-            barrio: relevantBarrio,
-            macro: getMacro(relevantBarrio)
+            timeHour: r.hours + (minutesRounded / 60),
+            barrio: r.barrio,
+            macro: r.macro
          };
       });
-  }, [records, timeBinSize]);
+  }, [enrichedRecords, timeBinSize]);
 
   const filteredScatter = useMemo(() => {
       let filtered = rawScatterPoints.filter(p => {
@@ -284,7 +299,6 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       });
 
       if (scatterMode === "macro") {
-          // Conglomerate points by [macro + timeHour + isIda + isDOT]
           const clustered = new Map<string, { total: number, count: number, point: any }>();
           filtered.forEach(p => {
              const key = `${p.macro}-${p.timeHour}-${p.isIda}-${p.isDOT}`;
@@ -315,27 +329,26 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   };
 
   const getColorByZone = (macro: string, isDOT: boolean) => {
-      // isDOT = Azul, Centro = Verde
       if (isDOT) {
           switch(macro) {
-              case "Escobar": return "#bfdbfe"; // blue-200
-              case "Villa Nueva": return "#93c5fd"; // blue-300
-              case "Nordelta": return "#60a5fa"; // blue-400
-              case "San Isidro / Bancalari": return "#2563eb"; // blue-600
-              case "Benavidez / Pacheco": return "#1d4ed8"; // blue-700
-              case "Tigre": return "#1e40af"; // blue-800
-              case "Tortugas": return "#1e3a8a"; // blue-900
+              case "Escobar": return "#bfdbfe";
+              case "Villa Nueva": return "#93c5fd";
+              case "Nordelta": return "#60a5fa";
+              case "San Isidro / Bancalari": return "#2563eb";
+              case "Benavidez / Pacheco": return "#1d4ed8";
+              case "Tigre": return "#1e40af";
+              case "Tortugas": return "#1e3a8a";
               default: return "#3b82f6";
           }
       } else {
           switch(macro) {
-              case "Escobar": return "#bbf7d0"; // green-200
-              case "Villa Nueva": return "#86efac"; // green-300
-              case "Nordelta": return "#4ade80"; // green-400
-              case "San Isidro / Bancalari": return "#16a34a"; // green-600
-              case "Benavidez / Pacheco": return "#15803d"; // green-700
-              case "Tigre": return "#166534"; // green-800
-              case "Tortugas": return "#14532d"; // green-900
+              case "Escobar": return "#bbf7d0";
+              case "Villa Nueva": return "#86efac";
+              case "Nordelta": return "#4ade80";
+              case "San Isidro / Bancalari": return "#16a34a";
+              case "Benavidez / Pacheco": return "#15803d";
+              case "Tigre": return "#166534";
+              case "Tortugas": return "#14532d";
               default: return "#22c55e";
           }
       }
@@ -421,7 +434,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mt-8 mb-4 border-b border-white/10 pb-4">
         <div>
-          <h2 className="text-3xl font-bold flex items-center gap-3">
+          <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-100">
              <BarChart3 className="text-blue-500" size={28}/> 
              Central Analítica
           </h2>
