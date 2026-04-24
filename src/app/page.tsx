@@ -176,62 +176,83 @@ export default async function Dashboard({ searchParams }: any) {
         if (sortedMacros.length === 0) return <p className="text-slate-500 text-sm py-4 italic">Sin datos disponibles</p>;
 
         return (
-            <div className="space-y-3">
+            <div className="space-y-4">
                 {sortedMacros.map(m => (
-                    <details key={m.macro} className="group bg-white/[0.02] backdrop-blur-sm rounded-xl border border-white/5 overflow-hidden transition-all hover:bg-white/[0.04] hover:border-white/20">
-                        <summary className="p-4 cursor-pointer list-none outline-none">
-                            <div className="flex items-center gap-6">
-                                <div className="w-[180px]">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <TrendingUp size={14} className="text-blue-400 group-open:rotate-90 transition-transform" />
-                                        <span className="text-sm font-black text-white truncate">{m.macro}</span>
+                    <details key={m.macro} className="group bg-white/[0.02] backdrop-blur-md rounded-2xl border border-white/5 overflow-hidden transition-all hover:bg-white/[0.05] hover:border-white/20">
+                        <summary className="p-5 cursor-pointer list-none outline-none">
+                            <div className="flex flex-col gap-4">
+                                <div className="flex justify-between items-center">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-blue-600/10 flex items-center justify-center border border-blue-600/20">
+                                            <TrendingUp size={16} className="text-blue-400 group-open:rotate-90 transition-transform" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-base font-black text-white leading-none mb-1">{m.macro}</h3>
+                                            {m.macroDelta !== 0 && (
+                                                <span className={`text-[10px] font-bold ${m.macroDelta > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                                     {m.macroDelta > 0 ? '▲' : '▼'} {Math.abs(m.macroDelta)}m trend
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
-                                    {m.macroDelta !== 0 && (
-                                        <span className={`text-[8px] font-bold px-1.5 rounded-sm ${m.macroDelta > 0 ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                                            {m.macroDelta > 0 ? '▲' : '▼'} {Math.abs(m.macroDelta)}m trend
-                                        </span>
-                                    )}
+                                    <span className="text-[10px] font-bold bg-white/5 px-3 py-1 rounded-full text-slate-400 border border-white/10 uppercase tracking-widest">
+                                        {m.barrios.length} sectores
+                                    </span>
                                 </div>
 
-                                <div className="flex-1 flex flex-col gap-2">
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
-                                            <div className="h-full bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)] transition-all duration-1000" style={{ width: `${Math.min((m.mAvgDOT/120)*100, 100)}%` }} />
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-8 text-[10px] font-black text-blue-400 uppercase">DOT</div>
+                                        <div className="flex-1 h-3 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                                            <div 
+                                                className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-all duration-1000 ease-out" 
+                                                style={{ width: `${Math.min((m.mAvgDOT/120)*100, 100)}%` }} 
+                                            />
                                         </div>
-                                        <span className="text-xs font-black text-blue-300 w-10 text-right">{m.mAvgDOT}m</span>
+                                        <div className="w-12 text-right">
+                                            <span className="text-xl font-black text-white">{m.mAvgDOT}</span>
+                                            <span className="text-[10px] text-slate-500 font-bold ml-0.5">m</span>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
-                                            <div className="h-full bg-purple-500 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.5)] transition-all duration-1000" style={{ width: `${Math.min((m.mAvgMicro/120)*100, 100)}%` }} />
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-8 text-[10px] font-black text-purple-400 uppercase">Centro</div>
+                                        <div className="flex-1 h-3 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                                            <div 
+                                                className="h-full bg-gradient-to-r from-purple-600 to-purple-400 rounded-full shadow-[0_0_15px_rgba(168,85,247,0.3)] transition-all duration-1000 ease-out" 
+                                                style={{ width: `${Math.min((m.mAvgMicro/120)*100, 100)}%` }} 
+                                            />
                                         </div>
-                                        <span className="text-xs font-black text-purple-300 w-10 text-right">{m.mAvgMicro}m</span>
+                                        <div className="w-12 text-right">
+                                            <span className="text-xl font-black text-white">{m.mAvgMicro}</span>
+                                            <span className="text-[10px] text-slate-500 font-bold ml-0.5">m</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </summary>
-                        <div className="px-4 pb-4 pt-1 bg-black/40 border-t border-white/5 space-y-3">
+                        <div className="px-6 pb-6 pt-2 bg-black/40 border-t border-white/5 space-y-4">
                             {m.barrios.map(b => (
-                                <div key={b.name} className="flex items-center gap-6 py-2 pl-4 border-l-2 border-white/5 hover:border-blue-500/30 transition-colors">
-                                    <div className="w-[140px]">
-                                        <p className="text-[11px] font-bold text-slate-300 leading-none">{b.name}</p>
+                                <div key={b.name} className="group/item py-2 border-b border-white/5 last:border-0">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <p className="text-xs font-bold text-slate-300 group-hover/item:text-white transition-colors">{b.name}</p>
                                         {b.delta !== 0 && (
-                                            <span className={`text-[8px] font-bold ${b.delta > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                            <span className={`text-[10px] font-bold ${b.delta > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                                                 {b.delta > 0 ? '▲' : '▼'} {Math.abs(b.delta)}m
                                             </span>
                                         )}
                                     </div>
-                                    <div className="flex-1 flex flex-col gap-1.5 opacity-60">
-                                        <div className="flex items-center gap-2">
-                                            <div className="flex-1 h-1 bg-white/5 rounded-full">
-                                                <div className="h-full bg-blue-500/60 rounded-full" style={{ width: `${Math.min((b.avgDOT/120)*100, 100)}%` }} />
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex-1 h-1.5 bg-white/5 rounded-full">
+                                                <div className="h-full bg-blue-500/40 rounded-full" style={{ width: `${Math.min((b.avgDOT/120)*100, 100)}%` }} />
                                             </div>
-                                            <span className="text-[9px] font-bold text-blue-400 w-8">{b.avgDOT}m</span>
+                                            <span className="text-[10px] font-black text-blue-400/80 w-8 text-right">{b.avgDOT}m</span>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <div className="flex-1 h-1 bg-white/5 rounded-full">
-                                                <div className="h-full bg-purple-500/60 rounded-full" style={{ width: `${Math.min((b.avgMicro/120)*100, 100)}%` }} />
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex-1 h-1.5 bg-white/5 rounded-full">
+                                                <div className="h-full bg-purple-500/40 rounded-full" style={{ width: `${Math.min((b.avgMicro/120)*100, 100)}%` }} />
                                             </div>
-                                            <span className="text-[9px] font-bold text-purple-400 w-8">{b.avgMicro}m</span>
+                                            <span className="text-[10px] font-black text-purple-400/80 w-8 text-right">{b.avgMicro}m</span>
                                         </div>
                                     </div>
                                 </div>
