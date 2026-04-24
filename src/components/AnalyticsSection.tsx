@@ -27,6 +27,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       if (friendly.includes("Barbarita")) return "Barbarita";
       if (friendly.includes("San Marco")) return "San Marco";
       if (friendly.includes("Santa Ana")) return "Santa Ana";
+      if (friendly === "Villa Nueva, Buenos Aires") return "Villa Nueva (Gral)";
       if (friendly.includes("Villa Nueva")) return "Villa Nueva";
       if (friendly.includes("Encuentro")) return "El Encuentro";
       if (friendly.includes("Escondida")) return "La Escondida";
@@ -102,6 +103,8 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const [globalBarrio, setGlobalBarrio] = useState<string>("Todos los Barrios");
   const [timeBinSize, setTimeBinSize] = useState<number>(15);
   const [barTimeMode, setBarTimeMode] = useState<"mañana" | "tarde">("mañana");
+  const [barMacro, setBarMacro] = useState<string>("Todas las Zonas");
+  const [barBarrio, setBarBarrio] = useState<string>("Todos los Barrios");
   
   // Helpers derived from global selection
   const allMacros = useMemo(() => Array.from(new Set(zones.map(z => getMacro(z)))).sort(), [zones]);
@@ -109,6 +112,11 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       if (globalMacro === "Todas las Zonas") return zones;
       return zones.filter(z => getMacro(z) === globalMacro);
   }, [globalMacro, zones]);
+
+  const barriosInBarMacro = useMemo(() => {
+      if (barMacro === "Todas las Zonas") return zones.map(z => shortenBarrioName(z));
+      return zones.filter(z => getMacro(z) === barMacro).map(z => shortenBarrioName(z));
+  }, [barMacro, zones]);
 
   const todayStr = useMemo(() => new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }), []);
 
@@ -180,9 +188,9 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const comparisonData = useMemo(() => {
     const groups = new Map<string, any>();
     enrichedRecords.forEach(r => {
-        // Global Filter
-        if (globalMacro !== "Todas las Zonas" && r.macro !== globalMacro) return;
-        if (globalBarrio !== "Todos los Barrios" && r.barrio !== globalBarrio) return;
+        // Local Filter for BARS
+        if (barMacro !== "Todas las Zonas" && r.macro !== barMacro) return;
+        if (barBarrio !== "Todos los Barrios" && r.barrio !== barBarrio) return;
 
         if (barTimeMode === "mañana" && !r.isIda) return;
         if (barTimeMode === "tarde" && r.isIda) return;
@@ -207,12 +215,8 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
         "Histórico (Centro)": s.cMicro > 0 ? Math.round(s.tMicro / s.cMicro) : 0,
         "Hoy (Centro)": s.cdMicro > 0 ? Math.round(s.tdMicro / s.cdMicro) : 0,
     })).sort((a,b) => (a["Histórico (DOT)"] + a["Histórico (Centro)"]) - (b["Histórico (DOT)"] + b["Histórico (Centro)"]));
-  }, [enrichedRecords, barTimeMode, todayStr]);
+  }, [enrichedRecords, barTimeMode, barMacro, barBarrio, todayStr]);
 
-  const [trendBarrio, setTrendBarrio] = useState<string>("");
-  React.useEffect(() => {
-    if (!trendBarrio && zones.length > 0) setTrendBarrio(zones[0]);
-  }, [zones, trendBarrio]);
 
 
   const trendData = useMemo(() => {
@@ -765,6 +769,29 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                   >
                     MIRA LA TARDE (A PROVINCIA)
                   </button>
+              </div>
+          </div>
+
+          {/* LOCAL FILTERS FOR RANKING */}
+          <div className="flex flex-wrap gap-4 px-6 pb-6 border-b border-white/5 mb-6">
+              <div className="flex items-center gap-3">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase">Filtrar Ranking:</span>
+                  <select 
+                    value={barMacro} 
+                    onChange={(e) => { setBarMacro(e.target.value); setBarBarrio("Todos los Barrios"); }}
+                    className="bg-slate-800 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none"
+                  >
+                      <option value="Todas las Zonas">Todas las Zonas</option>
+                      {allMacros.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                  <select 
+                    value={barBarrio} 
+                    onChange={(e) => setBarBarrio(e.target.value)}
+                    className="bg-slate-800 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none min-w-[150px]"
+                  >
+                      <option value="Todos los Barrios">Todos los Barrios</option>
+                      {Array.from(new Set(barriosInBarMacro)).sort().map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
               </div>
           </div>
 
