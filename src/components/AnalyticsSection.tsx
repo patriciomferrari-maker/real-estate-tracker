@@ -110,12 +110,15 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
   const [globalBarrio, setGlobalBarrio] = useState<string>("Todos los Barrios");
   const [globalDestination, setGlobalDestination] = useState<string>("Ambos");
   const [timeBinSize, setTimeBinSize] = useState<number>(15);
-  const [barTimeMode, setBarTimeMode] = useState<"mañana" | "tarde">("mañana");
+  const currentHour = new Date().getHours();
+  const defaultShift = currentHour < 12 ? "mañana" : "tarde";
+  const [barTimeMode, setBarTimeMode] = useState<"mañana" | "tarde">(defaultShift);
   const [barMacro, setBarMacro] = useState<string>("Todas las Zonas");
   const [evoMacro, setEvoMacro] = useState<string>("Todas las Zonas");
   const [evoDest, setEvoDest] = useState<string>("Ambos");
-  const [evoTimeMode, setEvoTimeMode] = useState<"mañana" | "tarde" | "todo">("todo");
-  const [trendTimeMode, setTrendTimeMode] = useState<"mañana" | "tarde">("mañana");
+  const [evoTimeMode, setEvoTimeMode] = useState<"mañana" | "tarde" | "todo">(defaultShift);
+
+  const [trendTimeMode, setTrendTimeMode] = useState<"mañana" | "tarde">(defaultShift);
   const [comparisonMode, setComparisonMode] = useState<"all" | "dow" | "month">("all");
   
   // Helpers derived from global selection
@@ -412,7 +415,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
   // Local state for Weekly Pulse
   const [pulseMacro, setPulseMacro] = useState<string>(allMacros[0] || "Nordelta");
   const [pulseBarrio, setPulseBarrio] = useState<string>(zones.find(z => getMacro(z) === (allMacros[0] || "Nordelta")) || "Todos los Barrios");
-  const [pulseShift, setPulseShift] = useState<"mañana" | "tarde">("mañana");
+  const [pulseShift, setPulseShift] = useState<"mañana" | "tarde">(defaultShift);
   const [pulseDest, setPulseDest] = useState<"DOT" | "Obelisco">("Obelisco");
 
   const weeklyPulseData = useMemo(() => {
