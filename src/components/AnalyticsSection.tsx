@@ -67,6 +67,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const [scatterMode, setScatterMode] = useState<"barrio" | "macro">("macro");
   const [scatterDestino, setScatterDestino] = useState<"todos" | "dot" | "centro">("todos");
   const [barTimeMode, setBarTimeMode] = useState<"mañana" | "tarde">("mañana");
+  const [timeBinSize, setTimeBinSize] = useState<number>(5);
 
   // 1. DATA: Comparison Averages (Bar Chart)
   const comparisonData = useMemo(() => {
@@ -143,7 +144,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           
           if (lineMacro !== "Todas las Zonas" && macro !== lineMacro) return;
 
-          const mRounded = Math.floor(date.getMinutes() / 5) * 5; 
+          const mRounded = Math.floor(date.getMinutes() / timeBinSize) * timeBinSize; 
           const key = `${date.getHours().toString().padStart(2,'0')}:${mRounded.toString().padStart(2,'0')}`;
 
           if (!timeMap.has(key)) timeMap.set(key, { timeHourNum: date.getHours() + (mRounded/60), timeTick: key });
@@ -169,7 +170,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           });
           return finalPt;
       }).sort((a,b) => a.timeHourNum - b.timeHourNum);
-  }, [records, lineSentido, lineDestino, lineMacro, lineDate, lineModoView]);
+  }, [records, lineSentido, lineDestino, lineMacro, lineDate, lineModoView, timeBinSize]);
 
   const dynamicLineKeys = useMemo(() => {
       let baseKeys: string[] = [];
@@ -260,8 +261,8 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
          const isDOT = isIda ? r.destination.includes("DOT") : r.origin.includes("DOT");
          
          const d = new Date(r.timestamp);
-         // Redondear a intervalos de 5 minutos para que el agrupamiento por macro sea eficiente
-         const minutesRounded = Math.floor(d.getMinutes() / 5) * 5;
+         // Redondear según el agrupador elegido
+         const minutesRounded = Math.floor(d.getMinutes() / timeBinSize) * timeBinSize;
          const timeDecimal = d.getHours() + (minutesRounded / 60);
  
          return {
@@ -423,12 +424,29 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
     <section className="space-y-8 mb-12">
       
       {/* HEADER */}
-      <div className="flex flex-col gap-2 mt-8 mb-4 border-b border-white/10 pb-4">
-        <h2 className="text-3xl font-bold flex items-center gap-3">
-           <BarChart3 className="text-blue-500" size={28}/> 
-           Central Analítica
-        </h2>
-        <p className="text-slate-400">Visualizaciones estadísticas para comprender el comportamiento profundo del tránsito por barrios.</p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mt-8 mb-4 border-b border-white/10 pb-4">
+        <div>
+          <h2 className="text-3xl font-bold flex items-center gap-3">
+             <BarChart3 className="text-blue-500" size={28}/> 
+             Central Analítica
+          </h2>
+          <p className="text-slate-400">Visualizaciones estadísticas para comprender el comportamiento profundo del tránsito por barrios.</p>
+        </div>
+
+        <div className="flex flex-col items-end gap-2">
+            <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Agrupar cada:</span>
+            <div className="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1">
+                {[5, 15, 30, 60].map(val => (
+                   <button 
+                     key={val}
+                     onClick={() => setTimeBinSize(val)}
+                     className={`px-3 py-1 text-xs font-bold rounded transition-all ${timeBinSize === val ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                   >
+                     {val}m
+                   </button>
+                ))}
+            </div>
+        </div>
       </div>
 
 
