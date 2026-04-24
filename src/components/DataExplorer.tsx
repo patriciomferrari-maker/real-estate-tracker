@@ -156,13 +156,20 @@ export default function DataExplorer({ records }: { records: any[] }) {
                         <td colSpan={7} className="p-20 text-center">
                             <div className="flex flex-col items-center gap-4">
                                 <p className="text-slate-500">No se encontraron datos para estos filtros.</p>
-                                {fDay === 'Viernes' && fSentido === 'Vuelta' && (
-                                   <div className="bg-blue-500/10 border border-blue-500/30 p-4 rounded-lg mt-2 max-w-sm text-left mx-auto">
-                                      <p className="text-blue-300 text-xs">
-                                         💡 <b>Nota:</b> La matriz indica que hoy (Viernes) todavía no se han registrado viajes de Vuelta. Probá seleccionando <b>Jueves</b> para ver datos completos.
-                                      </p>
-                                   </div>
-                                )}
+                                <div className="flex flex-col gap-3 mt-4">
+                                    <button 
+                                        onClick={() => { setFDay('Jueves'); setFSentido('Vuelta'); }}
+                                        className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 px-4 py-2 rounded-lg text-xs font-bold hover:bg-emerald-500/30 transition shadow-lg"
+                                    >
+                                        💡 Sugerencia: Ver Vuelta de Jueves (1806 registros)
+                                    </button>
+                                    <button 
+                                        onClick={() => { setFDay(''); setFSentido(''); setFDestino(''); setFBarrio(''); }}
+                                        className="bg-white/5 border border-white/10 text-slate-300 px-4 py-2 rounded-lg text-xs font-bold hover:bg-white/10 transition"
+                                    >
+                                        Ver todos los datos (5740 registros)
+                                    </button>
+                                </div>
                             </div>
                         </td>
                     </tr>
@@ -172,6 +179,23 @@ export default function DataExplorer({ records }: { records: any[] }) {
             {filteredData.length > 500 && (
                 <div className="p-3 text-center text-xs text-slate-500 bg-black/20">Se muestran los últimos 500 registros. {filteredData.length} en total.</div>
             )}
+        </div>
+
+        {/* PRUEBA DE VIDA - ULTIMOS 10 REGISTROS */}
+        <div className="mt-12 pt-8 border-t border-white/5">
+            <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"/> 
+                Monitor de Datos en Tiempo Real (Últimos 10 registros sin filtros)
+            </h4>
+            <div className="grid grid-cols-5 gap-2">
+                {gridData.slice(0, 10).map((r, i) => (
+                    <div key={i} className="bg-white/5 p-2 rounded border border-white/5 text-[9px] flex flex-col gap-1">
+                        <span className="text-slate-400">{r.fecha} - {r.diaDeSemana}</span>
+                        <span className="text-emerald-400 font-bold truncate">{r.barrio}</span>
+                        <span className="text-white font-mono">{r.tiempo} min</span>
+                    </div>
+                ))}
+            </div>
         </div>
     </div>
   )
