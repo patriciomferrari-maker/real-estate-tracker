@@ -1026,9 +1026,11 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                                  }}
                                />
                               <Legend />
-                              <Bar dataKey="Histórico (DOT)" fill="#1e40af" radius={[0, 4, 4, 0]} barSize={10} />
+                              <Bar dataKey="Histórico (DOT)" fill="#1e40af" radius={[0, 4, 4, 0]} barSize={10}>
+                                  <LabelList dataKey="Histórico (DOT)" position="right" formatter={(v:any) => `${v}m`} style={{ fill: '#94a3b8', fontSize: '10px', fontWeight: 'bold' }} />
+                              </Bar>
                               <Bar dataKey="Hoy (DOT)" fill="#60a5fa" radius={[0, 4, 4, 0]} barSize={14}>
-                                 <LabelList dataKey="deltaDOT" content={<DeltaLabel deltaKey="deltaDOT" />} />
+                                  <LabelList dataKey="Hoy (DOT)" position="right" formatter={(v:any) => `${v}m`} style={{ fill: '#ffffff', fontSize: '11px', fontWeight: 'bold' }} />
                               </Bar>
                             </BarChart>
                           </ResponsiveContainer>
@@ -1087,9 +1089,11 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                                  }}
                                />
                               <Legend />
-                              <Bar dataKey="Histórico (Centro)" fill="#6b21a8" radius={[0, 4, 4, 0]} barSize={10} />
+                              <Bar dataKey="Histórico (Centro)" fill="#6b21a8" radius={[0, 4, 4, 0]} barSize={10}>
+                                  <LabelList dataKey="Histórico (Centro)" position="right" formatter={(v:any) => `${v}m`} style={{ fill: '#94a3b8', fontSize: '10px', fontWeight: 'bold' }} />
+                              </Bar>
                               <Bar dataKey="Hoy (Centro)" fill="#a855f7" radius={[0, 4, 4, 0]} barSize={14}>
-                                 <LabelList dataKey="deltaCentro" content={<DeltaLabel deltaKey="deltaCentro" />} />
+                                  <LabelList dataKey="Hoy (Centro)" position="right" formatter={(v:any) => `${v}m`} style={{ fill: '#ffffff', fontSize: '11px', fontWeight: 'bold' }} />
                               </Bar>
                             </BarChart>
                           </ResponsiveContainer>
