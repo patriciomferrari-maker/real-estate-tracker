@@ -10,11 +10,8 @@ import { Activity, Search, BarChart3, Crosshair, Map as MapIcon, Filter, Trendin
 
 export default function AnalyticsSection({ records }: { records: any[] }) {
   // Estado original para LineChart
-  const [selectedZone, setSelectedZone] = useState<string>("");
 
   // Nuevos estados para los filtros Scatter
-  const [scatterMacro, setScatterMacro] = useState<string>("Todas las Zonas");
-  const [scatterBarrio, setScatterBarrio] = useState<string>("Todos los Barrios");
 
   // Utility to shorten raw names
   const shortenBarrioName = (raw: string) => {
@@ -98,16 +95,20 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const zones = metadata.zones;
   const uniqueDates = metadata.uniqueDates;
 
-  React.useEffect(() => {
-     if (!selectedZone && zones.length > 0) setSelectedZone(zones[0]);
-  }, [zones, selectedZone]);
 
-  const [scatterMode, setScatterMode] = useState<"barrio" | "macro">("macro");
-  const [scatterDestino, setScatterDestino] = useState<"todos" | "dot" | "centro">("todos");
+  // 1. GLOBAL COMMAND CENTER STATE
+  const [globalMode, setGlobalMode] = useState<"barrio" | "macro">("macro");
+  const [globalMacro, setGlobalMacro] = useState<string>("Todas las Zonas");
+  const [globalBarrio, setGlobalBarrio] = useState<string>("Todos los Barrios");
+  const [timeBinSize, setTimeBinSize] = useState<number>(15);
   const [barTimeMode, setBarTimeMode] = useState<"mañana" | "tarde">("mañana");
-  const [timeBinSize, setTimeBinSize] = useState<number>(30); 
-  const [selectedZones, setSelectedZones] = useState<string[]>([]);
-  const [lineDestino, setLineDestino] = useState<"todos" | "dot" | "centro">("todos");
+  
+  // Helpers derived from global selection
+  const allMacros = useMemo(() => Array.from(new Set(zones.map(z => getMacro(z)))).sort(), [zones]);
+  const barriosInSelectedMacro = useMemo(() => {
+      if (globalMacro === "Todas las Zonas") return zones;
+      return zones.filter(z => getMacro(z) === globalMacro);
+  }, [globalMacro, zones]);
 
   const todayStr = useMemo(() => new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }), []);
 
@@ -119,6 +120,10 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
     const barCentro = new Map<string, { t: number, c: number }>();
 
     enrichedRecords.forEach(r => {
+        // Global Filter
+        if (globalMacro !== "Todas las Zonas" && r.macro !== globalMacro) return;
+        if (globalBarrio !== "Todos los Barrios" && r.barrio !== globalBarrio) return;
+
         if (r.isDOT) {
             dotSum += r.durationMins; dotCount++;
             if (r.durationMins < dotMin) dotMin = r.durationMins;
@@ -151,14 +156,14 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   }, [enrichedRecords]);
 
   // Multibarrio Evolution
+  // Evolution Multibarrio (Keep but sync with globalMacro)
   const evolutivoData = useMemo(() => {
     const map = new Map<string, any>();
     enrichedRecords.forEach(r => {
-        if (selectedZones.length > 0 && !selectedZones.includes(r.barrio)) return;
-        if (lineDestino === "dot" && !r.isDOT) return;
-        if (lineDestino === "centro" && r.isDOT) return;
+        // Global Filter
+        if (globalMacro !== "Todas las Zonas" && r.macro !== globalMacro) return;
         
-        const bin = Math.floor(r.minutes / 30) * 30; // Force 30m for generic chart
+        const bin = Math.floor(r.minutes / 30) * 30; 
         const key = `${r.hours.toString().padStart(2,'0')}:${bin.toString().padStart(2,'0')}`;
         if (!map.has(key)) map.set(key, { timeTick: key, timeHourNum: r.hours + (bin/60) });
         const p = map.get(key);
@@ -169,12 +174,16 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
         p[dataKey] = Math.round(p[dataKey + '_s'] / p[dataKey + '_c']);
     });
     return Array.from(map.values()).sort((a,b) => a.timeHourNum - b.timeHourNum);
-  }, [enrichedRecords, selectedZones, lineDestino]);
+  }, [enrichedRecords, globalMacro]);
 
   // BARS: Ranking data
   const comparisonData = useMemo(() => {
     const groups = new Map<string, any>();
     enrichedRecords.forEach(r => {
+        // Global Filter
+        if (globalMacro !== "Todas las Zonas" && r.macro !== globalMacro) return;
+        if (globalBarrio !== "Todos los Barrios" && r.barrio !== globalBarrio) return;
+
         if (barTimeMode === "mañana" && !r.isIda) return;
         if (barTimeMode === "tarde" && r.isIda) return;
         if (!groups.has(r.barrio)) groups.set(r.barrio, { 
@@ -207,29 +216,38 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
 
 
   const trendData = useMemo(() => {
-      const dotMap = new Map<string, any>();
-      const centroMap = new Map<string, any>();
-      enrichedRecords.forEach(r => {
-          if (r.barrio !== trendBarrio) return;
-          const mRounded = Math.floor(r.minutes / timeBinSize) * timeBinSize; 
-          const key = `${r.hours.toString().padStart(2,'0')}:${mRounded.toString().padStart(2,'0')}`;
-          const isToday = r.dateStr === todayStr;
-          const targetMap = r.isDOT ? dotMap : centroMap;
-          if (!targetMap.has(key)) targetMap.set(key, { 
-              timeTick: key, timeHourNum: r.hours + (mRounded/60),
-              idaSum: 0, idaCount: 0, idaHoy: null, vueltaSum: 0, vueltaCount: 0, vueltaHoy: null
-          });
-          const p = targetMap.get(key);
-          if (r.isIda) { p.idaSum += r.durationMins; p.idaCount++; if (isToday) p.idaHoy = r.durationMins; }
-          else { p.vueltaSum += r.durationMins; p.vueltaCount++; if (isToday) p.vueltaHoy = r.durationMins; }
-      });
-      const finalize = (m: Map<string, any>) => Array.from(m.values()).map(p => ({
-          timeTick: p.timeTick, timeHourNum: p.timeHourNum,
-          "Ida (Hoy)": p.idaHoy, "Ida (Promedio)": p.idaCount > 0 ? Math.round(p.idaSum / p.idaCount) : null,
-          "Vuelta (Hoy)": p.vueltaHoy, "Vuelta (Promedio)": p.vueltaCount > 0 ? Math.round(p.vueltaSum / p.vueltaCount) : null
-      })).sort((a,b) => a.timeHourNum - b.timeHourNum);
-      return { dot: finalize(dotMap), centro: finalize(centroMap) };
-  }, [enrichedRecords, trendBarrio, todayStr, timeBinSize]);
+    const dotMap = new Map<string, any>();
+    const centroMap = new Map<string, any>();
+    enrichedRecords.forEach(r => {
+        // Global Filter
+        if (globalMacro !== "Todas las Zonas" && r.macro !== globalMacro) return;
+        if (globalBarrio !== "Todos los Barrios" && r.barrio !== globalBarrio) return;
+
+        const bin = Math.floor(r.minutes / timeBinSize) * timeBinSize; 
+        const key = `${r.hours.toString().padStart(2,'0')}:${bin.toString().padStart(2,'0')}`;
+        const target = r.isDOT ? dotMap : centroMap;
+        if (!target.has(key)) target.set(key, { 
+            timeTick: key, timeHourNum: r.hours + (bin/60),
+            iS:0, iC:0, iH:null, vS:0, vC:0, vH:null, iHS:0, iHC:0, vHS:0, vHC:0
+        });
+        const p = target.get(key);
+        if (r.isIda) { 
+            p.iS += r.durationMins; p.iC++; 
+            if (r.dateStr === todayStr) { p.iHS += r.durationMins; p.iHC++; }
+        } else { 
+            p.vS += r.durationMins; p.vC++; 
+            if (r.dateStr === todayStr) { p.vHS += r.durationMins; p.vHC++; }
+        }
+    });
+    const fmt = (m: Map<string, any>) => Array.from(m.values()).map(p => ({
+        timeTick: p.timeTick, timeHourNum: p.timeHourNum,
+        "Ida (Hoy)": p.iHC > 0 ? Math.round(p.iHS / p.iHC) : null, 
+        "Ida (Promedio)": p.iC > 0 ? Math.round(p.iS / p.iC) : null,
+        "Vuelta (Hoy)": p.vHC > 0 ? Math.round(p.vHS / p.vHC) : null, 
+        "Vuelta (Promedio)": p.vC > 0 ? Math.round(p.vS / p.vC) : null
+    })).sort((a,b) => a.timeHourNum - b.timeHourNum);
+    return { dot: fmt(dotMap), centro: fmt(centroMap) };
+  }, [enrichedRecords, globalMacro, globalBarrio, todayStr, timeBinSize]);
 
   const radarData = useMemo(() => {
     const macroIda = new Map<string, any>();
@@ -259,13 +277,6 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       "#6366f1", "#14b8a6", "#eab308", "#ec4899", "#8b5cf6", "#3b82f6", "#10b981", "#f59e0b"
   ];
 
-
-  const allMacros = useMemo(() => Array.from(new Set(zones.map(z => getMacro(z)))).sort(), [zones]);
-  const barriosInSelectedMacro = useMemo(() => {
-      if (scatterMacro === "Todas las Zonas") return zones;
-      return zones.filter(z => getMacro(z) === scatterMacro);
-  }, [scatterMacro, zones]);
-  
   const rawScatterPoints = useMemo(() => {
     return enrichedRecords.map(r => {
       const bin = Math.floor(r.minutes / timeBinSize) * timeBinSize;
@@ -274,28 +285,23 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           timeHour: r.hours + (bin / 60), barrio: r.barrio, macro: r.macro,
           isToday: r.dateStr === todayStr
       };
+    }).filter(p => {
+        if (globalMacro !== "Todas las Zonas" && p.macro !== globalMacro) return false;
+        if (globalBarrio !== "Todos los Barrios" && p.barrio !== globalBarrio) return false;
+        return true;
     });
-  }, [enrichedRecords, timeBinSize, todayStr]);
+  }, [enrichedRecords, timeBinSize, todayStr, globalMacro, globalBarrio]);
 
   const filteredScatter = useMemo(() => {
-      let filtered = rawScatterPoints.filter(p => {
-          if (scatterMacro !== "Todas las Zonas" && p.macro !== scatterMacro) return false;
-          if (scatterBarrio !== "Todos los Barrios" && p.barrio !== scatterBarrio) return false;
-          
-          if (scatterDestino === "dot" && !p.isDOT) return false;
-          if (scatterDestino === "centro" && p.isDOT) return false;
-          
-          return true;
-      });
-
-      // SAMPLING: If too many points, sample them to keep UI responsive
+      let filtered = rawScatterPoints;
+      
       const MAX_POINTS = 1200;
-      if (scatterMode === "barrio" && filtered.length > MAX_POINTS) {
+      if (globalMode === "barrio" && filtered.length > MAX_POINTS) {
           const stride = Math.ceil(filtered.length / MAX_POINTS);
           filtered = filtered.filter((_, i) => i % stride === 0);
       }
 
-      if (scatterMode === "macro") {
+      if (globalMode === "macro") {
           const clustered = new Map<string, { total: number, count: number, point: any }>();
           filtered.forEach(p => {
              const key = `${p.macro}-${p.timeHour}-${p.isIda}-${p.isDOT}`;
@@ -323,7 +329,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
               data
           };
       });
-  }, [rawScatterPoints, scatterMacro, scatterBarrio, scatterMode, scatterDestino]);
+  }, [rawScatterPoints, globalMode]);
 
   // Split the grouped series into high-level categories for the charts
   const scatterSeriesIda = filteredScatter.filter(s => s.isIda);
@@ -405,30 +411,60 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   return (
     <section className="space-y-8 mb-12">
       
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mt-8 mb-4 border-b border-white/10 pb-4">
-        <div>
-          <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-100">
-             <BarChart3 className="text-blue-500" size={28}/> 
-             Central Analítica
-          </h2>
-          <p className="text-slate-400">Visualizaciones estadísticas para comprender el comportamiento profundo del tránsito por barrios.</p>
-        </div>
-
-        <div className="flex flex-col items-end gap-2">
-            <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Agrupar cada:</span>
-            <div className="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1">
-                {[5, 15, 30, 60].map(val => (
-                   <button 
-                     key={val}
-                     onClick={() => setTimeBinSize(val)}
-                     className={`px-3 py-1 text-xs font-bold rounded transition-all ${timeBinSize === val ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
-                   >
-                     {val}m
-                   </button>
-                ))}
+      {/* MASTER CONTROL PANEL (Sticky) */}
+      <div className="sticky top-2 z-50 glass-card border-blue-500/30 bg-slate-900/80 backdrop-blur-xl p-4 flex flex-wrap gap-6 items-center justify-between shadow-2xl rounded-2xl">
+          <div className="flex gap-4 items-center">
+            <div className="p-2 bg-blue-600 rounded-lg shadow-lg shadow-blue-900/50">
+              <Filter size={20} className="text-white" />
             </div>
-        </div>
+            <div>
+              <h2 className="text-lg font-bold text-white leading-tight">Consola de Control</h2>
+              <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">Filtros Globales Sincronizados</p>
+            </div>
+            <div className="h-8 w-[1px] bg-white/10 mx-2 hidden md:block"></div>
+            <div className="flex bg-slate-800 rounded-lg p-1 border border-white/5">
+                <button onClick={() => setGlobalMode("macro")} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${globalMode === 'macro' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Zonas Agrupadas</button>
+                <button onClick={() => setGlobalMode("barrio")} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${globalMode === 'barrio' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Barrios</button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-4 items-center flex-1 justify-end">
+              {/* Group Every */}
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] text-slate-500 font-bold uppercase ml-1">Precisión</span>
+                <div className="flex bg-slate-800 rounded-lg p-1 border border-white/5">
+                    {[5, 15, 30, 60].map(val => (
+                        <button key={val} onClick={() => setTimeBinSize(val)} className={`px-3 py-1 text-[10px] font-bold rounded ${timeBinSize === val ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-white transition-colors'}`}>{val}m</button>
+                    ))}
+                </div>
+              </div>
+
+              {/* Macro Select */}
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] text-slate-500 font-bold uppercase ml-1">Macro Zona</span>
+                <select 
+                    value={globalMacro} 
+                    onChange={(e) => { setGlobalMacro(e.target.value); setGlobalBarrio("Todos los Barrios"); }}
+                    className="bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none hover:bg-slate-700 transition-colors cursor-pointer"
+                >
+                    <option value="Todas las Zonas">Todas las Zonas</option>
+                    {allMacros.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+
+              {/* Barrio Select */}
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] text-slate-500 font-bold uppercase ml-1">Barrio Específico</span>
+                <select 
+                    value={globalBarrio} 
+                    onChange={(e) => setGlobalBarrio(e.target.value)}
+                    className="bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none min-w-[150px] hover:bg-slate-700 transition-colors cursor-pointer"
+                >
+                    <option value="Todos los Barrios">Todos los Barrios</option>
+                    {barriosInSelectedMacro.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+              </div>
+          </div>
       </div>
 
       {/* KPI SUMMARY CARDS */}
@@ -460,35 +496,12 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       {/* MULTI-BARRIO EVOLUTION CHART */}
       <div className="glass-card border-white/5 space-y-6">
           <div className="flex flex-col xl:flex-row justify-between gap-4 border-b border-white/5 pb-4">
-              <div>
+               <div>
                   <h3 className="text-lg font-bold flex items-center gap-2">
                     <TrendingUp size={18} className="text-blue-400"/> Comparativa de Evolución Multibarrio
                   </h3>
-                  <p className="text-xs text-slate-400">Seleccioná varios barrios para comparar sus curvas de tiempo juntas.</p>
-              </div>
-              <div className="flex flex-wrap gap-4 items-center">
-                  <select 
-                    className="bg-slate-900 border border-slate-700 text-xs rounded-lg px-3 py-1.5"
-                    value={lineDestino}
-                    onChange={(e:any) => setLineDestino(e.target.value)}
-                  >
-                     <option value="todos">Todos los Destinos</option>
-                     <option value="dot">Hacia DOT</option>
-                     <option value="centro">Hacia Centro</option>
-                  </select>
-                  <div className="flex gap-2 max-w-md overflow-x-auto pb-1">
-                      {zones.slice(0, 5).map(z => (
-                          <button 
-                            key={z}
-                            onClick={() => setSelectedZones(prev => prev.includes(z) ? prev.filter(x => x !== z) : [...prev, z])}
-                            className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all border ${selectedZones.includes(z) ? 'bg-blue-600 border-blue-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-400'}`}
-                          >
-                             {z}
-                          </button>
-                      ))}
-                      <span className="text-[10px] text-slate-500 self-center">...</span>
-                  </div>
-              </div>
+                  <p className="text-xs text-slate-400 italic">Mostrando evolución de todos los barrios en <b>{globalMacro}</b></p>
+               </div>
           </div>
           
           <div className="h-[350px] w-full">
@@ -520,71 +533,8 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                    <Crosshair size={20} className="text-cyan-400" /> 
                    Dispersión de Peajes y Horarios
                </h3>
-               <p className="text-slate-400 text-sm max-w-xl mb-4">Mapeo de nube de puntos. Cada punto es un viaje real registrado. Analiza la densidad de viajes a distintas horas del día y la brecha entre ir al DOT (Azul) vs Centro (Violeta).</p>
-               
-               {/* SCATTER VIEW TOGGLE */}
-               <div className="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1 mr-4">
-                  <button 
-                    onClick={() => setScatterMode("barrio")}
-                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${scatterMode === 'barrio' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    Nubes (Barrios)
-                  </button>
-                  <button 
-                    onClick={() => setScatterMode("macro")}
-                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${scatterMode === 'macro' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    Promedios (Macro)
-                  </button>
-               </div>
-
-               <div className="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1">
-                  <button 
-                    onClick={() => setScatterDestino("todos")}
-                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${scatterDestino === 'todos' ? 'bg-slate-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    Ambos
-                  </button>
-                  <button 
-                    onClick={() => setScatterDestino("dot")}
-                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${scatterDestino === 'dot' ? 'bg-blue-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    Solo DOT
-                  </button>
-                  <button 
-                    onClick={() => setScatterDestino("centro")}
-                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${scatterDestino === 'centro' ? 'bg-purple-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    Solo Centro
-                  </button>
-               </div>
+               <p className="text-slate-400 text-sm max-w-xl">Mapeo de nube de puntos. Cada punto es un viaje real registrado. Analiza la densidad de viajes y la brecha entre ir al DOT (Azul) vs Centro (Verde).</p>
             </div>            
-            
-            {/* FILTERS FOR SCATTER */}
-            <div className="flex flex-col gap-3 min-w-[280px]">
-                <div className="relative">
-                   <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
-                   <select 
-                      className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg pl-9 pr-4 py-1.5 text-sm appearance-none focus:outline-none focus:ring-1 focus:ring-cyan-500"
-                      value={scatterMacro}
-                      onChange={(e) => { setScatterMacro(e.target.value); setScatterBarrio("Todos los Barrios"); }}
-                   >
-                       <option value="Todas las Zonas">Todas las Zonas Macro</option>
-                       {allMacros.map(z => <option key={z} value={z}>{z}</option>)}
-                   </select>
-                </div>
-                <div className="relative">
-                   <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
-                   <select 
-                      className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg pl-9 pr-4 py-1.5 text-sm appearance-none focus:outline-none focus:ring-1 focus:ring-cyan-500 opacity-90"
-                      value={scatterBarrio}
-                      onChange={(e) => setScatterBarrio(e.target.value)}
-                   >
-                       <option value="Todos los Barrios">Todos los Barrios</option>
-                       {barriosInSelectedMacro.map(z => <option key={z} value={z}>{z}</option>)}
-                   </select>
-                </div>
-            </div>
          </div>
 
          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
@@ -683,20 +633,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                   <Activity size={20} className="text-orange-400" /> 
                   Comparativa de Tendencia: Hoy vs. Histórico
               </h3>
-              <p className="text-slate-400 text-sm">Viendo el comportamiento de <b>{trendBarrio}</b> hoy comparado con el promedio acumulado.</p>
-           </div>
-           
-           <div className="mt-4 xl:mt-0 flex gap-4 items-center">
-               <span className="text-xs text-slate-500 uppercase font-bold tracking-wider">Filtrar Barrio:</span>
-               <div className="relative min-w-[250px]">
-                   <select 
-                      className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-4 py-2 text-sm appearance-none focus:outline-none focus:ring-1 focus:ring-orange-500"
-                      value={trendBarrio}
-                      onChange={(e) => setTrendBarrio(e.target.value)}
-                   >
-                       {zones.map(z => <option key={z} value={z}>{z}</option>)}
-                   </select>
-               </div>
+              <p className="text-slate-400 text-sm">Comparativa del comportamiento de <b>{globalBarrio === "Todos los Barrios" ? globalMacro : globalBarrio}</b> hoy vs promedio.</p>
            </div>
         </div>
 
