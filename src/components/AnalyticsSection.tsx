@@ -105,6 +105,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const [globalMode, setGlobalMode] = useState<"barrio" | "macro">("macro");
   const [globalMacro, setGlobalMacro] = useState<string>("Todas las Zonas");
   const [globalBarrio, setGlobalBarrio] = useState<string>("Todos los Barrios");
+  const [globalDestination, setGlobalDestination] = useState<string>("Ambos");
   const [timeBinSize, setTimeBinSize] = useState<number>(15);
   const [barTimeMode, setBarTimeMode] = useState<"mañana" | "tarde">("mañana");
   const [barMacro, setBarMacro] = useState<string>("Todas las Zonas");
@@ -135,6 +136,10 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
         // Global Filter
         if (globalMacro !== "Todas las Zonas" && r.macro !== globalMacro) return;
         if (globalBarrio !== "Todos los Barrios" && r.barrio !== globalBarrio) return;
+        
+        // Destination Filter
+        if (globalDestination === "DOT" && !r.isDOT) return;
+        if (globalDestination === "Obelisco" && r.isDOT) return;
 
         if (r.isDOT) {
             dotSum += r.durationMins; dotCount++;
@@ -175,6 +180,10 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
         // Local Filter for Evolution
         if (evoMacro !== "Todas las Zonas" && r.macro !== evoMacro) return;
         
+        // Destination Filter
+        if (globalDestination === "DOT" && !r.isDOT) return;
+        if (globalDestination === "Obelisco" && r.isDOT) return;
+
         const bin = Math.floor(r.minutes / 30) * 30; 
         const key = `${r.hours.toString().padStart(2,'0')}:${bin.toString().padStart(2,'0')}`;
         if (!map.has(key)) map.set(key, { timeTick: key, timeHourNum: r.hours + (bin/60) });
@@ -198,6 +207,10 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
     enrichedRecords.forEach(r => {
         // Local Filter for BARS
         if (barMacro !== "Todas las Zonas" && r.macro !== barMacro) return;
+
+        // Destination Filter
+        if (globalDestination === "DOT" && !r.isDOT) return;
+        if (globalDestination === "Obelisco" && r.isDOT) return;
 
         // Dynamic drill-down: If 'Todas' is selected, group by macro. 
         // If a specific zone is selected, show its internal barrios.
@@ -246,6 +259,10 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
         // Global Filter
         if (globalMacro !== "Todas las Zonas" && r.macro !== globalMacro) return;
         if (globalBarrio !== "Todos los Barrios" && r.barrio !== globalBarrio) return;
+        
+        // Destination Filter
+        if (globalDestination === "DOT" && !r.isDOT) return;
+        if (globalDestination === "Obelisco" && r.isDOT) return;
 
         const bin = Math.floor(r.minutes / timeBinSize) * timeBinSize; 
         const key = `${r.hours.toString().padStart(2,'0')}:${bin.toString().padStart(2,'0')}`;
@@ -271,13 +288,18 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
         "Vuelta (Promedio)": p.vC > 0 ? Math.round(p.vS / p.vC) : null
     })).sort((a,b) => a.timeHourNum - b.timeHourNum);
     return { dot: fmt(dotMap), centro: fmt(centroMap) };
-  }, [enrichedRecords, globalMacro, globalBarrio, todayStr, timeBinSize]);
+  }, [enrichedRecords, globalMacro, globalBarrio, globalDestination, todayStr, timeBinSize]);
 
   const radarData = useMemo(() => {
     const macroIda = new Map<string, any>();
     const macroVuelta = new Map<string, any>();
     enrichedRecords.forEach(r => {
         if (r.macro === "Otras Zonas") return;
+
+        // Destination Filter
+        if (globalDestination === "DOT" && !r.isDOT) return;
+        if (globalDestination === "Obelisco" && r.isDOT) return;
+
         const map = r.isIda ? macroIda : macroVuelta;
         if (!map.has(r.macro)) map.set(r.macro, { hMin:999, hMax:0, tMin:999, tMax:0 });
         const o = map.get(r.macro)!;
@@ -294,7 +316,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
         "Peor (Hoy)": v.tMax === 0 ? null : v.tMax, "Mejor (Hoy)": v.tMin === 999 ? null : v.tMin
     }));
     return { ida: fmt(macroIda), vuelta: fmt(macroVuelta) };
-  }, [enrichedRecords, todayStr]);
+  }, [enrichedRecords, globalDestination, todayStr]);
 
   const LINE_COLORS = [
       "#3b82f6", "#10b981", "#f59e0b", "#f43f5e", "#a855f7", "#06b6d4", "#f97316", "#84cc16",
@@ -312,9 +334,14 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
     }).filter(p => {
         if (globalMacro !== "Todas las Zonas" && p.macro !== globalMacro) return false;
         if (globalBarrio !== "Todos los Barrios" && p.barrio !== globalBarrio) return false;
+        
+        // Destination Filter
+        if (globalDestination === "DOT" && !p.isDOT) return false;
+        if (globalDestination === "Obelisco" && p.isDOT) return false;
+
         return true;
     });
-  }, [enrichedRecords, timeBinSize, todayStr, globalMacro, globalBarrio]);
+  }, [enrichedRecords, timeBinSize, todayStr, globalMacro, globalBarrio, globalDestination]);
 
   const filteredScatter = useMemo(() => {
       let filtered = rawScatterPoints;
@@ -505,6 +532,20 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                 >
                     <option value="Todos los Barrios">Todos los Barrios</option>
                     {barriosInSelectedMacro.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+              </div>
+
+              {/* Destination Select */}
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] text-slate-500 font-bold uppercase ml-1">Destino</span>
+                <select 
+                    value={globalDestination} 
+                    onChange={(e) => setGlobalDestination(e.target.value)}
+                    className="bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none hover:bg-slate-700 transition-colors cursor-pointer"
+                >
+                    <option value="Ambos">Ambos</option>
+                    <option value="DOT">Shopping DOT</option>
+                    <option value="Obelisco">Obelisco / Centro</option>
                 </select>
               </div>
           </div>
