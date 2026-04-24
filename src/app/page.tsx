@@ -94,10 +94,10 @@ export default async function Dashboard({ searchParams }: any) {
           isIda: Boolean(isIda),
           isDOT: Boolean(isDOT),
           barrio: String(isIda ? cleanOrigin : cleanDest),
-          zona: String((isIda ? cleanOrigin : cleanDest).includes("Escobar") ? "Escobar" : 
-                (isIda ? cleanOrigin : cleanDest).includes("Nordelta") ? "Nordelta" : 
-                (isIda ? cleanOrigin : cleanDest).includes("Villa Nueva") || (isIda ? cleanOrigin : cleanDest).includes("San Marco") ? "Tigre/Villa Nueva" :
-                (isIda ? cleanOrigin : cleanDest).includes("Tigre") || (isIda ? cleanOrigin : cleanDest).includes("Pacheco") ? "Tigre/Pacheco" : "Zona Norte")
+          zona: String(((isIda ? cleanOrigin : cleanDest) || "").includes("Escobar") ? "Escobar" : 
+                ((isIda ? cleanOrigin : cleanDest) || "").includes("Nordelta") ? "Nordelta" : 
+                ((isIda ? cleanOrigin : cleanDest) || "").includes("Villa Nueva") || ((isIda ? cleanOrigin : cleanDest) || "").includes("San Marco") ? "Tigre/Villa Nueva" :
+                ((isIda ? cleanOrigin : cleanDest) || "").includes("Tigre") || ((isIda ? cleanOrigin : cleanDest) || "").includes("Pacheco") ? "Tigre/Pacheco" : "Zona Norte")
       };
   });
 
