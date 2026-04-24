@@ -13,14 +13,19 @@ export default function DataExplorer({ records }: { records: any[] }) {
   const gridData = useMemo(() => {
      return records.map(r => {
         const d = new Date(r.timestamp);
+        const isIda = r.isIda;
+        const barrioCrudo = isIda ? r.origin : r.destination;
+        const barrio = (barrioCrudo || "").split(',')[0].replace("Barrio", "").trim();
+        const dow = d.toLocaleDateString('es-ES', { weekday: 'long' });
+        
         return {
             year: d.getFullYear().toString(),
-            month: (d.getMonth() + 1).toString(),
-            diaDeSemana: d.toLocaleDateString('es-ES', { weekday: 'long' }),
-            fecha: d.toLocaleDateString(),
-            zona: r.zona,
-            barrio: r.barrio,
-            turno: r.isIda ? (r.isDOT ? 'Ida al DOT' : 'Ida al Centro') : 'Vuelta a Provincia',
+            month: (d.getMonth() + 1).toString().padStart(2, '0'),
+            diaDeSemana: dow.charAt(0).toUpperCase() + dow.slice(1),
+            fecha: d.toLocaleDateString('es-AR'),
+            zona: barrioCrudo?.includes("Escobar") ? "Escobar" : barrioCrudo?.includes("Nordelta") ? "Nordelta" : barrioCrudo?.includes("Tigre") || barrioCrudo?.includes("Pacheco") || barrioCrudo?.includes("Benavidez") ? "Tigre/Pacheco" : barrioCrudo?.includes("San Isidro") ? "San Isidro" : barrioCrudo?.includes("Tortuguitas") ? "Tortugas" : "Otro",
+            barrio,
+            turno: isIda ? (r.isDOT ? 'Ida al DOT' : 'Ida al Centro') : 'Vuelta a Provincia',
             tiempo: r.durationMins
         };
       });
