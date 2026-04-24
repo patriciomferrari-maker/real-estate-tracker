@@ -289,6 +289,9 @@ export default async function Dashboard({ searchParams }: any) {
           <Link href="?tab=graficos" className={`px-6 py-2.5 rounded-lg font-medium transition-all shadow-md flex items-center gap-2 ${currentTab === 'graficos' ? 'bg-gradient-to-r from-purple-600 to-purple-500 text-white ring-2 ring-purple-400/50' : 'bg-slate-800/60 text-slate-300 hover:bg-slate-700'}`}>
               <BarChart3 size={18} /> Analíticas Visuales
           </Link>
+          <Link href="?tab=reporte" className={`px-6 py-2.5 rounded-lg font-medium transition-all shadow-md flex items-center gap-2 ${currentTab === 'reporte' ? 'bg-gradient-to-r from-amber-600 to-amber-500 text-white ring-2 ring-amber-400/50' : 'bg-slate-800/60 text-slate-300 hover:bg-slate-700'}`}>
+              <TrendingUp size={18} /> Reporte Ejecutivo
+          </Link>
           <Link href="?tab=datos" className={`px-6 py-2.5 rounded-lg font-medium transition-all shadow-md flex items-center gap-2 ${currentTab === 'datos' ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white ring-2 ring-emerald-400/50' : 'bg-slate-800/60 text-slate-300 hover:bg-slate-700'}`}>
               <Database size={18} /> Explorador de Datos
           </Link>
@@ -324,7 +327,13 @@ export default async function Dashboard({ searchParams }: any) {
 
       {currentTab === 'graficos' && (
         <div className="animate-fade-in duration-500">
-           <AnalyticsSection records={serializableRecords} />
+           <AnalyticsSection records={serializableRecords} mode="charts" />
+        </div>
+      )}
+
+      {currentTab === 'reporte' && (
+        <div className="animate-fade-in duration-500">
+           <AnalyticsSection records={serializableRecords} mode="report" />
         </div>
       )}
 

@@ -11,7 +11,7 @@ import {
   Sun, Moon, Zap, Navigation, MapPin, Calendar 
 } from "lucide-react";
 
-export default function AnalyticsSection({ records }: { records: any[] }) {
+export default function AnalyticsSection({ records, mode = "charts" }: { records: any[], mode?: "charts" | "report" }) {
   // Estado original para LineChart
 
   // Nuevos estados para los filtros Scatter
@@ -103,7 +103,6 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
 
 
   // 1. GLOBAL COMMAND CENTER STATE
-  const [activeTab, setActiveTab] = useState<"dashboard" | "insights">("dashboard");
   const [globalMode, setGlobalMode] = useState<"macro" | "barrio">("macro");
   const [globalMacro, setGlobalMacro] = useState<string>("Todas las Zonas");
   const [globalBarrio, setGlobalBarrio] = useState<string>("Todos los Barrios");
@@ -634,25 +633,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
 
   return (
     <div className="flex flex-col gap-8">
-      {/* GLOBAL TAB NAVIGATION */}
-      <div className="flex items-center justify-center -mb-4">
-          <div className="bg-slate-900/80 backdrop-blur-xl border border-white/5 p-1 rounded-2xl flex gap-1 shadow-2xl ring-1 ring-white/10">
-              <button 
-                  onClick={() => setActiveTab("dashboard")}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-black transition-all ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/40' : 'text-slate-400 hover:text-slate-200'}`}
-              >
-                  <Activity size={18} /> DASHBOARD GENERAL
-              </button>
-              <button 
-                  onClick={() => setActiveTab("insights")}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-black transition-all ${activeTab === 'insights' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/40' : 'text-slate-400 hover:text-slate-200'}`}
-              >
-                  <TrendingUp size={18} /> REPORTE DE INTELIGENCIA
-              </button>
-          </div>
-      </div>
-
-      {activeTab === "insights" ? (
+      {mode === "report" ? (
           <div className="space-y-12 animate-in fade-in duration-700">
              <div className="text-center space-y-2 py-4">
                   <h2 className="text-3xl font-black text-white tracking-tight">Reporte Ejecutivo de Movilidad</h2>
