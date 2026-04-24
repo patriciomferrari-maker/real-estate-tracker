@@ -243,9 +243,13 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
             "Histórico (DOT)": hDOT,
             "Hoy (DOT)": hoyDOT,
             "deltaDOT": hoyDOT > 0 ? hoyDOT - hDOT : 0,
+            "deltaDOTLabel": hoyDOT > 0 ? (hoyDOT >= hDOT ? `+${hoyDOT - hDOT}m` : `${hoyDOT - hDOT}m`) : "",
+            "deltaDOTColor": hoyDOT >= hDOT ? "#ff4d4d" : "#00ff88",
             "Histórico (Centro)": hMicro,
             "Hoy (Centro)": hoyMicro,
-            "deltaCentro": hoyMicro > 0 ? hoyMicro - hMicro : 0
+            "deltaCentro": hoyMicro > 0 ? hoyMicro - hMicro : 0,
+            "deltaCentroLabel": hoyMicro > 0 ? (hoyMicro >= hMicro ? `+${hoyMicro - hMicro}m` : `${hoyMicro - hMicro}m`) : "",
+            "deltaCentroColor": hoyMicro >= hMicro ? "#ff4d4d" : "#00ff88"
         };
     }).sort((a,b) => (a["Histórico (DOT)"] + a["Histórico (Centro)"]) - (b["Histórico (DOT)"] + b["Histórico (Centro)"]));
   }, [enrichedRecords, barTimeMode, barMacro, globalMode, todayStr]);
@@ -459,27 +463,28 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   }, [scatterSeriesVuelta]);
   const DeltaLabel = (props: any) => {
     const { x, y, width, height, deltaKey, payload } = props;
-    const delta = payload?.[deltaKey];
-    if (delta === undefined) return null;
+    if (!payload || !payload[deltaKey]) return null;
     
-    // Si no hay datos hoy, no mostramos nada
-    if (payload["Hoy (DOT)"] === 0 && payload["Hoy (Centro)"] === 0) return null;
+    const deltaValue = payload[deltaKey];
+    const isBad = deltaValue > 0;
+    const color = isBad ? "#ff4d4d" : "#00ff88";
+    const label = isBad ? `+${deltaValue}m` : `${deltaValue}m`;
 
-    const isBad = delta > 0;
-    const text = delta === 0 ? "0m" : (isBad ? `+${delta}m` : `${delta}m`);
-    
     return (
-      <text 
-        x={x + width + 10} 
-        y={y + height / 2} 
-        fill={delta === 0 ? "#94a3b8" : (isBad ? "#ff4d4d" : "#00ff88")} 
-        fontSize={13} 
-        fontWeight="900"
-        textAnchor="start"
-        dominantBaseline="middle"
-      >
-        {text}
-      </text>
+      <g>
+        {/* Un pequeño fondo oscuro para máxima legibilidad si se pisa con algo */}
+        <rect x={x + width + 5} y={y + 1} width={35} height={height-2} fill="rgba(15,23,42,0.8)" rx={4} />
+        <text 
+          x={x + width + 10} 
+          y={y + height / 2} 
+          fill={color} 
+          fontSize={12} 
+          fontWeight="bold"
+          dominantBaseline="middle"
+        >
+          {label}
+        </text>
+      </g>
     );
   };
 
@@ -883,7 +888,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                               <Legend />
                               <Bar dataKey="Histórico (DOT)" fill="#1e40af" radius={[0, 4, 4, 0]} barSize={10} />
                               <Bar dataKey="Hoy (DOT)" fill="#60a5fa" radius={[0, 4, 4, 0]} barSize={14}>
-                                 <LabelList content={<DeltaLabel deltaKey="deltaDOT" />} />
+                                 <LabelList dataKey="deltaDOT" content={<DeltaLabel deltaKey="deltaDOT" />} />
                               </Bar>
                             </BarChart>
                           </ResponsiveContainer>
@@ -915,7 +920,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                               <Legend />
                               <Bar dataKey="Histórico (Centro)" fill="#6b21a8" radius={[0, 4, 4, 0]} barSize={10} />
                               <Bar dataKey="Hoy (Centro)" fill="#a855f7" radius={[0, 4, 4, 0]} barSize={14}>
-                                 <LabelList content={<DeltaLabel deltaKey="deltaCentro" />} />
+                                 <LabelList dataKey="deltaCentro" content={<DeltaLabel deltaKey="deltaCentro" />} />
                               </Bar>
                             </BarChart>
                           </ResponsiveContainer>
