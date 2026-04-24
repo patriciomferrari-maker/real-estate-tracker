@@ -1807,22 +1807,35 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
           <div className="h-[400px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={weeklyPulseData} margin={{ top: 25, right: 30, left: 0, bottom: 20 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={true} horizontal={false} />
                         <XAxis 
                             dataKey="key" 
                             stroke="#475569" 
                             fontSize={9} 
                             tickFormatter={(v:string) => {
                                 const [day, time] = v.split(' ');
-                                // Mostrar Día + Hora en el inicio de cada franja (06:00 o 16:30)
-                                if (time === "06:00" || time === "16:30") return `${day} ${time}`;
+                                if (time === "06:00" || time === "16:30") return v;
                                 if (time.endsWith(':00')) return time;
                                 return "";
                             }}
                             interval={0}
-                            tick={{ fill: '#64748b', fontWeight: 'bold' }}
+                            tick={(props) => {
+                                const { x, y, payload } = props;
+                                const isDayStart = payload.value.includes("06:00") || payload.value.includes("16:30");
+                                return (
+                                    <text x={x} y={(Number(y) || 0) + 12} fill={isDayStart ? "#60a5fa" : "#475569"} fontSize={isDayStart ? 10 : 9} fontWeight={isDayStart ? "bold" : "normal"} textAnchor="middle">
+                                        {payload.value.includes("06:00") || payload.value.includes("16:30") ? payload.value : (payload.value.endsWith(":00") ? payload.value.split(" ")[1] : "")}
+                                    </text>
+                                );
+                            }}
                         />
                         <YAxis stroke="#475569" fontSize={10} unit="m" />
+
+                        {/* Divisores de días */}
+                        {["Mar", "Mié", "Jue", "Vie"].map(d => (
+                            <ReferenceLine key={d} x={`${d} ${pulseShift === 'mañana' ? '06:00' : '16:30'}`} stroke="rgba(255,255,255,0.3)" strokeDasharray="3 3" />
+                        ))}
+
                         <Tooltip 
                             cursor={{fill: 'rgba(255,255,255,0.05)'}}
                             content={({ active, payload }: any) => {
@@ -1830,7 +1843,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                                     const d = payload[0].payload;
                                     return (
                                         <div className="bg-[#0f172a]/95 p-3 rounded-xl border border-slate-700 shadow-2xl backdrop-blur-md">
-                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">{d.day} {d.hour}:{d.min === 0 ? '00' : '30'}</p>
+                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">{d.day} {d.hour}:${d.min === 0 ? '00' : '30'}</p>
                                             <p className="text-xl font-black text-white">{d.duration > 0 ? `${d.duration} min` : 'Sin datos'}</p>
                                             <p className="text-[9px] text-slate-500 italic mt-1 uppercase">
                                                 {shortenBarrioName(pulseBarrio)}
