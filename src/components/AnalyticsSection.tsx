@@ -288,8 +288,10 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
         if (barTimeMode === "tarde" && r.isIda) return;
         
         if (!groups.has(groupKey)) groups.set(groupKey, { 
-            zone: groupKey, tDOT: 0, cDOT: 0, tMicro: 0, cMicro: 0,
-            tdDOT: 0, cdDOT: 0, tdMicro: 0, cdMicro: 0 
+            zone: groupKey, 
+            tDOT: 0, cDOT: 0, tMicro: 0, cMicro: 0,
+            tdDOT: 0, cdDOT: 0, tdMicro: 0, cdMicro: 0,
+            tdowDOT: 0, cdowDOT: 0, tdowMicro: 0, cdowMicro: 0
         });
         const s = groups.get(groupKey)!;
         const isToday = r.dateStr === todayStr;
@@ -298,27 +300,38 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
             if (r.isDOT) { s.tdDOT += r.durationMins; s.cdDOT++; }
             else { s.tdMicro += r.durationMins; s.cdMicro++; }
         } else {
-            // Historical context filter
-            if (comparisonMode === "dow" && r.dayOfWeek !== todayDOW) return;
-            if (comparisonMode === "month" && r.month !== todayMonth) return;
-
-            if (r.isDOT) { s.tDOT += r.durationMins; s.cDOT++; }
-            else { s.tMicro += r.durationMins; s.cMicro++; }
+            // Check if it's the same day of week
+            const isSameDOW = r.dayOfWeek === todayDOW;
+            
+            if (r.isDOT) { 
+                s.tDOT += r.durationMins; s.cDOT++; 
+                if (isSameDOW) { s.tdowDOT += r.durationMins; s.cdowDOT++; }
+            } else { 
+                s.tMicro += r.durationMins; s.cMicro++; 
+                if (isSameDOW) { s.tdowMicro += r.durationMins; s.cdowMicro++; }
+            }
         }
     });
     return Array.from(groups.values()).map(s => {
         const hDOT = s.cDOT > 0 ? Math.round(s.tDOT / s.cDOT) : 0;
         const hoyDOT = s.cdDOT > 0 ? Math.round(s.tdDOT / s.cdDOT) : 0;
+        const dowDOT = s.cdowDOT > 0 ? Math.round(s.tdowDOT / s.cdowDOT) : 0;
+
         const hMicro = s.cMicro > 0 ? Math.round(s.tMicro / s.cMicro) : 0;
         const hoyMicro = s.cdMicro > 0 ? Math.round(s.tdMicro / s.cdMicro) : 0;
+        const dowMicro = s.cdowMicro > 0 ? Math.round(s.tdowMicro / s.cdowMicro) : 0;
+
         return {
             zone: s.zone,
             "Histórico (DOT)": hDOT,
             "Hoy (DOT)": hoyDOT,
+            "Histórico DOW (DOT)": dowDOT,
             "deltaDOT": hoyDOT > 0 ? hoyDOT - hDOT : 0,
             "dotZoneLabel": `${s.zone} ${hoyDOT > 0 ? (hoyDOT >= hDOT ? `(+${hoyDOT - hDOT}m)` : `(${hoyDOT - hDOT}m)`) : ''}`,
+            
             "Histórico (Centro)": hMicro,
             "Hoy (Centro)": hoyMicro,
+            "Histórico DOW (Centro)": dowMicro,
             "deltaCentro": hoyMicro > 0 ? hoyMicro - hMicro : 0,
             "centroZoneLabel": `${s.zone} ${hoyMicro > 0 ? (hoyMicro >= hMicro ? `(+${hoyMicro - hMicro}m)` : `(${hoyMicro - hMicro}m)`) : ''}`
         };
@@ -1317,13 +1330,16 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                                    return [`${value} min`, name];
                                  }}
                                />
-                              <Legend />
-                              <Bar dataKey="Histórico (DOT)" fill="#1e40af" radius={[0, 4, 4, 0]} barSize={10}>
-                                  <LabelList dataKey="Histórico (DOT)" position="right" formatter={(v:any) => `${v}m`} style={{ fill: '#94a3b8', fontSize: '10px', fontWeight: 'bold' }} />
-                              </Bar>
-                              <Bar dataKey="Hoy (DOT)" fill="#60a5fa" radius={[0, 4, 4, 0]} barSize={14}>
-                                  <LabelList dataKey="Hoy (DOT)" position="right" formatter={(v:any) => `${v}m`} style={{ fill: '#ffffff', fontSize: '11px', fontWeight: 'bold' }} />
-                              </Bar>
+                               <Legend verticalAlign="top" height={36}/>
+                               <Bar dataKey="Histórico DOW (DOT)" name="Prom. Histórico DOW" fill="#4338ca" radius={[0, 4, 4, 0]} barSize={8}>
+                                   <LabelList dataKey="Histórico DOW (DOT)" position="right" formatter={(v:any) => `${v}m`} style={{ fill: '#818cf8', fontSize: '9px', fontWeight: 'bold' }} />
+                               </Bar>
+                               <Bar dataKey="Hoy (DOT)" name="Hoy Real" fill="#60a5fa" radius={[0, 4, 4, 0]} barSize={14}>
+                                   <LabelList dataKey="Hoy (DOT)" position="right" formatter={(v:any) => `${v}m`} style={{ fill: '#ffffff', fontSize: '11px', fontWeight: 'bold' }} />
+                               </Bar>
+                               <Bar dataKey="Histórico (DOT)" name="Prom. General" fill="#1e293b" radius={[0, 4, 4, 0]} barSize={8}>
+                                   <LabelList dataKey="Histórico (DOT)" position="right" formatter={(v:any) => `${v}m`} style={{ fill: '#64748b', fontSize: '9px', fontWeight: 'bold' }} />
+                               </Bar>
                             </BarChart>
                           </ResponsiveContainer>
                       )}
@@ -1380,13 +1396,16 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                                    return [`${value} min`, name];
                                  }}
                                />
-                              <Legend />
-                              <Bar dataKey="Histórico (Centro)" fill="#6b21a8" radius={[0, 4, 4, 0]} barSize={10}>
-                                  <LabelList dataKey="Histórico (Centro)" position="right" formatter={(v:any) => `${v}m`} style={{ fill: '#94a3b8', fontSize: '10px', fontWeight: 'bold' }} />
-                              </Bar>
-                              <Bar dataKey="Hoy (Centro)" fill="#a855f7" radius={[0, 4, 4, 0]} barSize={14}>
-                                  <LabelList dataKey="Hoy (Centro)" position="right" formatter={(v:any) => `${v}m`} style={{ fill: '#ffffff', fontSize: '11px', fontWeight: 'bold' }} />
-                              </Bar>
+                               <Legend verticalAlign="top" height={36}/>
+                               <Bar dataKey="Histórico DOW (Centro)" name="Prom. Histórico DOW" fill="#7e22ce" radius={[0, 4, 4, 0]} barSize={8}>
+                                   <LabelList dataKey="Histórico DOW (Centro)" position="right" formatter={(v:any) => `${v}m`} style={{ fill: '#c084fc', fontSize: '9px', fontWeight: 'bold' }} />
+                               </Bar>
+                               <Bar dataKey="Hoy (Centro)" name="Hoy Real" fill="#a855f7" radius={[0, 4, 4, 0]} barSize={14}>
+                                   <LabelList dataKey="Hoy (Centro)" position="right" formatter={(v:any) => `${v}m`} style={{ fill: '#ffffff', fontSize: '11px', fontWeight: 'bold' }} />
+                               </Bar>
+                               <Bar dataKey="Histórico (Centro)" name="Prom. General" fill="#1e293b" radius={[0, 4, 4, 0]} barSize={8}>
+                                   <LabelList dataKey="Histórico (Centro)" position="right" formatter={(v:any) => `${v}m`} style={{ fill: '#64748b', fontSize: '9px', fontWeight: 'bold' }} />
+                               </Bar>
                             </BarChart>
                           </ResponsiveContainer>
                       )}
