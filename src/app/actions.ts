@@ -12,7 +12,6 @@ const ZONES = [
   "Barrio El Canton, Escobar, Buenos Aires",
   "Barrio Santa Ana, Villa Nueva, Buenos Aires",
   "Barrio San Marco, Villa Nueva, Buenos Aires",
-  "Villa Nueva, Buenos Aires",
   // Nordelta / Cercanias
   "Barrio Santa Barbara, General Pacheco, Buenos Aires",
   "Barrio Castaños, Nordelta, Buenos Aires",
@@ -70,6 +69,8 @@ export async function syncAllData() {
               }
             });
          }
+         // Pequeña pausa aleatoria para no ser detectado como bot
+         await new Promise(r => setTimeout(r, 1000 + Math.random() * 2000));
       }
     }
 
