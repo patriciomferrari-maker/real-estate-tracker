@@ -1124,23 +1124,44 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
               <div>
                 <h3 className="text-xl font-bold flex items-center gap-2">
                     <Activity size={20} className="text-amber-400" />
-                    Comparativa de Tendencia: Hoy vs. Histórico
+                    Comparativa de Tendencia: Hoy vs. {comparisonMode === 'dow' ? 'Mismo Día (DOW)' : 'Histórico Total'}
                 </h3>
-                <p className="text-xs text-slate-400 italic">Comparativa del comportamiento de <b>{globalMacro}</b> hoy vs promedio.</p>
+                <p className="text-xs text-slate-400 italic">Comparando el tráfico de <b>{globalMacro}</b> contra el {comparisonMode === 'dow' ? 'promedio de los mismos días de la semana' : 'promedio histórico general'}.</p>
               </div>
-              <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1 mt-4 md:mt-0">
-                  <button 
-                    onClick={() => setTrendTimeMode("mañana")}
-                    className={`px-4 py-1 text-[10px] font-bold rounded transition-all ${trendTimeMode === 'mañana' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    HORARIO MAÑANA
-                  </button>
-                  <button 
-                    onClick={() => setTrendTimeMode("tarde")}
-                    className={`px-4 py-1 text-[10px] font-bold rounded transition-all ${trendTimeMode === 'tarde' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    HORARIO TARDE
-                  </button>
+              <div className="flex flex-wrap items-center gap-3 mt-4 md:mt-0">
+                  {/* Selector Mañana/Tarde */}
+                  <div className="flex bg-slate-900 border border-slate-700 rounded-lg p-1">
+                      <button 
+                        onClick={() => setTrendTimeMode("mañana")}
+                        className={`px-4 py-1 text-[10px] font-bold rounded transition-all ${trendTimeMode === 'mañana' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        MAÑANA
+                      </button>
+                      <button 
+                        onClick={() => setTrendTimeMode("tarde")}
+                        className={`px-4 py-1 text-[10px] font-bold rounded transition-all ${trendTimeMode === 'tarde' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        TARDE
+                      </button>
+                  </div>
+
+                  <div className="h-4 w-[1px] bg-white/10 hidden sm:block"></div>
+
+                  {/* Selector Histórico/DOW */}
+                  <div className="flex bg-slate-800 rounded-lg p-1 border border-white/5">
+                      <button 
+                        onClick={() => setComparisonMode("all")}
+                        className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${comparisonMode === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        HISTÓRICO TOTAL
+                      </button>
+                      <button 
+                        onClick={() => setComparisonMode("dow")}
+                        className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${comparisonMode === 'dow' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        MISMO DÍA (DOW)
+                      </button>
+                  </div>
               </div>
           </div>
 
