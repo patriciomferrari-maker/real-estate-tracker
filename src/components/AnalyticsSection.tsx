@@ -185,7 +185,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
         if (evoDest === "DOT" && !r.isDOT) return;
         if (evoDest === "Obelisco" && r.isDOT) return;
         
-        // Destination Filter (Global)
+        // Global Destination Filter
         if (globalDestination === "DOT" && !r.isDOT) return;
         if (globalDestination === "Obelisco" && r.isDOT) return;
 
@@ -204,7 +204,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
         p[dataKey] = Math.round(p[dataKey + '_s'] / p[dataKey + '_c']);
     });
     return Array.from(map.values()).sort((a,b) => a.timeHourNum - b.timeHourNum);
-  }, [enrichedRecords, evoMacro]);
+  }, [enrichedRecords, evoMacro, evoDest, globalDestination]);
 
   // BARS: Ranking data
   const comparisonData = useMemo(() => {
