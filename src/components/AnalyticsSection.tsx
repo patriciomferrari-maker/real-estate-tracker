@@ -270,19 +270,14 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
   const comparisonData = useMemo(() => {
     const groups = new Map<string, any>();
     
-    // Nombres de días para comparación humana y robusta
     const days = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
     const now = new Date();
     const todayName = days[now.getDay()];
 
     enrichedRecords.forEach(r => {
-        // Exclusión TOTAL de Villa Nueva (por barrio o por macro)
         if (r.barrio === "Villa Nueva" || r.macro === "Villa Nueva" || r.barrio.includes("Gral")) return;
         
-        // Local Filter for BARS
         if (barMacro !== "Todas las Zonas" && r.macro !== barMacro) return;
-
-        // Destination Filter
         if (globalDestination === "DOT" && !r.isDOT) return;
         if (globalDestination === "Obelisco" && r.isDOT) return;
 
@@ -304,7 +299,6 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
             if (r.isDOT) { s.tdDOT += r.durationMins; s.cdDOT++; }
             else { s.tdMicro += r.durationMins; s.cdMicro++; }
         } else {
-            // Comparación por nombre de día (blindada)
             const recDayName = days[r.dayOfWeek];
             const isSameDOW = recDayName === todayName;
             
@@ -317,6 +311,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
             }
         }
     });
+
     return Array.from(groups.values()).map(s => {
         const hDOT = s.cDOT > 0 ? Math.round(s.tDOT / s.cDOT) : 0;
         const hoyDOT = s.cdDOT > 0 ? Math.round(s.tdDOT / s.cdDOT) : 0;
@@ -328,17 +323,21 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
 
         return {
             zone: s.zone,
-            todayName, // Pasamos el nombre del día para debug e info
+            todayName,
+            // Data for Ranking Bars
             "dot_historico": hDOT,
             "dot_hoy": hoyDOT,
             "dot_dow": dowDOT,
-            "deltaDOT": hoyDOT > 0 ? hoyDOT - hDOT : 0,
+            // Counts for Tooltip Diagnostics
+            "dot_dow_count": s.cdowDOT,
+            "dot_hist_count": s.cDOT,
             "dotZoneLabel": `${s.zone} ${hoyDOT > 0 ? (hoyDOT >= hDOT ? `(+${hoyDOT - hDOT}m)` : `(${hoyDOT - hDOT}m)`) : ''}`,
             
             "centro_historico": hMicro,
             "centro_hoy": hoyMicro,
             "centro_dow": dowMicro,
-            "deltaCentro": hoyMicro > 0 ? hoyMicro - hMicro : 0,
+            "centro_dow_count": s.cdowMicro,
+            "centro_hist_count": s.cMicro,
             "centroZoneLabel": `${s.zone} ${hoyMicro > 0 ? (hoyMicro >= hMicro ? `(+${hoyMicro - hMicro}m)` : `(${hoyMicro - hMicro}m)`) : ''}`
         };
     }).sort((a,b) => (a.dot_historico + a.centro_historico) - (b.dot_historico + b.centro_historico));
@@ -1361,10 +1360,39 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                                 }}
                               />
                               <Tooltip 
-                                 cursor={{fill: 'rgba(255,255,255,0.05)'}} 
-                                 contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
-                                 formatter={(value: any, name: any) => [`${value} min`, name]}
-                               />
+                                cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                                content={({ active, payload }: any) => {
+                                  if (active && payload && payload.length) {
+                                    const data = payload[0].payload;
+                                    const isDOT = payload[0].name.toLowerCase().includes('dot') || payload[0].dataKey.includes('dot');
+                                    const dKey = isDOT ? 'dot' : 'centro';
+                                    return (
+                                      <div className="bg-[#0f172a] p-4 rounded-xl border border-slate-700 shadow-2xl ring-1 ring-white/10 min-w-[200px]">
+                                        <p className="font-black text-white border-b border-white/10 pb-2 mb-2 text-sm uppercase tracking-wider">{data.zone}</p>
+                                        <div className="space-y-3">
+                                          <div className="flex flex-col">
+                                              <span className="text-[10px] text-slate-500 uppercase font-black">Tiempo Hoy</span>
+                                              <span className="text-lg font-black text-white">{data[dKey + '_hoy'] || 0} min</span>
+                                          </div>
+                                          <div className="flex flex-col border-l-2 border-purple-500 pl-2">
+                                              <span className="text-[10px] text-purple-400 uppercase font-black">Promedio {data.todayName}</span>
+                                              <span className="text-lg font-black text-purple-300">
+                                                {data[dKey + '_dow'] > 0 ? `${data[dKey + '_dow']} min` : 'Sin historial'}
+                                              </span>
+                                              <span className="text-[9px] text-slate-600 font-bold italic">Basado en {data[dKey + '_dow_count'] || 0} viajes previos</span>
+                                          </div>
+                                          <div className="flex flex-col border-l-2 border-slate-700 pl-2 opacity-60">
+                                              <span className="text-[10px] text-slate-500 uppercase font-black">Promedio Histórico</span>
+                                              <span className="text-sm font-bold text-slate-300">{data[dKey + '_historico'] || 0} min</span>
+                                              <span className="text-[9px] text-slate-600 font-bold italic">Total {data[dKey + '_hist_count'] || 0} viajes</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
                                <Legend verticalAlign="top" height={36}/>
                                <Bar dataKey="dot_dow" name="Promedio Día de la Semana" fill="#4338ca" radius={[0, 4, 4, 0]} barSize={8}>
                                    <LabelList dataKey="dot_dow" position="right" formatter={(v:any) => v > 0 ? `${v}m` : ''} style={{ fill: '#818cf8', fontSize: '9px', fontWeight: 'bold' }} />
@@ -1420,10 +1448,39 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                                 }}
                               />
                               <Tooltip 
-                                 cursor={{fill: 'rgba(255,255,255,0.05)'}} 
-                                 contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
-                                 formatter={(value: any, name: any) => [`${value} min`, name]}
-                               />
+                                cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                                content={({ active, payload }: any) => {
+                                  if (active && payload && payload.length) {
+                                    const data = payload[0].payload;
+                                    const isDOT = payload[0].name.toLowerCase().includes('dot') || payload[0].dataKey.includes('dot');
+                                    const dKey = isDOT ? 'dot' : 'centro';
+                                    return (
+                                      <div className="bg-[#0f172a] p-4 rounded-xl border border-slate-700 shadow-2xl ring-1 ring-white/10 min-w-[200px]">
+                                        <p className="font-black text-white border-b border-white/10 pb-2 mb-2 text-sm uppercase tracking-wider">{data.zone}</p>
+                                        <div className="space-y-3">
+                                          <div className="flex flex-col">
+                                              <span className="text-[10px] text-slate-500 uppercase font-black">Tiempo Hoy</span>
+                                              <span className="text-lg font-black text-white">{data[dKey + '_hoy'] || 0} min</span>
+                                          </div>
+                                          <div className="flex flex-col border-l-2 border-purple-500 pl-2">
+                                              <span className="text-[10px] text-purple-400 uppercase font-black">Promedio {data.todayName}</span>
+                                              <span className="text-lg font-black text-purple-300">
+                                                {data[dKey + '_dow'] > 0 ? `${data[dKey + '_dow']} min` : 'Sin historial'}
+                                              </span>
+                                              <span className="text-[9px] text-slate-600 font-bold italic">Basado en {data[dKey + '_dow_count'] || 0} viajes previos</span>
+                                          </div>
+                                          <div className="flex flex-col border-l-2 border-slate-700 pl-2 opacity-60">
+                                              <span className="text-[10px] text-slate-500 uppercase font-black">Promedio Histórico</span>
+                                              <span className="text-sm font-bold text-slate-300">{data[dKey + '_historico'] || 0} min</span>
+                                              <span className="text-[9px] text-slate-600 font-bold italic">Total {data[dKey + '_hist_count'] || 0} viajes</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
                                <Legend verticalAlign="top" height={36}/>
                                <Bar dataKey="centro_dow" name="Promedio Día de la Semana" fill="#7e22ce" radius={[0, 4, 4, 0]} barSize={8}>
                                    <LabelList dataKey="centro_dow" position="right" formatter={(v:any) => v > 0 ? `${v}m` : ''} style={{ fill: '#c084fc', fontSize: '9px', fontWeight: 'bold' }} />
