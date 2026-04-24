@@ -458,23 +458,25 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       return { min: min === 999 ? 0 : min, max, avg: count > 0 ? Math.round(sum/count) : 0 };
   }, [scatterSeriesVuelta]);
   const DeltaLabel = (props: any) => {
-    const { x, y, width, deltaKey, payload } = props;
-    if (!payload) return null;
+    const { x, y, width, height, deltaKey, payload } = props;
+    const delta = payload?.[deltaKey];
+    if (delta === undefined) return null;
     
-    const delta = payload[deltaKey];
-    if (delta === undefined || delta === 0) return null;
-    
+    // Si no hay datos hoy, no mostramos nada
+    if (payload["Hoy (DOT)"] === 0 && payload["Hoy (Centro)"] === 0) return null;
+
     const isBad = delta > 0;
-    const text = isBad ? `+${delta}m` : `${delta}m`;
+    const text = delta === 0 ? "0m" : (isBad ? `+${delta}m` : `${delta}m`);
     
     return (
       <text 
-        x={x + width + 6} 
-        y={y + 11} 
-        fill={isBad ? "#ff4d4d" : "#00ff88"} 
-        fontSize={12} 
+        x={x + width + 10} 
+        y={y + height / 2} 
+        fill={delta === 0 ? "#94a3b8" : (isBad ? "#ff4d4d" : "#00ff88")} 
+        fontSize={13} 
         fontWeight="900"
         textAnchor="start"
+        dominantBaseline="middle"
       >
         {text}
       </text>
@@ -862,15 +864,26 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                   <div className="h-[350px] w-full">
                       {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
                           <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={comparisonData.filter(d => d["Histórico (DOT)"] > 0).sort((a,b) => a["Histórico (DOT)"] - b["Histórico (DOT)"])} layout="vertical" margin={{ top: 0, right: 50, left: 10, bottom: 0 }}>
+                            <BarChart data={comparisonData.filter(d => d["Histórico (DOT)"] > 0).sort((a,b) => a["Histórico (DOT)"] - b["Histórico (DOT)"])} layout="vertical" margin={{ top: 0, right: 80, left: 10, bottom: 0 }}>
                               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false}/>
                               <XAxis type="number" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} />
                               <YAxis dataKey="zone" type="category" stroke="#64748b" width={90} tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                              <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
+                              <Tooltip 
+                                 cursor={{fill: 'rgba(255,255,255,0.05)'}} 
+                                 contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
+                                 formatter={(value, name, props) => {
+                                   if (name === "Hoy (DOT)") {
+                                     const delta = props.payload.deltaDOT;
+                                     const dText = delta > 0 ? `(+${delta}m)` : (delta < 0 ? `(${delta}m)` : '');
+                                     return [`${value} min ${dText}`, name];
+                                   }
+                                   return [`${value} min`, name];
+                                 }}
+                               />
                               <Legend />
                               <Bar dataKey="Histórico (DOT)" fill="#1e40af" radius={[0, 4, 4, 0]} barSize={10} />
                               <Bar dataKey="Hoy (DOT)" fill="#60a5fa" radius={[0, 4, 4, 0]} barSize={14}>
-                                 <LabelList dataKey="Hoy (DOT)" content={(props: any) => <DeltaLabel {...props} deltaKey="deltaDOT" />} />
+                                 <LabelList content={<DeltaLabel deltaKey="deltaDOT" />} />
                               </Bar>
                             </BarChart>
                           </ResponsiveContainer>
@@ -883,15 +896,26 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                   <div className="h-[350px] w-full">
                       {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
                           <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={comparisonData.filter(d => d["Histórico (Centro)"] > 0).sort((a,b) => a["Histórico (Centro)"] - b["Histórico (Centro)"])} layout="vertical" margin={{ top: 0, right: 50, left: 10, bottom: 0 }}>
+                            <BarChart data={comparisonData.filter(d => d["Histórico (Centro)"] > 0).sort((a,b) => a["Histórico (Centro)"] - b["Histórico (Centro)"])} layout="vertical" margin={{ top: 0, right: 80, left: 10, bottom: 0 }}>
                               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false}/>
                               <XAxis type="number" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} />
                               <YAxis dataKey="zone" type="category" stroke="#64748b" width={90} tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                              <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
+                              <Tooltip 
+                                 cursor={{fill: 'rgba(255,255,255,0.05)'}} 
+                                 contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
+                                 formatter={(value, name, props) => {
+                                   if (name === "Hoy (Centro)") {
+                                     const delta = props.payload.deltaCentro;
+                                     const dText = delta > 0 ? `(+${delta}m)` : (delta < 0 ? `(${delta}m)` : '');
+                                     return [`${value} min ${dText}`, name];
+                                   }
+                                   return [`${value} min`, name];
+                                 }}
+                               />
                               <Legend />
                               <Bar dataKey="Histórico (Centro)" fill="#6b21a8" radius={[0, 4, 4, 0]} barSize={10} />
                               <Bar dataKey="Hoy (Centro)" fill="#a855f7" radius={[0, 4, 4, 0]} barSize={14}>
-                                 <LabelList dataKey="Hoy (Centro)" content={(props: any) => <DeltaLabel {...props} deltaKey="deltaCentro" />} />
+                                 <LabelList content={<DeltaLabel deltaKey="deltaCentro" />} />
                               </Bar>
                             </BarChart>
                           </ResponsiveContainer>
