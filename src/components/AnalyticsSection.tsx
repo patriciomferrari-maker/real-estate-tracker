@@ -379,6 +379,11 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
           let bBarrio = "", bBarrioVal = 999;
           bSum.forEach((v,k) => { if (v.s/v.c < bBarrioVal) { bBarrioVal = v.s/v.c; bBarrio = k; } });
 
+          // NEW: Savings & Efficiency logic
+          const potentialSavings = Math.round(wTimeVal - bTimeVal);
+          const weeklyEfficiency = Math.round(((avgTotal - minDowAvg) / avgTotal) * 100);
+          const grade = reliability > 85 ? "AAA" : (reliability > 70 ? "B+" : "C-");
+
           results[key] = {
               bestBarrio: bBarrio,
               minAvg: Math.round(bBarrioVal),
@@ -387,7 +392,11 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
               reliability: Math.round(reliability),
               bestDOW: dowNames[bestDOWIdx],
               worstDOW: dowNames[worstDOWIdx],
-              count: sRecords.length
+              count: sRecords.length,
+              potentialSavings,
+              weeklyEfficiency,
+              grade,
+              avgTotal: Math.round(avgTotal)
           };
       });
       return results;
@@ -659,47 +668,82 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                             if(!s) return null;
                             const isDOT = k.includes('dot');
                             return (
-                                <div key={k} className="glass-card p-6 border-b-4 border-b-indigo-500 hover:scale-[1.02] transition-transform">
+                                <div key={k} className="glass-card p-6 border-b-4 border-b-indigo-500 hover:scale-[1.01] transition-transform relative overflow-hidden group">
                                     <div className="flex justify-between items-start mb-6">
-                                        <div className="space-y-1">
-                                            <span className={`text-[10px] font-black px-2 py-1 rounded bg-slate-800 border uppercase ${isDOT ? 'text-blue-400 border-blue-500/30' : 'text-purple-400 border-purple-500/30'}`}>
-                                                Destino: {isDOT ? 'Shopping DOT' : 'Microcentro'}
-                                            </span>
-                                            <h4 className="text-2xl font-black text-white">{s.bestBarrio}</h4>
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase ${isDOT ? 'bg-blue-900/30 text-blue-400 border-blue-500/30' : 'bg-purple-900/30 text-purple-400 border-purple-500/30'}`}>
+                                                    Destino: {isDOT ? 'Shopping DOT' : 'Microcentro'}
+                                                </span>
+                                                <span className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase bg-slate-900 text-slate-400 border-white/5`}>
+                                                    Reliability: {s.grade}
+                                                </span>
+                                            </div>
+                                            <h4 className="text-3xl font-black text-white leading-none tracking-tight">{shortenBarrioName(s.bestBarrio)}</h4>
+                                            <p className="text-xs text-slate-500 font-bold">Tiempo Base: <span className="text-white">{s.avgTotal}m</span> promedio global</p>
                                         </div>
-                                        <div className={`p-3 rounded-xl border ${s.reliability > 85 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'}`}>
-                                            <div className="text-[10px] font-bold uppercase text-center mb-1">Predictibilidad</div>
-                                            <div className="text-xl font-black text-center">{s.reliability}%</div>
+                                        <div className={`p-4 rounded-2xl border text-center min-w-[80px] ${s.reliability > 85 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 shadow-[0_0_20px_-10px_rgba(16,185,129,0.3)]' : 'bg-amber-500/10 border-amber-500/20 text-amber-400 shadow-[0_0_20px_-10px_rgba(245,158,11,0.3)]'}`}>
+                                            <div className="text-[9px] font-black uppercase tracking-widest mb-1 opacity-60">SCORE</div>
+                                            <div className="text-2xl font-black">{s.reliability}%</div>
                                         </div>
                                     </div>
 
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                                            <div className="flex items-center gap-2">
-                                                <Zap size={14} className="text-amber-400" />
-                                                <span className="text-xs text-slate-400">Ventana de Oro (Mín. Tráfico)</span>
+                                    <div className="grid grid-cols-1 gap-3">
+                                        <div className="flex items-center justify-between bg-slate-900/50 p-3 rounded-xl border border-white/5 group-hover:border-amber-500/20 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                                                    <Zap size={16} className="text-amber-400" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] text-slate-500 font-bold uppercase mb-0.5">Ventana de Oro</p>
+                                                    <p className="text-sm font-black text-emerald-400">{s.bestTime} hs</p>
+                                                </div>
                                             </div>
-                                            <span className="font-black text-white bg-slate-800 px-2 py-1 rounded text-sm">{s.bestTime} hs</span>
+                                            <div className="text-right">
+                                                <p className="text-[9px] text-emerald-500/50 font-black uppercase">Consistencia</p>
+                                                <p className="text-xs font-bold text-white">Alta</p>
+                                            </div>
                                         </div>
 
-                                        <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                                            <div className="flex items-center gap-2">
-                                                <Activity size={14} className="text-red-400" />
-                                                <span className="text-xs text-slate-400">Impacto Hora Pico (Penalización)</span>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="bg-red-500/5 border border-red-500/10 p-3 rounded-xl">
+                                                <p className="text-[9px] text-red-400/70 font-black uppercase mb-1">Pérdida en Pico</p>
+                                                <p className="text-lg font-black text-red-500">+{s.peakImpact}m</p>
+                                                <p className="text-[9px] text-slate-600 font-bold">vs Golden Window</p>
                                             </div>
-                                            <span className="font-black text-red-400">+{s.peakImpact}m extra</span>
+                                            <div className="bg-emerald-600/5 border border-emerald-500/10 p-3 rounded-xl">
+                                                <p className="text-[9px] text-emerald-400/70 font-black uppercase mb-1">Ahorro Máx.</p>
+                                                <p className="text-lg font-black text-emerald-500">{s.potentialSavings}m</p>
+                                                <p className="text-[9px] text-slate-600 font-bold">Potencial diario</p>
+                                            </div>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="p-3 bg-slate-900 rounded-xl border border-white/5 text-center">
-                                                <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Día Más Rápido</p>
-                                                <p className="text-lg font-black text-blue-400">{s.bestDOW}</p>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="p-3 bg-slate-800/40 rounded-xl border border-white/5">
+                                                <p className="text-[9px] text-slate-500 font-black uppercase mb-1">Día Óptimo</p>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-base font-black text-blue-400">{s.bestDOW}</span>
+                                                    <span className="text-[9px] bg-blue-500/10 text-blue-400 px-1 rounded">-{s.weeklyEfficiency}%</span>
+                                                </div>
                                             </div>
-                                            <div className="p-3 bg-slate-900 rounded-xl border border-white/5 text-center">
-                                                <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Día Más Lento</p>
-                                                <p className="text-lg font-black text-red-500">{s.worstDOW}</p>
+                                            <div className="p-3 bg-slate-800/40 rounded-xl border border-white/5">
+                                                <p className="text-[9px] text-slate-500 font-black uppercase mb-1">Día Crítico</p>
+                                                <span className="text-base font-black text-red-400">{s.worstDOW}</span>
                                             </div>
                                         </div>
+
+                                        <div className="mt-2 p-3 bg-indigo-600/5 border border-indigo-500/10 rounded-xl flex items-start gap-3">
+                                            <div className="mt-1 w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)] animate-pulse" />
+                                            <p className="text-[10px] text-indigo-300 leading-relaxed italic">
+                                                {s.reliability > 85 
+                                                  ? `Trayecto altamente predecible. La zona de ${shortenBarrioName(s.bestBarrio)} es ideal para traslados con horario fijo.` 
+                                                  : `Zonas con varianza moderada. Se recomienda salir en la ventana de las ${s.bestTime}hs para evitar el impacto de ${s.peakImpact}m.`}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="absolute top-0 right-0 p-2 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity pointer-events-none">
+                                        <TrendingUp size={120} />
                                     </div>
                                 </div>
                             );
@@ -725,47 +769,82 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                             if(!s) return null;
                             const isDOT = k.includes('dot');
                             return (
-                                <div key={k} className="glass-card p-6 border-b-4 border-b-orange-500 hover:scale-[1.02] transition-transform">
+                                <div key={k} className="glass-card p-6 border-b-4 border-b-orange-500 hover:scale-[1.01] transition-transform relative overflow-hidden group">
                                     <div className="flex justify-between items-start mb-6">
-                                        <div className="space-y-1">
-                                            <span className={`text-[10px] font-black px-2 py-1 rounded bg-slate-800 border uppercase ${isDOT ? 'text-orange-400 border-orange-500/30' : 'text-pink-400 border-pink-500/30'}`}>
-                                                Desde: {isDOT ? 'Shopping DOT' : 'Microcentro'}
-                                            </span>
-                                            <h4 className="text-2xl font-black text-white">{s.bestBarrio}</h4>
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase ${isDOT ? 'bg-orange-900/30 text-orange-400 border-orange-500/30' : 'bg-pink-900/30 text-pink-400 border-pink-500/30'}`}>
+                                                    Desde: {isDOT ? 'Shopping DOT' : 'Microcentro'}
+                                                </span>
+                                                <span className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase bg-slate-900 text-slate-400 border-white/5`}>
+                                                    Reliability: {s.grade}
+                                                </span>
+                                            </div>
+                                            <h4 className="text-3xl font-black text-white leading-none tracking-tight">{shortenBarrioName(s.bestBarrio)}</h4>
+                                            <p className="text-xs text-slate-500 font-bold">Tiempo Base: <span className="text-white">{s.avgTotal}m</span> promedio global</p>
                                         </div>
-                                        <div className={`p-3 rounded-xl border ${s.reliability > 85 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'}`}>
-                                            <div className="text-[10px] font-bold uppercase text-center mb-1">Predictibilidad</div>
-                                            <div className="text-xl font-black text-center">{s.reliability}%</div>
+                                        <div className={`p-4 rounded-2xl border text-center min-w-[80px] ${s.reliability > 85 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 shadow-[0_0_20px_-10px_rgba(16,185,129,0.3)]' : 'bg-amber-500/10 border-amber-500/20 text-amber-400 shadow-[0_0_20px_-10_rgba(245,158,11,0.3)]'}`}>
+                                            <div className="text-[9px] font-black uppercase tracking-widest mb-1 opacity-60">SCORE</div>
+                                            <div className="text-2xl font-black">{s.reliability}%</div>
                                         </div>
                                     </div>
 
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                                            <div className="flex items-center gap-2">
-                                                <Zap size={14} className="text-amber-400" />
-                                                <span className="text-xs text-slate-400">Ventana de Oro (Mín. Tráfico)</span>
+                                    <div className="grid grid-cols-1 gap-3">
+                                        <div className="flex items-center justify-between bg-slate-900/50 p-3 rounded-xl border border-white/5 group-hover:border-orange-500/20 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                                                    <Zap size={16} className="text-emerald-400" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] text-slate-500 font-bold uppercase mb-0.5">Ventana de Oro</p>
+                                                    <p className="text-sm font-black text-emerald-400">{s.bestTime} hs</p>
+                                                </div>
                                             </div>
-                                            <span className="font-black text-white bg-slate-800 px-2 py-1 rounded text-sm">{s.bestTime} hs</span>
+                                            <div className="text-right">
+                                                <p className="text-[9px] text-emerald-500/50 font-black uppercase">Flujo</p>
+                                                <p className="text-xs font-bold text-white">Óptimo</p>
+                                            </div>
                                         </div>
 
-                                        <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                                            <div className="flex items-center gap-2">
-                                                <Activity size={14} className="text-red-400" />
-                                                <span className="text-xs text-slate-400">Impacto Hora Pico (Penalización)</span>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="bg-red-500/5 border border-red-500/10 p-3 rounded-xl">
+                                                <p className="text-[9px] text-red-400/70 font-black uppercase mb-1">Pérdida en Pico</p>
+                                                <p className="text-lg font-black text-red-500">+{s.peakImpact}m</p>
+                                                <p className="text-[9px] text-slate-600 font-bold">vs Golden Window</p>
                                             </div>
-                                            <span className="font-black text-red-400">+{s.peakImpact}m extra</span>
+                                            <div className="bg-emerald-600/5 border border-emerald-500/10 p-3 rounded-xl">
+                                                <p className="text-[9px] text-emerald-400/70 font-black uppercase mb-1">Ahorro Máx.</p>
+                                                <p className="text-lg font-black text-emerald-500">{s.potentialSavings}m</p>
+                                                <p className="text-[9px] text-slate-600 font-bold">Potencial diario</p>
+                                            </div>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="p-3 bg-slate-900 rounded-xl border border-white/5 text-center">
-                                                <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Día Más Rápido</p>
-                                                <p className="text-lg font-black text-blue-400">{s.bestDOW}</p>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="p-3 bg-slate-800/40 rounded-xl border border-white/5">
+                                                <p className="text-[9px] text-slate-500 font-black uppercase mb-1">Día Óptimo</p>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-base font-black text-blue-400">{s.bestDOW}</span>
+                                                    <span className="text-[9px] bg-blue-500/10 text-blue-400 px-1 rounded">-{s.weeklyEfficiency}%</span>
+                                                </div>
                                             </div>
-                                            <div className="p-3 bg-slate-900 rounded-xl border border-white/5 text-center">
-                                                <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Día Más Lento</p>
-                                                <p className="text-lg font-black text-red-500">{s.worstDOW}</p>
+                                            <div className="p-3 bg-slate-800/40 rounded-xl border border-white/5">
+                                                <p className="text-[9px] text-slate-500 font-black uppercase mb-1">Día Crítico</p>
+                                                <span className="text-base font-black text-red-400">{s.worstDOW}</span>
                                             </div>
                                         </div>
+
+                                        <div className="mt-2 p-3 bg-orange-600/5 border border-orange-500/10 rounded-xl flex items-start gap-3">
+                                            <div className="mt-1 w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)] animate-pulse" />
+                                            <p className="text-[10px] text-orange-300 leading-relaxed italic">
+                                                {s.reliability > 85 
+                                                  ? `Trayecto estable. Regreso desde ${isDOT ? 'DOT' : 'Centro'} hacia ${shortenBarrioName(s.bestBarrio)} con flujo constante.` 
+                                                  : `Zonas con alta variabilidad. El regreso puede demorar hasta ${s.peakImpact}m extra fuera de la ventana de las ${s.bestTime}hs.`}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="absolute top-0 right-0 p-2 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity pointer-events-none">
+                                        <TrendingUp size={120} />
                                     </div>
                                 </div>
                             );
