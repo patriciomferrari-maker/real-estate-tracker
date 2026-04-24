@@ -269,11 +269,13 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
   // BARS: Ranking data
   const comparisonData = useMemo(() => {
     const groups = new Map<string, any>();
-    const todayRec = enrichedRecords.find(r => r.dateStr === todayStr);
-    const todayDOW = todayRec ? todayRec.dayOfWeek : new Date().getDay();
-    const todayMonth = todayRec ? todayRec.month : new Date().getMonth();
+    // Día de la semana real (0-6)
+    const todayDOW = new Date().getDay();
 
     enrichedRecords.forEach(r => {
+        // Exclusión agresiva de registros genéricos
+        if (r.barrio === "Villa Nueva" || r.barrio.includes("Gral")) return;
+        
         // Local Filter for BARS
         if (barMacro !== "Todas las Zonas" && r.macro !== barMacro) return;
 
@@ -281,8 +283,6 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
         if (globalDestination === "DOT" && !r.isDOT) return;
         if (globalDestination === "Obelisco" && r.isDOT) return;
 
-        // Dynamic drill-down: If 'Todas' is selected, group by macro. 
-        // If a specific zone is selected, show its internal barrios.
         const groupKey = barMacro === "Todas las Zonas" ? r.macro : r.barrio;
 
         if (barTimeMode === "mañana" && !r.isIda) return;
@@ -301,7 +301,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
             if (r.isDOT) { s.tdDOT += r.durationMins; s.cdDOT++; }
             else { s.tdMicro += r.durationMins; s.cdMicro++; }
         } else {
-            // Check if it's the same day of week
+            // Comparación DOW robusta
             const isSameDOW = r.dayOfWeek === todayDOW;
             
             if (r.isDOT) { 
@@ -337,7 +337,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
             "centroZoneLabel": `${s.zone} ${hoyMicro > 0 ? (hoyMicro >= hMicro ? `(+${hoyMicro - hMicro}m)` : `(${hoyMicro - hMicro}m)`) : ''}`
         };
     }).sort((a,b) => (a.dot_historico + a.centro_historico) - (b.dot_historico + b.centro_historico));
-  }, [enrichedRecords, barTimeMode, barMacro, globalMode, todayStr, comparisonMode]);
+  }, [enrichedRecords, barTimeMode, barMacro, globalMode, todayStr]);
 
   const highlightStats = useMemo(() => {
       const cats = {
