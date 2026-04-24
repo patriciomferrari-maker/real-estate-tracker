@@ -343,6 +343,44 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
     }).sort((a,b) => (a.dot_historico + a.centro_historico) - (b.dot_historico + b.centro_historico));
   }, [enrichedRecords, barTimeMode, barMacro, globalMode, todayStr]);
 
+  const obeliscoDowData = useMemo(() => {
+    const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+    const morningMap = new Map<string, any>();
+    const afternoonMap = new Map<string, any>(); 
+
+    // Inicializar semana laboral L-V
+    for(let i=1; i<=5; i++) {
+        morningMap.set(dayNames[i], { day: dayNames[i], dayIdx: i });
+        afternoonMap.set(dayNames[i], { day: dayNames[i], dayIdx: i });
+    }
+
+    enrichedRecords.forEach(r => {
+        if (r.isDOT) return; // Solo Obelisco
+        if (r.dayOfWeek === 0 || r.dayOfWeek === 6) return; // Solo L-V
+        
+        const isMorning = r.hours < 13;
+        const targetMap = isMorning ? morningMap : afternoonMap;
+        const dayStr = dayNames[r.dayOfWeek];
+        
+        const obj = targetMap.get(dayStr);
+        if (!obj) return;
+
+        const macroKey = r.macro;
+        if (!obj[macroKey]) {
+            obj[macroKey + '_s'] = 0;
+            obj[macroKey + '_c'] = 0;
+        }
+        obj[macroKey + '_s'] += r.durationMins;
+        obj[macroKey + '_c']++;
+        obj[macroKey] = Math.round(obj[macroKey + '_s'] / obj[macroKey + '_c']);
+    });
+
+    return {
+        morning: Array.from(morningMap.values()).sort((a,b) => a.dayIdx - b.dayIdx),
+        afternoon: Array.from(afternoonMap.values()).sort((a,b) => a.dayIdx - b.dayIdx)
+    };
+  }, [enrichedRecords]);
+
   const highlightStats = useMemo(() => {
       const cats = {
           "mañana_dot": { ida: true, dot: true },
@@ -1494,6 +1532,67 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                             </BarChart>
                           </ResponsiveContainer>
                       )}
+                  </div>
+              </div>
+          </div>
+      </div>
+
+      {/* WEEKLY STABILITY ANALYSIS (OBELISCO) */}
+      <div className="glass-card mt-8 border-purple-500/10 border">
+          <div className="border-b border-white/5 pb-4 mb-6">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                    <Calendar size={20} className="text-purple-400" />
+                    Estabilidad Semanal: Destino Microcentro / Obelisco
+                </h3>
+                <p className="text-xs text-slate-400">¿Cuál es el mejor y peor día de la semana para ir al centro? Promedios históricos por zona.</p>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-12">
+              {/* Morning DOW */}
+              <div className="space-y-4">
+                  <h4 className="text-sm font-black text-indigo-400 uppercase tracking-widest text-center flex items-center justify-center gap-2">
+                    <Sun size={14} /> Mañana: Ida al Centro (06-12hs)
+                  </h4>
+                  <div className="h-[300px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={obeliscoDowData.morning} margin={{ top: 20, right: 30, left: -20, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                              <XAxis dataKey="day" stroke="#64748b" fontSize={12} tick={{ fill: '#94a3b8', fontWeight: 'bold' }} />
+                              <YAxis stroke="#64748b" fontSize={10} unit="m" />
+                              <Tooltip 
+                                cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                                contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)' }}
+                              />
+                              <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+                              {allMacros.map((m, idx) => (
+                                  <Bar key={m} dataKey={m} name={m} fill={LINE_COLORS[idx % LINE_COLORS.length]} radius={[4, 4, 0, 0]} />
+                              ))}
+                          </BarChart>
+                      </ResponsiveContainer>
+                  </div>
+              </div>
+
+              {/* Afternoon DOW */}
+              <div className="space-y-4">
+                  <h4 className="text-sm font-black text-amber-400 uppercase tracking-widest text-center flex items-center justify-center gap-2">
+                    <Moon size={14} /> Tarde: Ida al Centro (13-20hs)
+                  </h4>
+                  <div className="h-[300px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={obeliscoDowData.afternoon} margin={{ top: 20, right: 30, left: -20, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                              <XAxis dataKey="day" stroke="#64748b" fontSize={12} tick={{ fill: '#94a3b8', fontWeight: 'bold' }} />
+                              <YAxis stroke="#64748b" fontSize={10} unit="m" />
+                              <Tooltip 
+                                cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                                contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)' }}
+                              />
+                              <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+                              {allMacros.map((m, idx) => (
+                                  <Bar key={m} dataKey={m} name={m} fill={LINE_COLORS[idx % LINE_COLORS.length]} radius={[4, 4, 0, 0]} />
+                              ))}
+                          </BarChart>
+                      </ResponsiveContainer>
                   </div>
               </div>
           </div>
