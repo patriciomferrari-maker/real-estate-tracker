@@ -467,7 +467,6 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
 
     return (
       <g>
-        {/* Un pequeño fondo oscuro para máxima legibilidad si se pisa con algo */}
         <rect x={x + width + 5} y={y + 1} width={35} height={height-2} fill="rgba(15,23,42,0.8)" rx={4} />
         <text 
           x={x + width + 10} 
@@ -481,6 +480,29 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
         </text>
       </g>
     );
+  };
+
+  const CustomEvolutionTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const filtered = payload.filter((p: any) => !p.dataKey.toString().startsWith('__'));
+      if (filtered.length === 0) return null;
+      return (
+        <div className="bg-[#0f172a] p-3 rounded-lg border border-slate-800 shadow-xl ring-1 ring-white/10">
+          <p className="text-white font-bold mb-2 border-b border-white/10 pb-1">{label}</p>
+          <div className="space-y-1">
+            {filtered.sort((a:any, b:any) => b.value - a.value).map((p: any, idx: number) => (
+              <div key={idx} className="flex justify-between items-center gap-4">
+                <span style={{ color: p.stroke || p.fill }} className="text-xs font-medium">
+                  {p.name}
+                </span>
+                <span className="text-xs text-white font-bold">{p.value}m</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
@@ -613,11 +635,11 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                       <XAxis dataKey="timeTick" fontSize={10} stroke="#475569" />
                       <YAxis fontSize={10} stroke="#475569" unit="m" />
-                      <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px' }} />
+                       <Tooltip content={<CustomEvolutionTooltip />} />
                       <Legend iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
-                      <Line type="monotone" dataKey="__avg" name="PROMEDIO GRAL." stroke="#ffffff" strokeWidth={4} dot={false} connectNulls />
-                      <Line type="monotone" dataKey="__min" name="MEJOR TIEMPO" stroke="#00ff88" strokeWidth={1} dot={false} strokeDasharray="3 3" opacity={0.5} connectNulls />
-                      <Line type="monotone" dataKey="__max" name="PEOR TIEMPO" stroke="#ff4d4d" strokeWidth={1} dot={false} strokeDasharray="3 3" opacity={0.5} connectNulls />
+                      <Line type="monotone" dataKey="__avg" name="PROMEDIO GRAL." stroke="#ffffff" strokeWidth={3} strokeDasharray="10 5" dot={false} connectNulls opacity={0.6} />
+                      <Line type="monotone" dataKey="__min" name="MEJOR TIEMPO" stroke="#00ff88" strokeWidth={2} strokeDasharray="3 3" dot={false} connectNulls opacity={0.5} />
+                      <Line type="monotone" dataKey="__max" name="PEOR TIEMPO" stroke="#ff4d4d" strokeWidth={2} strokeDasharray="3 3" dot={false} connectNulls opacity={0.5} />
 
                       {Object.keys(evolutivoData[0] || {}).map((k, idx) => {
                           if (k === 'timeTick' || k === 'timeHourNum' || k.endsWith('_s') || k.endsWith('_c') || k.startsWith('__')) return null;
