@@ -343,20 +343,27 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
     }).sort((a,b) => (a.dot_historico + a.centro_historico) - (b.dot_historico + b.centro_historico));
   }, [enrichedRecords, barTimeMode, barMacro, globalMode, todayStr]);
 
+  // Local state for Weekly Stability filters
+  const [weeklyMacro, setWeeklyMacro] = useState<string>("Todas las Zonas");
+  const [weeklyBarrio, setWeeklyBarrio] = useState<string>("Todos los Barrios");
+
   const obeliscoDowData = useMemo(() => {
     const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
     const morningMap = new Map<string, any>();
     const afternoonMap = new Map<string, any>(); 
 
-    // Inicializar semana laboral L-V
     for(let i=1; i<=5; i++) {
         morningMap.set(dayNames[i], { day: dayNames[i], dayIdx: i });
         afternoonMap.set(dayNames[i], { day: dayNames[i], dayIdx: i });
     }
 
     enrichedRecords.forEach(r => {
-        if (r.isDOT) return; // Solo Obelisco
-        if (r.dayOfWeek === 0 || r.dayOfWeek === 6) return; // Solo L-V
+        if (r.isDOT) return; 
+        if (r.dayOfWeek === 0 || r.dayOfWeek === 6) return; 
+
+        // Filter Logic
+        if (weeklyMacro !== "Todas las Zonas" && r.macro !== weeklyMacro) return;
+        if (weeklyBarrio !== "Todos los Barrios" && r.barrio !== weeklyBarrio) return;
         
         const isMorning = r.hours < 13;
         const targetMap = isMorning ? morningMap : afternoonMap;
@@ -365,21 +372,35 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
         const obj = targetMap.get(dayStr);
         if (!obj) return;
 
-        const macroKey = r.macro;
-        if (!obj[macroKey]) {
-            obj[macroKey + '_s'] = 0;
-            obj[macroKey + '_c'] = 0;
+        // Dynamic key: If all zones, use macro. If one zone, use barrio.
+        const dynamicKey = weeklyMacro === "Todas las Zonas" ? r.macro : r.barrio;
+
+        if (!obj[dynamicKey]) {
+            obj[dynamicKey + '_s'] = 0;
+            obj[dynamicKey + '_c'] = 0;
         }
-        obj[macroKey + '_s'] += r.durationMins;
-        obj[macroKey + '_c']++;
-        obj[macroKey] = Math.round(obj[macroKey + '_s'] / obj[macroKey + '_c']);
+        obj[dynamicKey + '_s'] += r.durationMins;
+        obj[dynamicKey + '_c']++;
+        obj[dynamicKey] = Math.round(obj[dynamicKey + '_s'] / obj[dynamicKey + '_c']);
     });
 
     return {
         morning: Array.from(morningMap.values()).sort((a,b) => a.dayIdx - b.dayIdx),
         afternoon: Array.from(afternoonMap.values()).sort((a,b) => a.dayIdx - b.dayIdx)
     };
-  }, [enrichedRecords]);
+  }, [enrichedRecords, weeklyMacro, weeklyBarrio]);
+
+  // Derived labels for the chart bars
+  const weeklySeriesKeys = useMemo(() => {
+      const keys = new Set<string>();
+      const combined = [...obeliscoDowData.morning, ...obeliscoDowData.afternoon];
+      combined.forEach(d => {
+          Object.keys(d).forEach(k => {
+              if (k !== "day" && k !== "dayIdx" && !k.endsWith('_s') && !k.endsWith('_c')) keys.add(k);
+          });
+      });
+      return Array.from(keys).sort();
+  }, [obeliscoDowData]);
 
   const highlightStats = useMemo(() => {
       const cats = {
@@ -1539,33 +1560,62 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
 
       {/* WEEKLY STABILITY ANALYSIS (OBELISCO) */}
       <div className="glass-card mt-8 border-purple-500/10 border">
-          <div className="border-b border-white/5 pb-4 mb-6">
-                <h3 className="text-xl font-bold flex items-center gap-2">
-                    <Calendar size={20} className="text-purple-400" />
-                    Estabilidad Semanal: Destino Microcentro / Obelisco
-                </h3>
-                <p className="text-xs text-slate-400">¿Cuál es el mejor y peor día de la semana para ir al centro? Promedios históricos por zona.</p>
+          <div className="border-b border-white/5 pb-4 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h3 className="text-xl font-bold flex items-center gap-2">
+                        <Calendar size={20} className="text-purple-400" />
+                        Estabilidad Semanal: Destino Microcentro / Obelisco
+                    </h3>
+                    <p className="text-xs text-slate-400">¿Cuál es el mejor y peor día de la semana para ir al centro? Promedios históricos.</p>
+                </div>
+
+                <div className="flex items-center gap-3 bg-slate-900/50 p-2 rounded-xl border border-white/5 self-start md:self-auto">
+                    <div className="flex items-center gap-2">
+                        <Filter size={14} className="text-slate-500 ml-1" />
+                        <select 
+                          value={weeklyMacro} 
+                          onChange={(e) => { setWeeklyMacro(e.target.value); setWeeklyBarrio("Todos los Barrios"); }}
+                          className="bg-transparent text-[10px] font-black text-slate-300 outline-none border-r border-white/10 pr-2 cursor-pointer hover:text-white transition-colors uppercase"
+                        >
+                            <option value="Todas las Zonas">Todas las Zonas</option>
+                            {allMacros.map(m => <option key={m} value={m} className="bg-slate-900 text-white">{m}</option>)}
+                        </select>
+                    </div>
+                    <select 
+                      value={weeklyBarrio} 
+                      onChange={(e) => setWeeklyBarrio(e.target.value)}
+                      className="bg-transparent text-[10px] font-black text-slate-300 outline-none cursor-pointer hover:text-white transition-colors pr-2 uppercase"
+                    >
+                        <option value="Todos los Barrios">Todos los Barrios</option>
+                        {zones.filter(z => weeklyMacro === "Todas las Zonas" ? true : getMacro(z) === weeklyMacro).map(z => {
+                            const b = shortenBarrioName(z);
+                            return <option key={b} value={b} className="bg-slate-900 text-white">{b}</option>
+                        })}
+                    </select>
+                </div>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-12">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-16">
               {/* Morning DOW */}
-              <div className="space-y-4">
-                  <h4 className="text-sm font-black text-indigo-400 uppercase tracking-widest text-center flex items-center justify-center gap-2">
+              <div className="space-y-6">
+                  <h4 className="text-sm font-black text-indigo-400 uppercase tracking-widest text-center flex items-center justify-center gap-2 py-1 bg-indigo-500/5 rounded-full">
                     <Sun size={14} /> Mañana: Ida al Centro (06-12hs)
                   </h4>
-                  <div className="h-[300px] w-full">
+                  <div className="h-[320px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={obeliscoDowData.morning} margin={{ top: 20, right: 30, left: -20, bottom: 0 }}>
+                          <BarChart data={obeliscoDowData.morning} margin={{ top: 25, right: 30, left: -20, bottom: 0 }}>
                               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                              <XAxis dataKey="day" stroke="#64748b" fontSize={12} tick={{ fill: '#94a3b8', fontWeight: 'bold' }} />
+                              <XAxis dataKey="day" stroke="#64748b" fontSize={11} tick={{ fill: '#94a3b8', fontWeight: 'bold' }} />
                               <YAxis stroke="#64748b" fontSize={10} unit="m" />
                               <Tooltip 
-                                cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                                cursor={{fill: 'rgba(255,255,255,0.03)'}}
                                 contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)' }}
                               />
-                              <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
-                              {allMacros.map((m, idx) => (
-                                  <Bar key={m} dataKey={m} name={m} fill={LINE_COLORS[idx % LINE_COLORS.length]} radius={[4, 4, 0, 0]} />
+                              <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '15px' }} />
+                              {weeklySeriesKeys.map((m, idx) => (
+                                  <Bar key={m} dataKey={m} name={m} fill={LINE_COLORS[idx % LINE_COLORS.length]} radius={[4, 4, 0, 0]} barSize={weeklySeriesKeys.length > 5 ? 12 : 24}>
+                                      <LabelList dataKey={m} position="top" formatter={(v:any) => v > 0 ? `${v}m` : ''} style={{ fill: '#94a3b8', fontSize: '9px', fontWeight: 'bold' }} />
+                                  </Bar>
                               ))}
                           </BarChart>
                       </ResponsiveContainer>
@@ -1573,23 +1623,25 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
               </div>
 
               {/* Afternoon DOW */}
-              <div className="space-y-4">
-                  <h4 className="text-sm font-black text-amber-400 uppercase tracking-widest text-center flex items-center justify-center gap-2">
+              <div className="space-y-6">
+                  <h4 className="text-sm font-black text-amber-400 uppercase tracking-widest text-center flex items-center justify-center gap-2 py-1 bg-amber-500/5 rounded-full">
                     <Moon size={14} /> Tarde: Ida al Centro (13-20hs)
                   </h4>
-                  <div className="h-[300px] w-full">
+                  <div className="h-[320px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={obeliscoDowData.afternoon} margin={{ top: 20, right: 30, left: -20, bottom: 0 }}>
+                          <BarChart data={obeliscoDowData.afternoon} margin={{ top: 25, right: 30, left: -20, bottom: 0 }}>
                               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                              <XAxis dataKey="day" stroke="#64748b" fontSize={12} tick={{ fill: '#94a3b8', fontWeight: 'bold' }} />
+                              <XAxis dataKey="day" stroke="#64748b" fontSize={11} tick={{ fill: '#94a3b8', fontWeight: 'bold' }} />
                               <YAxis stroke="#64748b" fontSize={10} unit="m" />
                               <Tooltip 
-                                cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                                cursor={{fill: 'rgba(255,255,255,0.03)'}}
                                 contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)' }}
                               />
-                              <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
-                              {allMacros.map((m, idx) => (
-                                  <Bar key={m} dataKey={m} name={m} fill={LINE_COLORS[idx % LINE_COLORS.length]} radius={[4, 4, 0, 0]} />
+                              <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '15px' }} />
+                              {weeklySeriesKeys.map((m, idx) => (
+                                  <Bar key={m} dataKey={m} name={m} fill={LINE_COLORS[idx % LINE_COLORS.length]} radius={[4, 4, 0, 0]} barSize={weeklySeriesKeys.length > 5 ? 12 : 24}>
+                                      <LabelList dataKey={m} position="top" formatter={(v:any) => v > 0 ? `${v}m` : ''} style={{ fill: '#94a3b8', fontSize: '9px', fontWeight: 'bold' }} />
+                                  </Bar>
                               ))}
                           </BarChart>
                       </ResponsiveContainer>
