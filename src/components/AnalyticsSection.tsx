@@ -302,7 +302,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       }
 
       return filtered;
-  }, [rawScatterPoints, scatterMacro, scatterBarrio, scatterMode]);
+  }, [rawScatterPoints, scatterMacro, scatterBarrio, scatterMode, scatterDestino]);
 
   const scatterIdaDOT = filteredScatter.filter(p => p.isIda && p.isDOT);
   const scatterIdaCentro = filteredScatter.filter(p => p.isIda && !p.isDOT);
