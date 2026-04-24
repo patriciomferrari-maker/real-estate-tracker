@@ -68,7 +68,8 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
             barrio: shortenBarrioName(relevantBarrioRaw),
             hours: d.getHours(),
             minutes: d.getMinutes(),
-            dateStr: d.toDateString(),
+            // Usamos formato DD/MM/YYYY para la UI y la tabla
+            dateStr: d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
             timestampDate: d
         };
     }).filter(r => {
@@ -128,7 +129,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       return zones.filter(z => getMacro(z) === barMacro).map(z => shortenBarrioName(z));
   }, [barMacro, zones]);
 
-  const todayStr = useMemo(() => new Date().toDateString(), []);
+  const todayStr = useMemo(() => new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }), []);
 
   // Summary KPIs
   const summaryStats = useMemo(() => {
