@@ -110,6 +110,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const [barTimeMode, setBarTimeMode] = useState<"mañana" | "tarde">("mañana");
   const [barMacro, setBarMacro] = useState<string>("Todas las Zonas");
   const [evoMacro, setEvoMacro] = useState<string>("Todas las Zonas");
+  const [evoDest, setEvoDest] = useState<string>("Ambos");
   
   // Helpers derived from global selection
   const allMacros = useMemo(() => Array.from(new Set(zones.map(z => getMacro(z)))).sort(), [zones]);
@@ -179,8 +180,12 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
     enrichedRecords.forEach(r => {
         // Local Filter for Evolution
         if (evoMacro !== "Todas las Zonas" && r.macro !== evoMacro) return;
+
+        // Local Destination Filter
+        if (evoDest === "DOT" && !r.isDOT) return;
+        if (evoDest === "Obelisco" && r.isDOT) return;
         
-        // Destination Filter
+        // Destination Filter (Global)
         if (globalDestination === "DOT" && !r.isDOT) return;
         if (globalDestination === "Obelisco" && r.isDOT) return;
 
@@ -536,21 +541,35 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       <div className="glass-card border-white/5 space-y-6">
           <div className="flex flex-col xl:flex-row justify-between gap-4 border-b border-white/5 pb-4">
                <div>
-                  <h3 className="text-lg font-bold flex items-center gap-2">
-                    <TrendingUp size={18} className="text-blue-400"/> Comparativa de Evolución Multibarrio
+                  <h3 className="text-xl font-bold flex items-center gap-2">
+                    <TrendingUp size={20} className="text-blue-400"/> Comparativa de Evolución Multibarrio
                   </h3>
-                  <p className="text-xs text-slate-400 italic">Mostrando evolución de <b>{evoMacro === 'Todas las Zonas' ? 'todas las zonas' : evoMacro}</b></p>
                </div>
                <div className="flex items-center gap-3">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase">Filtrar Gráfico:</span>
-                  <select 
-                    value={evoMacro} 
-                    onChange={(e) => setEvoMacro(e.target.value)}
-                    className="bg-slate-800 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none"
-                  >
-                      <option value="Todas las Zonas">Todas las Zonas (Vista Macro)</option>
-                      {allMacros.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-slate-500 font-bold uppercase">Destino:</span>
+                        <select 
+                            value={evoDest} 
+                            onChange={(e) => setEvoDest(e.target.value)}
+                            className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white outline-none cursor-pointer hover:bg-slate-800 transition-colors"
+                        >
+                            <option value="Ambos">Ambos</option>
+                            <option value="DOT">Shopping DOT</option>
+                            <option value="Obelisco">Obelisco</option>
+                        </select>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-slate-500 font-bold uppercase">Filtrar Gráfico:</span>
+                        <select 
+                            value={evoMacro} 
+                            onChange={(e) => setEvoMacro(e.target.value)}
+                            className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white outline-none cursor-pointer hover:bg-slate-800 transition-colors"
+                        >
+                            <option value="Todas las Zonas">Todas las Zonas (Vista Macro)</option>
+                            {allMacros.map(m => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                    </div>
                </div>
           </div>
           
