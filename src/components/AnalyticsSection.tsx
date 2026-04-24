@@ -66,6 +66,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
             month: d.getMonth(),
             macro: getMacro(relevantBarrioRaw),
             barrio: shortenBarrioName(relevantBarrioRaw),
+            barrioRaw: relevantBarrioRaw, // Mantenemos el nombre original para filtrado exacto
             hours: d.getHours(),
             minutes: d.getMinutes(),
             // Usamos formato DD/MM/YYYY para la UI y la tabla
@@ -147,7 +148,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
         
         // Global Filter
         if (globalMacro !== "Todas las Zonas" && r.macro !== globalMacro) return;
-        if (globalBarrio !== "Todos los Barrios" && r.barrio !== globalBarrio) return;
+        if (globalBarrio !== "Todos los Barrios" && r.barrioRaw !== globalBarrio) return;
         
         // Comparison Context Filter (Only for historical average)
         if (!isToday) {
@@ -522,7 +523,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
 
         // Parent Filters
         if (globalMacro !== "Todas las Zonas" && r.macro !== globalMacro) return;
-        if (globalBarrio !== "Todos los Barrios" && r.barrio !== globalBarrio) return;
+        if (globalBarrio !== "Todos los Barrios" && r.barrioRaw !== globalBarrio) return;
 
         // Shift Filter for Trend Zoom
         if (trendTimeMode === "mañana" && r.hours >= 13) return;
@@ -564,12 +565,12 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       const bin = Math.floor(r.minutes / timeBinSize) * timeBinSize;
       return { 
           id: r.id, isIda: r.isIda, isDOT: r.isDOT, duration: r.durationMins, 
-          timeHour: r.hours + (bin / 60), barrio: r.barrio, macro: r.macro,
+          timeHour: r.hours + (bin / 60), barrio: r.barrio, barrioRaw: r.barrioRaw, macro: r.macro,
           isToday: r.dateStr === todayStr
       };
     }).filter(p => {
         if (globalMacro !== "Todas las Zonas" && p.macro !== globalMacro) return false;
-        if (globalBarrio !== "Todos los Barrios" && p.barrio !== globalBarrio) return false;
+        if (globalBarrio !== "Todos los Barrios" && p.barrioRaw !== globalBarrio) return false;
         
         // Destination Filter
         if (globalDestination === "DOT" && !p.isDOT) return false;
