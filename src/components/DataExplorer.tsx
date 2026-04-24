@@ -20,7 +20,7 @@ export default function DataExplorer({ records }: { records: any[] }) {
         
         let detalle = "";
         if (esIda) detalle = isDOT ? " al DOT" : " al Centro";
-        else detalle = isDOT ? " del DOT" : " del Centro";
+        else detalle = isDOT ? " a Provincia" : " a Provincia"; // Simplificamos para que coincida con Analytics
 
         const turno = esIda ? `Ida${detalle}` : `Vuelta${detalle}`;
         const barrioCrudo = esIda ? r.origin : r.destination;
@@ -47,6 +47,8 @@ export default function DataExplorer({ records }: { records: any[] }) {
      });
   }, [records]);
 
+   const totalCount = records.length;
+
   // Extracts lists for selects
   const uniqueYears = Array.from(new Set(gridData.map(d => d.year)));
   const uniqueMonths = Array.from(new Set(gridData.map(d => d.month)));
@@ -67,7 +69,7 @@ export default function DataExplorer({ records }: { records: any[] }) {
   return (
     <div className="glass-card mb-12">
         <div className="border-b border-white/10 pb-4 mb-6">
-            <h3 className="text-xl font-bold text-emerald-400 mb-1">Explorador de Base de Datos</h3>
+            <h3 className="text-xl font-bold text-emerald-400 mb-1">Explorador de Base de Datos ({totalCount} registros)</h3>
             <p className="text-sm text-slate-400">Filtrá y analizá cada viaje individual guardado en el sistema.</p>
         </div>
 
