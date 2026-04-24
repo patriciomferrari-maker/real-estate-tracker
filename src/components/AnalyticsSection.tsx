@@ -128,7 +128,11 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       return zones.filter(z => getMacro(z) === barMacro).map(z => shortenBarrioName(z));
   }, [barMacro, zones]);
 
-  const todayStr = useMemo(() => new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }), []);
+  const todayStr = useMemo(() => {
+    const now = new Date();
+    // Forzamos fecha local de Argentina para el matching con los logs
+    return now.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }, []);
 
   // Summary KPIs
   const summaryStats = useMemo(() => {
@@ -471,7 +475,8 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
         if (!map.has(key)) map.set(key, { timeTick: key, timeHourNum: r.hours + (binMins/60) });
         const obj = map.get(key)!;
         
-        const label = r.macro;
+        // Determinamos qué etiqueta usar en el gráfico: el barrio si está filtrado, o la macro si no.
+        const label = globalBarrio !== "Todos los Barrios" ? r.barrio : r.macro;
         const type = r.isIda ? 'Ida' : 'Vuelta';
         
         const dataKey = `${label} ${type} (${isToday ? 'Hoy' : 'Hist'})`;
@@ -1217,13 +1222,14 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                             <YAxis stroke="#475569" fontSize={10} unit="m" tick={{ fill: '#64748b' }} />
                             <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' }} />
                             
-                            {allMacros.map((m, mIdx) => {
-                                 const color = LINE_COLORS[mIdx % LINE_COLORS.length];
+                            {/* Generación dinámica de líneas basada en el filtro activo (DOT) */}
+                            {(globalBarrio !== "Todos los Barrios" ? [globalBarrio] : (globalMacro !== "Todas las Zonas" ? [globalMacro] : allMacros)).map((m, mIdx) => {
+                                 const color = globalBarrio !== "Todos los Barrios" ? "#60a5fa" : LINE_COLORS[mIdx % LINE_COLORS.length];
                                  const type = trendTimeMode === 'mañana' ? 'Ida' : 'Vuelta';
                                  return (
                                      <React.Fragment key={m}>
-                                         <Line type="monotone" dataKey={`${m} ${type} (Hoy)`} name={`${m} Hoy`} stroke={color} strokeWidth={3} dot={{ r: 3 }} connectNulls />
-                                         <Line type="monotone" dataKey={`${m} ${type} (Hist)`} name={`${m} ${comparisonMode === 'dow' ? 'Prom. DOW' : 'Prom. Gral.'}`} stroke={color} strokeWidth={1} strokeDasharray="3 3" dot={false} connectNulls opacity={0.4} />
+                                         <Line type="monotone" dataKey={`${m} ${type} (Hoy)`} name={`${m} Hoy`} stroke={color} strokeWidth={4} dot={{ r: 4, fill: color }} connectNulls activeDot={{ r: 8 }} />
+                                         <Line type="monotone" dataKey={`${m} ${type} (Hist)`} name={`${m} ${comparisonMode === 'dow' ? 'Prom. DOW' : 'Prom. Gral.'}`} stroke={color} strokeWidth={2} strokeDasharray="5 5" dot={false} connectNulls opacity={0.4} />
                                      </React.Fragment>
                                  );
                              })}
@@ -1245,13 +1251,14 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                             <YAxis stroke="#475569" fontSize={10} unit="m" tick={{ fill: '#64748b' }} />
                             <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' }} />
                             
-                            {allMacros.map((m, mIdx) => {
-                                 const color = LINE_COLORS[mIdx % LINE_COLORS.length];
+                            {/* Generación dinámica de líneas basada en el filtro activo (Centro) */}
+                            {(globalBarrio !== "Todos los Barrios" ? [globalBarrio] : (globalMacro !== "Todas las Zonas" ? [globalMacro] : allMacros)).map((m, mIdx) => {
+                                 const color = globalBarrio !== "Todos los Barrios" ? "#a855f7" : LINE_COLORS[mIdx % LINE_COLORS.length];
                                  const type = trendTimeMode === 'mañana' ? 'Ida' : 'Vuelta';
                                  return (
                                      <React.Fragment key={m}>
-                                         <Line type="monotone" dataKey={`${m} ${type} (Hoy)`} name={`${m} Hoy`} stroke={color} strokeWidth={3} dot={{ r: 3 }} connectNulls />
-                                         <Line type="monotone" dataKey={`${m} ${type} (Hist)`} name={`${m} ${comparisonMode === 'dow' ? 'Prom. DOW' : 'Prom. Gral.'}`} stroke={color} strokeWidth={1} strokeDasharray="3 3" dot={false} connectNulls opacity={0.4} />
+                                         <Line type="monotone" dataKey={`${m} ${type} (Hoy)`} name={`${m} Hoy`} stroke={color} strokeWidth={4} dot={{ r: 4, fill: color }} connectNulls activeDot={{ r: 8 }} />
+                                         <Line type="monotone" dataKey={`${m} ${type} (Hist)`} name={`${m} ${comparisonMode === 'dow' ? 'Prom. DOW' : 'Prom. Gral.'}`} stroke={color} strokeWidth={2} strokeDasharray="5 5" dot={false} connectNulls opacity={0.4} />
                                      </React.Fragment>
                                  );
                              })}
