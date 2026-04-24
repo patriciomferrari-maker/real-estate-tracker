@@ -43,19 +43,19 @@ export async function syncAllData() {
   
   try {
     const page = await browser.newPage();
-    const hour = new Date().getHours()
+    // Ajustamos a hora de Argentina (GMT-3) para decidir el sentido
+    const now = new Date();
+    const argHour = (now.getUTCHours() - 3 + 24) % 24; 
     
-    // We decide direction based on hour (Morning = to CABA, Afternoon = Return)
-    const isMorning = hour < 12;
-    const isPeakHour = (hour >= 7 && hour <= 10) || (hour >= 17 && hour <= 19);
+    const isMorning = argHour < 13; // Hasta la 1 PM es ida
+    const isPeakHour = (argHour >= 7 && argHour <= 10) || (argHour >= 16 && argHour <= 20);
 
     for (const zone of ZONES) {
       for (const dest of DESTINATIONS) {
-         // Determine direction
          const runOrigin = isMorning ? zone : dest;
          const runDest = isMorning ? dest : zone;
 
-         console.log(`[Google Maps] Scraping ${runOrigin} -> ${runDest}...`);
+         console.log(`[Sync] Realizando ${isMorning ? 'IDA' : 'VUELTA'}: ${runOrigin} -> ${runDest} (Hora ARG: ${argHour})`);
          const { durationMins, distanceKm } = await scrapeCommuteTime(runOrigin, runDest, page);
          
          if (durationMins > 0) {
