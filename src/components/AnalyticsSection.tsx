@@ -68,7 +68,8 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
             barrio: shortenBarrioName(relevantBarrioRaw),
             hours: d.getHours(),
             minutes: d.getMinutes(),
-            dateStr: d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+            // Formato estándar ISO-Local YYYY-MM-DD para matching robusto
+            dateStr: `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`,
             timestampDate: d
         };
     }).filter(r => {
@@ -129,9 +130,8 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
   }, [barMacro, zones]);
 
   const todayStr = useMemo(() => {
-    const now = new Date();
-    // Forzamos fecha local de Argentina para el matching con los logs
-    return now.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const d = new Date();
+    return `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`;
   }, []);
 
   // Summary KPIs
@@ -273,8 +273,8 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
   const comparisonData = useMemo(() => {
     const groups = new Map<string, any>();
     const todayRec = enrichedRecords.find(r => r.dateStr === todayStr);
-    const todayDOW = todayRec?.dayOfWeek;
-    const todayMonth = todayRec?.month;
+    const todayDOW = todayRec ? todayRec.dayOfWeek : new Date().getDay();
+    const todayMonth = todayRec ? todayRec.month : new Date().getMonth();
 
     enrichedRecords.forEach(r => {
         // Local Filter for BARS
