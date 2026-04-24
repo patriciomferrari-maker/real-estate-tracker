@@ -844,6 +844,20 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                     <option value="Obelisco">Obelisco / Centro</option>
                 </select>
               </div>
+
+              {/* Comparison Mode Select */}
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] text-amber-500 font-bold uppercase ml-1">Referencia Histórica</span>
+                <select 
+                    value={comparisonMode} 
+                    onChange={(e) => setComparisonMode(e.target.value as any)}
+                    className="bg-amber-900/20 border border-amber-500/30 rounded-lg px-3 py-2 text-xs text-amber-200 focus:ring-1 focus:ring-amber-500 outline-none hover:bg-amber-900/40 transition-colors cursor-pointer font-bold"
+                >
+                    <option value="all">Todo el Histórico</option>
+                    <option value="dow">Mismo Día (Semana)</option>
+                    <option value="month">Mismo Mes</option>
+                </select>
+              </div>
           </div>
       </div>
 
@@ -851,35 +865,13 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       {/* MULTI-BARRIO EVOLUTION CHART */}
       <div className="glass-card border-white/5 space-y-6">
           <div className="flex flex-col xl:flex-row justify-between gap-4 border-b border-white/5 pb-4">
-               <div>
-                  <h3 className="text-xl font-bold flex items-center gap-2">
-                    <TrendingUp size={20} className="text-blue-400"/> Comparativa de Evolución Multibarrio
-                  </h3>
-               </div>
-               <div className="flex flex-wrap items-center gap-4">
-                <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Modo Comparativa:</span>
-                    <div className="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1">
-                        <button 
-                            onClick={() => setComparisonMode("all")}
-                            className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${comparisonMode === 'all' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                        >
-                            HISTORIAL TOTAL
-                        </button>
-                        <button 
-                            onClick={() => setComparisonMode("dow")}
-                            className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${comparisonMode === 'dow' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                        >
-                            MISMO DÍA (DOW)
-                        </button>
-                        <button 
-                            onClick={() => setComparisonMode("month")}
-                            className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${comparisonMode === 'month' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                        >
-                            MISMO MES
-                        </button>
-                    </div>
+                <div>
+                   <h3 className="text-xl font-bold flex items-center gap-2">
+                     <TrendingUp size={20} className="text-blue-400"/> 
+                     Evolución {globalMacro}: Hoy vs. {comparisonMode === 'dow' ? 'Mismo Día Histórico' : (comparisonMode === 'month' ? 'Mismo Mes Histórico' : 'Promedio Histórico')}
+                   </h3>
                 </div>
+                <div className="flex flex-wrap items-center gap-4">
 
                 <div className="flex items-center gap-2">
                     <Filter size={14} className="text-slate-500" />
