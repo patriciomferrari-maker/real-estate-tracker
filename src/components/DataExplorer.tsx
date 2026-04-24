@@ -13,39 +13,18 @@ export default function DataExplorer({ records }: { records: any[] }) {
   const gridData = useMemo(() => {
      return records.map(r => {
         const d = new Date(r.timestamp);
-        
-        // Calcular si es Ida o Vuelta en base al destino
-        const esIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
-        const isDOT = r.origin.includes("DOT") || r.destination.includes("DOT");
-        
-        let detalle = "";
-        if (esIda) detalle = isDOT ? " al DOT" : " al Centro";
-        else detalle = isDOT ? " a Provincia" : " a Provincia"; // Simplificamos para que coincida con Analytics
-
-        const turno = esIda ? `Ida${detalle}` : `Vuelta${detalle}`;
-        const barrioCrudo = esIda ? r.origin : r.destination;
-        
-        // Clean up barrio string
-        let barrio = barrioCrudo.split(',')[0].replace("Barrio", "").trim();
-        
-        const year = d.getFullYear().toString();
-        const month = (d.getMonth() + 1).toString().padStart(2, '0');
-        const dayMap = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-        const dayName = dayMap[d.getDay()];
-
         return {
-           id: r.id,
-           fecha: `${d.getDate().toString().padStart(2,'0')}/${month}/${year} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`,
-           year,
-           month,
-           diaDeSemana: dayName,
-           zona: barrioCrudo.includes("Escobar") ? "Escobar" : barrioCrudo.includes("Nordelta") ? "Nordelta" : barrioCrudo.includes("Tigre") || barrioCrudo.includes("Pacheco") || barrioCrudo.includes("Benavidez") ? "Tigre/Pacheco" : barrioCrudo.includes("San Isidro") ? "San Isidro" : barrioCrudo.includes("Tortuguitas") ? "Tortugas" : "Otro",
-           barrio,
-           turno,
-           tiempo: r.durationMins
-        }
-     });
-  }, [records]);
+            year: d.getFullYear().toString(),
+            month: (d.getMonth() + 1).toString(),
+            diaDeSemana: d.toLocaleDateString('es-ES', { weekday: 'long' }),
+            fecha: d.toLocaleDateString(),
+            zona: r.zona,
+            barrio: r.barrio,
+            turno: r.isIda ? (r.isDOT ? 'Ida al DOT' : 'Ida al Centro') : 'Vuelta a Provincia',
+            tiempo: r.durationMins
+        };
+      });
+   }, [records]);
 
    const totalCount = records.length;
 

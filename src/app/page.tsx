@@ -83,7 +83,10 @@ export default async function Dashboard({ searchParams }: any) {
       destination: e.destination,
       timestamp: e.timestamp,
       durationMins: Math.round(e.durationSum / e.count),
-      isAggregate: true 
+      isAggregate: true,
+      // Metadatos para consistencia total en el dashboard
+      isIda: e.destination.includes("DOT") || e.destination.includes("Microcentro") || e.destination.includes("Florida") || e.destination.includes("Obelisco"),
+      isDOT: e.origin.includes("DOT") || e.destination.includes("DOT")
   }));
 
   // Calculate aggregates based on direction and destination
