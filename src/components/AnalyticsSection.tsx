@@ -243,13 +243,11 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
             "Histórico (DOT)": hDOT,
             "Hoy (DOT)": hoyDOT,
             "deltaDOT": hoyDOT > 0 ? hoyDOT - hDOT : 0,
-            "deltaDOTLabel": hoyDOT > 0 ? (hoyDOT >= hDOT ? `+${hoyDOT - hDOT}m` : `${hoyDOT - hDOT}m`) : "",
-            "deltaDOTColor": hoyDOT >= hDOT ? "#ff4d4d" : "#00ff88",
+            "dotZoneLabel": `${s.zone} ${hoyDOT > 0 ? (hoyDOT >= hDOT ? `(+${hoyDOT - hDOT}m)` : `(${hoyDOT - hDOT}m)`) : ''}`,
             "Histórico (Centro)": hMicro,
             "Hoy (Centro)": hoyMicro,
             "deltaCentro": hoyMicro > 0 ? hoyMicro - hMicro : 0,
-            "deltaCentroLabel": hoyMicro > 0 ? (hoyMicro >= hMicro ? `+${hoyMicro - hMicro}m` : `${hoyMicro - hMicro}m`) : "",
-            "deltaCentroColor": hoyMicro >= hMicro ? "#ff4d4d" : "#00ff88"
+            "centroZoneLabel": `${s.zone} ${hoyMicro > 0 ? (hoyMicro >= hMicro ? `(+${hoyMicro - hMicro}m)` : `(${hoyMicro - hMicro}m)`) : ''}`
         };
     }).sort((a,b) => (a["Histórico (DOT)"] + a["Histórico (Centro)"]) - (b["Histórico (DOT)"] + b["Histórico (Centro)"]));
   }, [enrichedRecords, barTimeMode, barMacro, globalMode, todayStr]);
@@ -869,10 +867,39 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                   <div className="h-[350px] w-full">
                       {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
                           <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={comparisonData.filter(d => d["Histórico (DOT)"] > 0).sort((a,b) => a["Histórico (DOT)"] - b["Histórico (DOT)"])} layout="vertical" margin={{ top: 0, right: 80, left: 10, bottom: 0 }}>
+                            <BarChart 
+                             data={comparisonData.filter(d => d["Histórico (DOT)"] > 0).sort((a,b) => a["Histórico (DOT)"] - b["Histórico (DOT)"])} 
+                             layout="vertical" 
+                             margin={{ top: 0, right: 30, left: 20, bottom: 0 }}
+                             style={{ overflow: 'visible' }}
+                           >
                               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false}/>
                               <XAxis type="number" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} />
-                              <YAxis dataKey="zone" type="category" stroke="#64748b" width={90} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                              <YAxis 
+                                dataKey="dotZoneLabel" 
+                                type="category" 
+                                stroke="#64748b" 
+                                width={140} 
+                                tick={(props: any) => {
+                                  const { x, y, payload } = props;
+                                  const isBad = payload.value.includes('+');
+                                  const isGood = payload.value.includes('-') && !payload.value.includes('+-');
+                                  const labelParts = payload.value.split(' ');
+                                  const zoneName = labelParts.slice(0, -1).join(' ');
+                                  const deltaText = labelParts[labelParts.length - 1];
+
+                                  return (
+                                    <g transform={`translate(${x},${y})`}>
+                                      <text x={-10} y={0} dy={4} textAnchor="end" fontSize={11} fill="#94a3b8">
+                                        <tspan fill="#e2e8f0" fontWeight="bold">{zoneName}</tspan>
+                                        <tspan fill={isBad ? "#ff4d4d" : (isGood ? "#00ff88" : "#94a3b8")} dx={5} fontWeight="black">
+                                          {deltaText}
+                                        </tspan>
+                                      </text>
+                                    </g>
+                                  );
+                                }}
+                              />
                               <Tooltip 
                                  cursor={{fill: 'rgba(255,255,255,0.05)'}} 
                                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
@@ -901,10 +928,39 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                   <div className="h-[350px] w-full">
                       {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
                           <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={comparisonData.filter(d => d["Histórico (Centro)"] > 0).sort((a,b) => a["Histórico (Centro)"] - b["Histórico (Centro)"])} layout="vertical" margin={{ top: 0, right: 80, left: 10, bottom: 0 }}>
+                            <BarChart 
+                             data={comparisonData.filter(d => d["Histórico (Centro)"] > 0).sort((a,b) => a["Histórico (Centro)"] - b["Histórico (Centro)"])} 
+                             layout="vertical" 
+                             margin={{ top: 0, right: 30, left: 20, bottom: 0 }}
+                             style={{ overflow: 'visible' }}
+                           >
                               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false}/>
                               <XAxis type="number" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} />
-                              <YAxis dataKey="zone" type="category" stroke="#64748b" width={90} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                              <YAxis 
+                                dataKey="centroZoneLabel" 
+                                type="category" 
+                                stroke="#64748b" 
+                                width={140} 
+                                tick={(props: any) => {
+                                  const { x, y, payload } = props;
+                                  const isBad = payload.value.includes('+');
+                                  const isGood = payload.value.includes('-') && !payload.value.includes('+-');
+                                  const labelParts = payload.value.split(' ');
+                                  const zoneName = labelParts.slice(0, -1).join(' ');
+                                  const deltaText = labelParts[labelParts.length - 1];
+
+                                  return (
+                                    <g transform={`translate(${x},${y})`}>
+                                      <text x={-10} y={0} dy={4} textAnchor="end" fontSize={11} fill="#94a3b8">
+                                        <tspan fill="#e2e8f0" fontWeight="bold">{zoneName}</tspan>
+                                        <tspan fill={isBad ? "#ff4d4d" : (isGood ? "#00ff88" : "#94a3b8")} dx={5} fontWeight="black">
+                                          {deltaText}
+                                        </tspan>
+                                      </text>
+                                    </g>
+                                  );
+                                }}
+                              />
                               <Tooltip 
                                  cursor={{fill: 'rgba(255,255,255,0.05)'}} 
                                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
