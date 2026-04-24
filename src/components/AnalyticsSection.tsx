@@ -294,38 +294,35 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const trendData = useMemo(() => {
     const dotMap = new Map<string, any>();
     const centroMap = new Map<string, any>();
+    
     enrichedRecords.forEach(r => {
-        // Global Filter
-        if (globalMacro !== "Todas las Zonas" && r.macro !== globalMacro) return;
-        if (globalBarrio !== "Todos los Barrios" && r.barrio !== globalBarrio) return;
-        
         // Destination Filter
         if (globalDestination === "DOT" && !r.isDOT) return;
         if (globalDestination === "Obelisco" && r.isDOT) return;
 
-        const bin = Math.floor(r.minutes / timeBinSize) * timeBinSize; 
-        const key = `${r.hours.toString().padStart(2,'0')}:${bin.toString().padStart(2,'0')}`;
-        const target = r.isDOT ? dotMap : centroMap;
-        if (!target.has(key)) target.set(key, { 
-            timeTick: key, timeHourNum: r.hours + (bin/60),
-            iS:0, iC:0, iH:null, vS:0, vC:0, vH:null, iHS:0, iHC:0, vHS:0, vHC:0
-        });
-        const p = target.get(key);
-        if (r.isIda) { 
-            p.iS += r.durationMins; p.iC++; 
-            if (r.dateStr === todayStr) { p.iHS += r.durationMins; p.iHC++; }
-        } else { 
-            p.vS += r.durationMins; p.vC++; 
-            if (r.dateStr === todayStr) { p.vHS += r.durationMins; p.vHC++; }
-        }
+        // Parent Filters
+        if (globalMacro !== "Todas las Zonas" && r.macro !== globalMacro) return;
+        if (globalBarrio !== "Todos los Barrios" && r.barrio !== globalBarrio) return;
+
+        const map = r.isDOT ? dotMap : centroMap;
+        const binMins = Math.floor(r.minutes / timeBinSize) * timeBinSize;
+        const key = `${r.hours.toString().padStart(2,'0')}:${binMins.toString().padStart(2,'0')}`;
+        
+        if (!map.has(key)) map.set(key, { timeTick: key, timeHourNum: r.hours + (binMins/60) });
+        const obj = map.get(key)!;
+        
+        const label = r.macro;
+        const type = r.isIda ? 'Ida' : 'Vuelta';
+        const isToday = r.dateStr === todayStr;
+        
+        const dataKey = `${label} ${type} (${isToday ? 'Hoy' : 'Hist'})`;
+        if (!obj[dataKey]) obj[dataKey + '_s'] = 0, obj[dataKey + '_c'] = 0;
+        obj[dataKey + '_s'] += r.durationMins;
+        obj[dataKey + '_c']++;
+        obj[dataKey] = Math.round(obj[dataKey + '_s'] / obj[dataKey + '_c']);
     });
-    const fmt = (m: Map<string, any>) => Array.from(m.values()).map(p => ({
-        timeTick: p.timeTick, timeHourNum: p.timeHourNum,
-        "Ida (Hoy)": p.iHC > 0 ? Math.round(p.iHS / p.iHC) : null, 
-        "Ida (Promedio)": p.iC > 0 ? Math.round(p.iS / p.iC) : null,
-        "Vuelta (Hoy)": p.vHC > 0 ? Math.round(p.vHS / p.vHC) : null, 
-        "Vuelta (Promedio)": p.vC > 0 ? Math.round(p.vS / p.vC) : null
-    })).sort((a,b) => a.timeHourNum - b.timeHourNum);
+
+    const fmt = (m: Map<string, any>) => Array.from(m.values()).sort((a,b) => a.timeHourNum - b.timeHourNum);
     return { dot: fmt(dotMap), centro: fmt(centroMap) };
   }, [enrichedRecords, globalMacro, globalBarrio, globalDestination, todayStr, timeBinSize]);
 
@@ -792,11 +789,18 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                             <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' }} />
                             <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
                             
-                            <Line type="monotone" dataKey="Ida (Hoy)" stroke="#60a5fa" strokeWidth={4} dot={{ r: 4, fill: '#60a5fa' }} connectNulls />
-                            <Line type="monotone" dataKey="Ida (Promedio)" stroke="#3b82f6" strokeWidth={2} strokeDasharray="5 5" dot={false} connectNulls opacity={0.5} />
-                            
-                            <Line type="monotone" dataKey="Vuelta (Hoy)" stroke="#f472b6" strokeWidth={4} dot={{ r: 4, fill: '#f472b6' }} connectNulls />
-                            <Line type="monotone" dataKey="Vuelta (Promedio)" stroke="#db2777" strokeWidth={2} strokeDasharray="5 5" dot={false} connectNulls opacity={0.5} />
+                            {allMacros.map((m, mIdx) => {
+                                 const color = LINE_COLORS[mIdx % LINE_COLORS.length];
+                                 return (
+                                     <React.Fragment key={m}>
+                                         <Line type="monotone" dataKey={`${m} Ida (Hoy)`} name={`${m} Hoy`} stroke={color} strokeWidth={3} dot={{ r: 3 }} connectNulls />
+                                         <Line type="monotone" dataKey={`${m} Ida (Hist)`} name={`${m} Hist.`} stroke={color} strokeWidth={1} strokeDasharray="3 3" dot={false} connectNulls opacity={0.4} />
+                                         
+                                         <Line type="monotone" dataKey={`${m} Vuelta (Hoy)`} name={`${m} Hoy (V)`} stroke={color} strokeWidth={3} dot={{ r: 3 }} connectNulls />
+                                         <Line type="monotone" dataKey={`${m} Vuelta (Hist)`} name={`${m} Hist. (V)`} stroke={color} strokeWidth={1} strokeDasharray="3 3" dot={false} connectNulls opacity={0.4} />
+                                     </React.Fragment>
+                                 );
+                             })}
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
@@ -816,11 +820,18 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                             <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' }} />
                             <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
                             
-                            <Line type="monotone" dataKey="Ida (Hoy)" stroke="#a855f7" strokeWidth={4} dot={{ r: 4, fill: '#a855f7' }} connectNulls />
-                            <Line type="monotone" dataKey="Ida (Promedio)" stroke="#7e22ce" strokeWidth={2} strokeDasharray="5 5" dot={false} connectNulls opacity={0.5} />
-                            
-                            <Line type="monotone" dataKey="Vuelta (Hoy)" stroke="#fbbf24" strokeWidth={4} dot={{ r: 4, fill: '#fbbf24' }} connectNulls />
-                            <Line type="monotone" dataKey="Vuelta (Promedio)" stroke="#d97706" strokeWidth={2} strokeDasharray="5 5" dot={false} connectNulls opacity={0.5} />
+                            {allMacros.map((m, mIdx) => {
+                                 const color = LINE_COLORS[mIdx % LINE_COLORS.length];
+                                 return (
+                                     <React.Fragment key={m}>
+                                         <Line type="monotone" dataKey={`${m} Ida (Hoy)`} name={`${m} Hoy`} stroke={color} strokeWidth={3} dot={{ r: 3 }} connectNulls />
+                                         <Line type="monotone" dataKey={`${m} Ida (Hist)`} name={`${m} Hist.`} stroke={color} strokeWidth={1} strokeDasharray="3 3" dot={false} connectNulls opacity={0.4} />
+                                         
+                                         <Line type="monotone" dataKey={`${m} Vuelta (Hoy)`} name={`${m} Hoy (V)`} stroke={color} strokeWidth={3} dot={{ r: 3 }} connectNulls />
+                                         <Line type="monotone" dataKey={`${m} Vuelta (Hist)`} name={`${m} Hist. (V)`} stroke={color} strokeWidth={1} strokeDasharray="3 3" dot={false} connectNulls opacity={0.4} />
+                                     </React.Fragment>
+                                 );
+                             })}
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
