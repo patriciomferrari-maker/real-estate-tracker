@@ -1286,34 +1286,33 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                   <p className="text-slate-400 text-sm">Promedios generales por barrio hacia los destinos principales.</p>
               </div>
 
-              <div className="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1">
-                  <button 
-                    onClick={() => setBarTimeMode("mañana")}
-                    className={`px-4 py-1.5 text-xs font-bold rounded transition-all ${barTimeMode === 'mañana' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    MIRA LA MAÑANA (A CABA)
-                  </button>
-                  <button 
-                    onClick={() => setBarTimeMode("tarde")}
-                    className={`px-4 py-1.5 text-xs font-bold rounded transition-all ${barTimeMode === 'tarde' ? 'bg-orange-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    MIRA LA TARDE (A PROVINCIA)
-                  </button>
-              </div>
-          </div>
+              <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 mr-4">
+                      <Filter size={14} className="text-slate-500" />
+                      <select 
+                        value={barMacro} 
+                        onChange={(e) => setBarMacro(e.target.value)}
+                        className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none cursor-pointer hover:bg-slate-800 transition-colors"
+                      >
+                          <option value="Todas las Zonas">Todas las Zonas</option>
+                          {allMacros.map(m => <option key={m} value={m}>{m}</option>)}
+                      </select>
+                  </div>
 
-          {/* LOCAL FILTERS FOR RANKING */}
-          <div className="flex flex-wrap gap-4 px-6 pb-6 border-b border-white/5 mb-6">
-              <div className="flex items-center gap-3">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase">Filtrar Ranking:</span>
-                  <select 
-                    value={barMacro} 
-                    onChange={(e) => setBarMacro(e.target.value)}
-                    className="bg-slate-800 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none"
-                  >
-                      <option value="Todas las Zonas">Todas las Zonas</option>
-                      {allMacros.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
+                  <div className="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1">
+                      <button 
+                        onClick={() => setBarTimeMode("mañana")}
+                        className={`px-4 py-1.5 text-xs font-bold rounded transition-all ${barTimeMode === 'mañana' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        MAÑANA
+                      </button>
+                      <button 
+                        onClick={() => setBarTimeMode("tarde")}
+                        className={`px-4 py-1.5 text-xs font-bold rounded transition-all ${barTimeMode === 'tarde' ? 'bg-orange-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        TARDE
+                      </button>
+                  </div>
               </div>
           </div>
 
