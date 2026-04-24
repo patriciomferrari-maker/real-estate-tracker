@@ -68,8 +68,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
             barrio: shortenBarrioName(relevantBarrioRaw),
             hours: d.getHours(),
             minutes: d.getMinutes(),
-            // Formato estándar ISO-Local YYYY-MM-DD para matching robusto
-            dateStr: `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`,
+            dateStr: d.toDateString(),
             timestampDate: d
         };
     }).filter(r => {
@@ -129,10 +128,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       return zones.filter(z => getMacro(z) === barMacro).map(z => shortenBarrioName(z));
   }, [barMacro, zones]);
 
-  const todayStr = useMemo(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`;
-  }, []);
+  const todayStr = useMemo(() => new Date().toDateString(), []);
 
   // Summary KPIs
   const summaryStats = useMemo(() => {
@@ -480,7 +476,11 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
         const type = r.isIda ? 'Ida' : 'Vuelta';
         
         const dataKey = `${label} ${type} (${isToday ? 'Hoy' : 'Hist'})`;
-        if (!obj[dataKey]) obj[dataKey + '_s'] = 0, obj[dataKey + '_c'] = 0;
+        if (!obj[dataKey]) {
+            obj[dataKey + '_s'] = 0;
+            obj[dataKey + '_c'] = 0;
+            if (isToday) obj['__today_count'] = (obj['__today_count'] || 0) + 1;
+        }
         obj[dataKey + '_s'] += r.durationMins;
         obj[dataKey + '_c']++;
         obj[dataKey] = Math.round(obj[dataKey + '_s'] / obj[dataKey + '_c']);
@@ -1169,7 +1169,12 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                     <Activity size={20} className="text-amber-400" />
                     Comparativa de Tendencia: Hoy vs. {comparisonMode === 'dow' ? 'Mismo Día (DOW)' : 'Histórico Total'}
                 </h3>
-                <p className="text-xs text-slate-400 italic">Comparando el tráfico de <b>{globalMacro}</b> contra el {comparisonMode === 'dow' ? 'promedio de los mismos días de la semana' : 'promedio histórico general'}.</p>
+                <p className="text-xs text-slate-400 italic">
+                    Comparando el tráfico de <b>{globalMacro}</b> contra el {comparisonMode === 'dow' ? 'promedio de los mismos días de la semana' : 'promedio histórico general'}.
+                    <span className="ml-2 px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded-full border border-blue-500/20">
+                        Hoy: {enrichedRecords.filter(r => r.dateStr === todayStr).length} registros
+                    </span>
+                </p>
               </div>
               <div className="flex flex-wrap items-center gap-3 mt-4 md:mt-0">
                   {/* Selector Mañana/Tarde */}
