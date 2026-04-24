@@ -70,6 +70,10 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
             minutes: d.getMinutes(),
             timestampDate: d
         };
+    }).filter(r => {
+        // Purge generic locations that distort averages
+        if (r.barrio === "Villa Nueva (Gral)" || r.barrio === "Villa Nueva") return false;
+        return true;
     });
   }, [records]);
 
