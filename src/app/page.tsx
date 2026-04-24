@@ -151,24 +151,22 @@ export default async function Dashboard({ searchParams }: any) {
                 const avgD = bData.countDOT > 0 ? Math.round(bData.totalMinsDOT / bData.countDOT) : 0;
                 const avgM = bData.countMicro > 0 ? Math.round(bData.totalMinsMicro / bData.countMicro) : 0;
                 
-                // Obtenemos los últimos valores para el Sparkline y Delta
                 const neighborhoodRecords = serializableRecords
                     .filter(r => r.barrio === name)
                     .sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-                    .slice(-8);
+                    .slice(-10);
                 
                 const trendDOT = neighborhoodRecords.filter(r => r.isDOT).map(r => r.durationMins);
                 const trendMicro = neighborhoodRecords.filter(r => !r.isDOT).map(r => r.durationMins);
                 
                 const lastVal = trendDOT[trendDOT.length - 1] || avgD;
                 const prevVal = trendDOT[trendDOT.length - 2] || lastVal;
-                const delta = lastVal - prevVal;
-                totalDelta += delta;
+                totalDelta += (lastVal - prevVal);
 
                 if (avgD > 0) { sumDOT += avgD; cDOT++; }
                 if (avgM > 0) { sumMicro += avgM; cMicro++; }
                 
-                return { name, avgDOT: avgD, avgMicro: avgM, delta, trendDOT, trendMicro };
+                return { name, avgDOT: avgD, avgMicro: avgM, delta: lastVal - prevVal, trendDOT, trendMicro };
             });
             
             const mAvgDOT = cDOT > 0 ? Math.round(sumDOT / cDOT) : 0;
@@ -178,72 +176,61 @@ export default async function Dashboard({ searchParams }: any) {
             return { macro, mAvgDOT, mAvgMicro, macroDelta, barrios: barrioList };
         }).sort((a,b) => (a.mAvgDOT + a.mAvgMicro) - (b.mAvgDOT + b.mAvgMicro));
 
-        if (sortedMacros.length === 0) return <p className="text-slate-500 text-sm py-4">Sin datos suficientes.</p>;
+        if (sortedMacros.length === 0) return <p className="text-slate-500 text-sm py-4 italic">Sin datos disponibles</p>;
 
         return (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="space-y-3">
                 {sortedMacros.map(m => (
-                    <details key={m.macro} className="group bg-white/[0.03] backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden transition-all hover:border-white/20 shadow-2xl">
-                        <summary className="p-5 cursor-pointer hover:bg-white/[0.05] list-none outline-none">
-                            <div className="flex justify-between items-center mb-4">
-                                <div className="flex items-center gap-3">
-                                    <TrendingUp size={18} className="text-blue-400 group-open:rotate-90 transition-transform" />
-                                    <div>
-                                        <span className="text-lg font-black text-white block leading-none">{m.macro}</span>
-                                        {m.macroDelta !== 0 && (
-                                            <span className={`text-[9px] font-bold ${m.macroDelta > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                                                ZONA {m.macroDelta > 0 ? '▲' : '▼'} {Math.abs(m.macroDelta)}m trend
-                                            </span>
-                                        )}
+                    <details key={m.macro} className="group bg-white/[0.02] backdrop-blur-sm rounded-xl border border-white/5 overflow-hidden transition-all hover:bg-white/[0.04] hover:border-white/20">
+                        <summary className="p-3 cursor-pointer list-none outline-none">
+                            <div className="flex items-center gap-4">
+                                <div className="flex-1 min-w-[140px]">
+                                    <div className="flex items-center gap-2">
+                                        <TrendingUp size={14} className="text-blue-400 group-open:rotate-90 transition-transform" />
+                                        <span className="text-sm font-black text-white truncate">{m.macro}</span>
                                     </div>
+                                    {m.macroDelta !== 0 && (
+                                        <span className={`text-[8px] font-bold px-1.5 rounded-sm ${m.macroDelta > 0 ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                            {m.macroDelta > 0 ? '▲' : '▼'} {Math.abs(m.macroDelta)}m
+                                        </span>
+                                    )}
                                 </div>
-                                <span className="text-[10px] font-bold bg-blue-500/10 px-3 py-1 rounded-full text-blue-300 border border-blue-500/10 uppercase">
-                                    {m.barrios.length} sectores
-                                </span>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="p-3 bg-blue-500/5 rounded-xl border border-blue-500/10 relative overflow-hidden">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <p className="text-[10px] uppercase font-black text-blue-400/80">DOT</p>
-                                        <Sparkline data={m.barrios[0]?.trendDOT} color="#3b82f6" />
-                                    </div>
-                                    <div className="flex items-baseline gap-1">
-                                        <span className="text-2xl font-black text-white">{m.mAvgDOT}</span>
-                                        <span className="text-xs font-medium text-slate-500">m</span>
-                                    </div>
+
+                                <div className="hidden md:flex flex-1 justify-center gap-4 px-2">
+                                    <Sparkline data={m.barrios[0]?.trendDOT} color="#3b82f6" />
+                                    <Sparkline data={m.barrios[0]?.trendMicro} color="#a855f7" />
                                 </div>
-                                <div className="p-3 bg-purple-500/5 rounded-xl border border-purple-500/10 relative overflow-hidden">
-                                     <div className="flex items-center justify-between mb-1">
-                                        <p className="text-[10px] uppercase font-black text-purple-400/80">Centro</p>
-                                        <Sparkline data={m.barrios[0]?.trendMicro} color="#a855f7" />
+
+                                <div className="flex items-center gap-2 text-right min-w-[120px]">
+                                    <div className="flex-1">
+                                        <p className="text-[8px] font-black text-blue-400 uppercase leading-none">DOT</p>
+                                        <p className="text-lg font-black text-white">{m.mAvgDOT}<span className="text-[10px] text-slate-500 ml-0.5">m</span></p>
                                     </div>
-                                    <div className="flex items-baseline gap-1">
-                                        <span className="text-2xl font-black text-white">{m.mAvgMicro}</span>
-                                        <span className="text-xs font-medium text-slate-500">m</span>
+                                    <div className="w-px h-6 bg-white/10"></div>
+                                    <div className="flex-1">
+                                        <p className="text-[8px] font-black text-purple-400 uppercase leading-none">Ctr</p>
+                                        <p className="text-lg font-black text-white">{m.mAvgMicro}<span className="text-[10px] text-slate-500 ml-0.5">m</span></p>
                                     </div>
                                 </div>
                             </div>
                         </summary>
-                        <div className="p-5 bg-black/60 border-t border-white/10 space-y-4">
+                        <div className="px-3 pb-3 pt-1 bg-black/40 border-t border-white/5 space-y-2">
                             {m.barrios.map(b => (
-                                <div key={b.name} className="relative pl-4 border-l-2 border-white/5 hover:border-blue-500/50 transition-colors py-1">
-                                    <div className="flex justify-between items-center mb-1">
-                                        <p className="text-xs font-black text-slate-200">{b.name}</p>
+                                <div key={b.name} className="flex items-center gap-4 py-1 pl-4 border-l-2 border-white/5 hover:border-blue-500/30 transition-colors">
+                                    <div className="flex-1">
+                                        <p className="text-[10px] font-bold text-slate-300">{b.name}</p>
+                                    </div>
+                                    <div className="flex-1 hidden sm:block h-4">
+                                        <Sparkline data={b.trendDOT} color="#3b82f6" />
+                                    </div>
+                                    <div className="flex items-center gap-3 text-right">
+                                        <span className="text-[10px] font-black text-blue-300">{b.avgDOT}m</span>
+                                        <span className="text-[10px] font-black text-purple-300">{b.avgMicro}m</span>
                                         {b.delta !== 0 && (
-                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${b.delta > 0 ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                            <span className={`text-[8px] font-bold px-1 rounded-sm ${b.delta > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                                                 {b.delta > 0 ? '▲' : '▼'} {Math.abs(b.delta)}m
                                             </span>
                                         )}
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex-1 flex items-center justify-between bg-white/[0.02] px-2 py-1.5 rounded-lg border border-white/5">
-                                            <Sparkline data={b.trendDOT} color="#3b82f6" />
-                                            <span className="text-xs font-black text-blue-300 ml-2">{b.avgDOT}m</span>
-                                        </div>
-                                        <div className="flex-1 flex items-center justify-between bg-white/[0.02] px-2 py-1.5 rounded-lg border border-white/5">
-                                            <Sparkline data={b.trendMicro} color="#a855f7" />
-                                            <span className="text-xs font-black text-purple-300 ml-2">{b.avgMicro}m</span>
-                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -255,52 +242,50 @@ export default async function Dashboard({ searchParams }: any) {
     };
 
     return (
-      <main className="min-h-screen p-4 md:p-8 max-w-[1600px] mx-auto text-slate-200 bg-slate-950 selection:bg-blue-500/30">
+      <main className="min-h-screen p-4 md:p-8 max-w-[1800px] mx-auto text-slate-200 bg-slate-950 selection:bg-blue-500/30">
         <header className="mb-10 flex justify-between items-center pb-8 border-b border-white/5">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-               <TrendingUp className="text-white" size={24} />
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+               <TrendingUp className="text-white" size={20} />
             </div>
             <div>
-              <h1 className="text-3xl font-black bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent tracking-tighter">Commute Intelligence</h1>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Real-Time Transit Analysis Gateway</p>
+              <h1 className="text-2xl font-black bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent tracking-tighter">Commute Intelligence</h1>
+              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Real-Time Data Engine</p>
             </div>
           </div>
           <form action={syncAllData}>
-            <button type="submit" className="flex items-center gap-3 bg-white text-black hover:bg-slate-200 px-6 py-3 rounded-2xl text-sm font-black transition-all shadow-xl active:scale-95">
-              <RefreshCw size={18} className="animate-spin-slow" /> SYNC DATA
+            <button type="submit" className="flex items-center gap-3 bg-white text-black hover:bg-slate-200 px-5 py-2.5 rounded-xl text-xs font-black transition-all shadow-xl active:scale-95">
+              <RefreshCw size={14} className="animate-spin-slow" /> SYNC
             </button>
           </form>
         </header>
 
-        <nav className="flex gap-3 mb-10 overflow-x-auto pb-2 scrollbar-hide">
+        <nav className="flex gap-2 mb-10 overflow-x-auto pb-2 scrollbar-hide">
           {["dashboard", "graficos", "reporte", "datos"].map(t => (
-            <Link key={t} href={`?tab=${t}`} className={`px-6 py-3 rounded-2xl text-xs font-black transition-all ${currentTab === t ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white/5 text-slate-500 hover:bg-white/10 hover:text-slate-300'}`}>
+            <Link key={t} href={`?tab=${t}`} className={`px-5 py-2.5 rounded-xl text-[10px] font-black transition-all ${currentTab === t ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-500 hover:text-slate-300'}`}>
               {t.toUpperCase()}
             </Link>
           ))}
         </nav>
 
         {currentTab === 'dashboard' && (
-          <div className="space-y-16">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
             <section>
-              <div className="flex items-center gap-3 mb-8">
-                <div className="h-px flex-1 bg-gradient-to-r from-transparent to-emerald-500/20"></div>
-                <h2 className="text-xs font-black text-emerald-400 flex items-center gap-2 uppercase tracking-[0.2em] bg-emerald-500/10 px-4 py-2 rounded-full border border-emerald-500/20">
-                  <Clock size={16}/> Ida (Mañana)
+              <div className="flex items-center gap-3 mb-6">
+                <h2 className="text-[10px] font-black text-emerald-400 flex items-center gap-2 uppercase tracking-[0.2em] bg-emerald-500/10 px-4 py-1.5 rounded-full border border-emerald-500/20">
+                  <Clock size={14}/> Mañana (IDA)
                 </h2>
-                <div className="h-px flex-1 bg-gradient-to-l from-transparent to-emerald-500/20"></div>
+                <div className="h-px flex-1 bg-gradient-to-r from-emerald-500/20 to-transparent"></div>
               </div>
               {generateMacroSection(buildGroupData(true))}
             </section>
             
             <section>
-              <div className="flex items-center gap-3 mb-8">
-                <div className="h-px flex-1 bg-gradient-to-r from-transparent to-amber-500/20"></div>
-                <h2 className="text-xs font-black text-amber-400 flex items-center gap-2 uppercase tracking-[0.2em] bg-amber-500/10 px-4 py-2 rounded-full border border-amber-500/20">
-                  <ArrowRightLeft size={16}/> Vuelta (Tarde)
+              <div className="flex items-center gap-3 mb-6">
+                <h2 className="text-[10px] font-black text-amber-400 flex items-center gap-2 uppercase tracking-[0.2em] bg-amber-500/10 px-4 py-1.5 rounded-full border border-amber-500/20">
+                  <ArrowRightLeft size={14}/> Tarde (VUELTA)
                 </h2>
-                <div className="h-px flex-1 bg-gradient-to-l from-transparent to-amber-500/20"></div>
+                <div className="h-px flex-1 bg-gradient-to-r from-amber-500/20 to-transparent"></div>
               </div>
               {generateMacroSection(buildGroupData(false))}
             </section>
