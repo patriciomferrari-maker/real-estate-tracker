@@ -427,8 +427,9 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   }, [scatterSeriesVuelta]);
   const DeltaLabel = (props: any) => {
     const { x, y, width, deltaKey } = props;
+    if (!props.payload || props.payload[deltaKey] === undefined) return null;
     const delta = props.payload[deltaKey];
-    if (!delta || delta === 0) return null;
+    if (delta === 0) return null;
     const isBad = delta > 0;
     return (
       <g>
