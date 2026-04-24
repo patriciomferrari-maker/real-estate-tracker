@@ -305,6 +305,10 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
         if (globalMacro !== "Todas las Zonas" && r.macro !== globalMacro) return;
         if (globalBarrio !== "Todos los Barrios" && r.barrio !== globalBarrio) return;
 
+        // Shift Filter for Trend Zoom
+        if (trendTimeMode === "mañana" && r.hours >= 13) return;
+        if (trendTimeMode === "tarde" && r.hours < 13) return;
+
         const map = r.isDOT ? dotMap : centroMap;
         const binMins = Math.floor(r.minutes / timeBinSize) * timeBinSize;
         const key = `${r.hours.toString().padStart(2,'0')}:${binMins.toString().padStart(2,'0')}`;
@@ -325,7 +329,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
 
     const fmt = (m: Map<string, any>) => Array.from(m.values()).sort((a,b) => a.timeHourNum - b.timeHourNum);
     return { dot: fmt(dotMap), centro: fmt(centroMap) };
-  }, [enrichedRecords, globalMacro, globalBarrio, globalDestination, todayStr, timeBinSize]);
+  }, [enrichedRecords, globalMacro, globalBarrio, globalDestination, todayStr, timeBinSize, trendTimeMode]);
 
   const LINE_COLORS = [
       "#3b82f6", "#10b981", "#f59e0b", "#f43f5e", "#a855f7", "#06b6d4", "#f97316", "#84cc16",
