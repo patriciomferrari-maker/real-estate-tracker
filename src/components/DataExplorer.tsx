@@ -58,6 +58,15 @@ export default function DataExplorer({ records }: { records: any[] }) {
   const matchSentido = fSentido ? gridData.filter(d => clean(d.sentido) === clean(fSentido)).length : totalCount;
   const matchDestino = fDestino ? gridData.filter(d => clean(d.destino) === clean(fDestino)).length : totalCount;
   const matchBarrio = fBarrio ? gridData.filter(d => clean(d.barrio) === clean(fBarrio)).length : totalCount;
+  const sanMarcoCount = gridData.filter(d => clean(d.barrio).includes("marco")).length;
+
+  // Generar Matriz Día vs Sentido para Diagnóstico
+  const days = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+  const matrix = days.map(day => ({
+      day,
+      ida: gridData.filter(d => clean(d.diaDeSemana) === clean(day) && d.isIda).length,
+      vuelta: gridData.filter(d => clean(d.diaDeSemana) === clean(day) && !d.isIda).length
+  }));
 
   return (
     <div className="glass-card mb-12">
@@ -66,9 +75,10 @@ export default function DataExplorer({ records }: { records: any[] }) {
           <h3 className="text-xl font-bold text-emerald-400 mb-1">Explorador de Base de Datos ({totalCount})</h3>
           <p className="text-sm text-slate-400">Filtrá y analizá cada viaje individual guardado en el sistema.</p>
         </div>
-        <div className="flex gap-4 text-[11px] font-bold mb-1">
+        <div className="flex flex-wrap gap-3 text-[10px] font-bold mb-1">
           <span className="text-blue-400 bg-blue-400/10 px-3 py-1.5 rounded-full border border-blue-400/20">IDA: {idaCount}</span>
           <span className="text-purple-400 bg-purple-400/10 px-3 py-1.5 rounded-full border border-purple-400/20">VUELTA: {vueltaCount}</span>
+          <span className="text-emerald-400 bg-emerald-400/10 px-3 py-1.5 rounded-full border border-emerald-400/20 uppercase">San Marco: {sanMarcoCount}</span>
         </div>
       </div>
 
@@ -153,11 +163,24 @@ export default function DataExplorer({ records }: { records: any[] }) {
                             <div className="flex flex-col items-center gap-4">
                                 <p className="text-slate-500">No se encontraron datos para estos filtros.</p>
                                 <div className="bg-slate-900/50 p-4 rounded border border-white/5 text-left w-full max-w-xl mx-auto shadow-2xl">
+                                    <p className="text-[10px] text-amber-500 font-bold mb-4 uppercase tracking-widest flex items-center gap-2">
+                                        <div className="w-1 h-1 rounded-full bg-amber-500 animate-pulse"/> 
+                                        Matriz de Disponibilidad (Día vs Tipo):
+                                    </p>
+                                    <div className="grid grid-cols-8 gap-1 mb-6 text-[9px] font-mono border border-white/5 p-2 rounded bg-black/40">
+                                        <div className="text-slate-500">Tipo</div>
+                                        {matrix.map(m => <div key={m.day} className="text-center text-slate-400 font-bold">{m.day.slice(0,2)}</div>)}
+                                        <div className="text-blue-400">IDA</div>
+                                        {matrix.map(m => <div key={m.day} className={`text-center ${m.ida === 0 ? 'text-red-900' : 'text-blue-300'}`}>{m.ida}</div>)}
+                                        <div className="text-purple-400">VUELTA</div>
+                                        {matrix.map(m => <div key={m.day} className={`text-center ${m.vuelta === 0 ? 'text-red-900 border border-red-500/20 bg-red-500/5' : 'text-purple-300'}`}>{m.vuelta}</div>)}
+                                    </div>
+
                                     <p className="text-[10px] text-amber-500 font-bold mb-2 uppercase tracking-widest flex items-center gap-2">
                                         <div className="w-1 h-1 rounded-full bg-amber-500 animate-pulse"/> 
-                                        Diagnóstico de Memoria (Primer Registro):
+                                        Diagnóstico de Memoria (Primeros 3):
                                     </p>
-                                    <pre className="text-[10px] text-slate-300 font-mono overflow-x-auto">
+                                    <pre className="text-[10px] text-slate-300 font-mono overflow-x-auto bg-black/20 p-2 rounded">
                                         {JSON.stringify(gridData.slice(0, 3) || "No hay datos en memoria", null, 2)}
                                     </pre>
                                 </div>
