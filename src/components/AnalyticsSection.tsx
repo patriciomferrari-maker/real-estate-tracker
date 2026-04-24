@@ -103,7 +103,8 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
 
 
   // 1. GLOBAL COMMAND CENTER STATE
-  const [globalMode, setGlobalMode] = useState<"barrio" | "macro">("macro");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "insights">("dashboard");
+  const [globalMode, setGlobalMode] = useState<"macro" | "barrio">("macro");
   const [globalMacro, setGlobalMacro] = useState<string>("Todas las Zonas");
   const [globalBarrio, setGlobalBarrio] = useState<string>("Todos los Barrios");
   const [globalDestination, setGlobalDestination] = useState<string>("Ambos");
@@ -338,50 +339,56 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           const sRecords = enrichedRecords.filter(r => r.isIda === filter.ida && r.isDOT === filter.dot);
           if (sRecords.length === 0) { results[key] = null; return; }
 
-          const barSum = new Map<string, {s:number,c:number}>();
-          sRecords.forEach(r => {
-              if (!barSum.has(r.barrio)) barSum.set(r.barrio, {s:0,c:0});
-              const v = barSum.get(r.barrio)!; v.s += r.durationMins; v.c++;
-          });
-          let bestBarrio = "", minAvg = 999;
-          barSum.forEach((v,k) => {
-              const avg = v.s/v.c;
-              if (avg < minAvg) { minAvg = avg; bestBarrio = k; }
-          });
-
-          const timeSum = new Map<string, {s:number,c:number}>();
-          sRecords.forEach(r => {
-              const tKey = `${r.hours.toString().padStart(2,'0')}:${(Math.floor(r.minutes/15)*15).toString().padStart(2,'0')}`;
-              if (!timeSum.has(tKey)) timeSum.set(tKey, {s:0,c:0});
-              const v = timeSum.get(tKey)!; v.s += r.durationMins; v.c++;
-          });
-          let bestTime = "", minTimeAvg = 999;
-          timeSum.forEach((v,k) => {
-              const avg = v.s/v.c;
-              if (avg < minTimeAvg) { minTimeAvg = avg; bestTime = k; }
-          });
-
+          // DOW Analysis
           const dowSum = new Array(7).fill(null).map(() => ({s:0,c:0}));
-          sRecords.forEach(r => { 
-                if (r.dayOfWeek >= 0 && r.dayOfWeek < 7) {
-                    dowSum[r.dayOfWeek].s += r.durationMins; dowSum[r.dayOfWeek].c++; 
-                }
-          });
+          sRecords.forEach(r => { dowSum[r.dayOfWeek].s += r.durationMins; dowSum[r.dayOfWeek].c++; });
           const dowNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-          let bestDOW = -1, worstDOW = -1, minDowAvg = 999, maxDowAvg = 0;
+          let bestDOWIdx = -1, worstDOWIdx = -1, minDowAvg = 999, maxDowAvg = 0;
           dowSum.forEach((v,i) => {
               if (v.c === 0 || i === 0 || i === 6) return;
               const avg = v.s/v.c;
-              if (avg < minDowAvg) { minDowAvg = avg; bestDOW = i; }
-              if (avg > maxDowAvg) { maxDowAvg = avg; worstDOW = i; }
+              if (avg < minDowAvg) { minDowAvg = avg; bestDOWIdx = i; }
+              if (avg > maxDowAvg) { maxDowAvg = avg; worstDOWIdx = i; }
           });
 
+          // Time Logic & Peak Impact
+          const timeBuckets = new Map<string, {s:number, c:number}>();
+          sRecords.forEach(r => {
+              const t = `${r.hours.toString().padStart(2,'0')}:${(Math.floor(r.minutes/30)*30).toString().padStart(2,'0')}`;
+              if (!timeBuckets.has(t)) timeBuckets.set(t, {s:0,c:0});
+              const b = timeBuckets.get(t)!; b.s += r.durationMins; b.c++;
+          });
+          let bTime = "", wTime = "", bTimeVal = 999, wTimeVal = 0;
+          timeBuckets.forEach((v,k) => {
+              const avg = v.s/v.c;
+              if (avg < bTimeVal) { bTimeVal = avg; bTime = k; }
+              if (avg > wTimeVal) { wTimeVal = avg; wTime = k; }
+          });
+
+          // Reliability & Predictability
+          const avgTotal = sRecords.reduce((acc, curr) => acc + curr.durationMins, 0) / sRecords.length;
+          const variance = sRecords.reduce((acc, curr) => acc + Math.pow(curr.durationMins - avgTotal, 2), 0) / sRecords.length;
+          const stdDev = Math.sqrt(variance);
+          const reliability = Math.max(0, 100 - (stdDev / avgTotal * 100)); // 0-100 score
+
+          // Best Barrio
+          const bSum = new Map<string, {s:number,c:number}>();
+          sRecords.forEach(r => {
+              if (!bSum.has(r.barrio)) bSum.set(r.barrio, {s:0,c:0});
+              const v = bSum.get(r.barrio)!; v.s += r.durationMins; v.c++;
+          });
+          let bBarrio = "", bBarrioVal = 999;
+          bSum.forEach((v,k) => { if (v.s/v.c < bBarrioVal) { bBarrioVal = v.s/v.c; bBarrio = k; } });
+
           results[key] = {
-              bestBarrio,
-              minAvg: Math.round(minAvg),
-              bestTime,
-              bestDOW: dowNames[bestDOW] || "N/A",
-              worstDOW: dowNames[worstDOW] || "N/A"
+              bestBarrio: bBarrio,
+              minAvg: Math.round(bBarrioVal),
+              bestTime: bTime,
+              peakImpact: Math.round(wTimeVal - bTimeVal),
+              reliability: Math.round(reliability),
+              bestDOW: dowNames[bestDOWIdx],
+              worstDOW: dowNames[worstDOWIdx],
+              count: sRecords.length
           };
       });
       return results;
@@ -626,156 +633,169 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   };
 
   return (
-    <section className="space-y-8 mb-12">
-      
-      {/* HIGHLIGHTS / INSIGHTS PANEL */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* SEccion MAÑANA (A CABA) */}
-          <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center border border-blue-500/30">
-                      <Sun size={16} className="text-blue-400" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white">Reporte Matutino (A CABA)</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* MAÑANA - DOT */}
-                  <div className="glass-card border-blue-500/10 p-5 group hover:border-blue-500/40 transition-all border-b-4 border-b-blue-500">
-                      <div className="flex justify-between items-start mb-4">
-                          <span className="bg-blue-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase">Destino: Shopping DOT</span>
-                          <MapPin size={16} className="text-blue-500 opacity-20 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                      {highlightStats.mañana_dot ? (
-                         <div className="space-y-4">
-                            <div>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Zona Ganadora</p>
-                                <p className="text-lg font-black text-white">{highlightStats.mañana_dot.bestBarrio} <span className="text-xs text-blue-400 font-normal">({highlightStats.mañana_dot.minAvg}m prom)</span></p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="bg-slate-900/50 p-2 rounded-lg border border-white/5">
-                                    <p className="text-[9px] text-slate-500 font-bold uppercase">Ventana de Oro</p>
-                                    <p className="text-sm font-bold text-emerald-400">{highlightStats.mañana_dot.bestTime} hs</p>
-                                </div>
-                                <div className="bg-slate-900/50 p-2 rounded-lg border border-white/5">
-                                    <p className="text-[9px] text-slate-500 font-bold uppercase">Mejor Día</p>
-                                    <p className="text-sm font-bold text-blue-400">{highlightStats.mañana_dot.bestDOW}</p>
-                                </div>
-                            </div>
-                            <div className="bg-red-500/5 border border-red-500/10 p-2 rounded-lg flex items-center justify-between">
-                                <span className="text-[9px] text-red-400/70 font-bold uppercase">Día Crítico</span>
-                                <span className="text-[10px] text-red-400 font-black">{highlightStats.mañana_dot.worstDOW} (+ tráfico)</span>
-                            </div>
-                         </div>
-                      ) : <p className="text-xs text-slate-600 italic">Analizando datos...</p>}
-                  </div>
-
-                  {/* MAÑANA - CENTRO */}
-                  <div className="glass-card border-purple-500/10 p-5 group hover:border-purple-500/40 transition-all border-b-4 border-b-purple-500">
-                      <div className="flex justify-between items-start mb-4">
-                          <span className="bg-purple-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase">Destino: Microcentro</span>
-                          <Navigation size={16} className="text-purple-500 opacity-20 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                      {highlightStats.mañana_centro ? (
-                         <div className="space-y-4">
-                            <div>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Zona Ganadora</p>
-                                <p className="text-lg font-black text-white">{highlightStats.mañana_centro.bestBarrio} <span className="text-xs text-purple-400 font-normal">({highlightStats.mañana_centro.minAvg}m prom)</span></p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="bg-slate-900/50 p-2 rounded-lg border border-white/5">
-                                    <p className="text-[9px] text-slate-500 font-bold uppercase">Ventana de Oro</p>
-                                    <p className="text-sm font-bold text-emerald-400">{highlightStats.mañana_centro.bestTime} hs</p>
-                                </div>
-                                <div className="bg-slate-900/50 p-2 rounded-lg border border-white/5">
-                                    <p className="text-[9px] text-slate-500 font-bold uppercase">Mejor Día</p>
-                                    <p className="text-sm font-bold text-purple-400">{highlightStats.mañana_centro.bestDOW}</p>
-                                </div>
-                            </div>
-                            <div className="bg-red-500/5 border border-red-500/10 p-2 rounded-lg flex items-center justify-between">
-                                <span className="text-[9px] text-red-400/70 font-bold uppercase">Día Crítico</span>
-                                <span className="text-[10px] text-red-400 font-black">{highlightStats.mañana_centro.worstDOW} (+ tráfico)</span>
-                            </div>
-                         </div>
-                      ) : <p className="text-xs text-slate-600 italic">Analizando datos...</p>}
-                  </div>
-              </div>
-          </div>
-
-          {/* SEccion TARDE (A PROVINCIA) */}
-          <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-orange-600/20 flex items-center justify-center border border-orange-500/30">
-                      <Moon size={16} className="text-orange-400" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white">Reporte Vespertino (Salida)</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* TARDE - DOT */}
-                  <div className="glass-card border-orange-500/10 p-5 group hover:border-orange-500/40 transition-all border-b-4 border-b-orange-500">
-                      <div className="flex justify-between items-start mb-4">
-                          <span className="bg-orange-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase">Desde: Shopping DOT</span>
-                          <Zap size={16} className="text-orange-500 opacity-20 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                      {highlightStats.tarde_dot ? (
-                         <div className="space-y-4">
-                            <div>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Zona Ganadora</p>
-                                <p className="text-lg font-black text-white">{highlightStats.tarde_dot.bestBarrio} <span className="text-xs text-orange-400 font-normal">({highlightStats.tarde_dot.minAvg}m prom)</span></p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="bg-slate-900/50 p-2 rounded-lg border border-white/5">
-                                    <p className="text-[9px] text-slate-500 font-bold uppercase">Ventana de Oro</p>
-                                    <p className="text-sm font-bold text-emerald-400">{highlightStats.tarde_dot.bestTime} hs</p>
-                                </div>
-                                <div className="bg-slate-900/50 p-2 rounded-lg border border-white/5">
-                                    <p className="text-[9px] text-slate-500 font-bold uppercase">Mejor Día</p>
-                                    <p className="text-sm font-bold text-orange-400">{highlightStats.tarde_dot.bestDOW}</p>
-                                </div>
-                            </div>
-                            <div className="bg-red-500/5 border border-red-500/10 p-2 rounded-lg flex items-center justify-between">
-                                <span className="text-[9px] text-red-400/70 font-bold uppercase">Día Crítico</span>
-                                <span className="text-[10px] text-red-400 font-black">{highlightStats.tarde_dot.worstDOW} (+ tráfico)</span>
-                            </div>
-                         </div>
-                      ) : <p className="text-xs text-slate-600 italic">Analizando datos...</p>}
-                  </div>
-
-                  {/* TARDE - CENTRO */}
-                  <div className="glass-card border-pink-500/10 p-5 group hover:border-pink-500/40 transition-all border-b-4 border-b-pink-500">
-                      <div className="flex justify-between items-start mb-4">
-                          <span className="bg-pink-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase">Desde: Microcentro</span>
-                          <Calendar size={16} className="text-pink-500 opacity-20 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                      {highlightStats.tarde_centro ? (
-                         <div className="space-y-4">
-                            <div>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Zona Ganadora</p>
-                                <p className="text-lg font-black text-white">{highlightStats.tarde_centro.bestBarrio} <span className="text-xs text-pink-400 font-normal">({highlightStats.tarde_centro.minAvg}m prom)</span></p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="bg-slate-900/50 p-2 rounded-lg border border-white/5">
-                                    <p className="text-[9px] text-slate-500 font-bold uppercase">Ventana de Oro</p>
-                                    <p className="text-sm font-bold text-emerald-400">{highlightStats.tarde_centro.bestTime} hs</p>
-                                </div>
-                                <div className="bg-slate-900/50 p-2 rounded-lg border border-white/5">
-                                    <p className="text-[9px] text-slate-500 font-bold uppercase">Mejor Día</p>
-                                    <p className="text-sm font-bold text-pink-400">{highlightStats.tarde_centro.bestDOW}</p>
-                                </div>
-                            </div>
-                            <div className="bg-red-500/5 border border-red-500/10 p-2 rounded-lg flex items-center justify-between">
-                                <span className="text-[9px] text-red-400/70 font-bold uppercase">Día Crítico</span>
-                                <span className="text-[10px] text-red-400 font-black">{highlightStats.tarde_centro.worstDOW} (+ tráfico)</span>
-                            </div>
-                         </div>
-                      ) : <p className="text-xs text-slate-600 italic">Analizando datos...</p>}
-                  </div>
-              </div>
+    <div className="flex flex-col gap-8">
+      {/* GLOBAL TAB NAVIGATION */}
+      <div className="flex items-center justify-center -mb-4">
+          <div className="bg-slate-900/80 backdrop-blur-xl border border-white/5 p-1 rounded-2xl flex gap-1 shadow-2xl ring-1 ring-white/10">
+              <button 
+                  onClick={() => setActiveTab("dashboard")}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-black transition-all ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/40' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                  <Activity size={18} /> DASHBOARD GENERAL
+              </button>
+              <button 
+                  onClick={() => setActiveTab("insights")}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-black transition-all ${activeTab === 'insights' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/40' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                  <TrendingUp size={18} /> REPORTE DE INTELIGENCIA
+              </button>
           </div>
       </div>
 
+      {activeTab === "insights" ? (
+          <div className="space-y-12 animate-in fade-in duration-700">
+             <div className="text-center space-y-2 py-4">
+                  <h2 className="text-3xl font-black text-white tracking-tight">Reporte Ejecutivo de Movilidad</h2>
+                  <p className="text-slate-500 max-w-2xl mx-auto">Análisis profundo basado en {enrichedRecords.length} registros históricos procesados mediante algoritmos de varianza y predictibilidad.</p>
+             </div>
 
+             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                {/* MAÑANA (A CABA) */}
+                <div className="space-y-6">
+                    <div className="flex items-center gap-4 bg-blue-600/10 p-4 rounded-2xl border border-blue-500/20">
+                        <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/40">
+                            <Sun size={24} className="text-white" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-black text-white">IDA: Hacia Capital</h3>
+                            <p className="text-xs text-blue-400 font-bold uppercase tracking-widest">Franja: 06:00 - 12:00</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {['mañana_dot', 'mañana_centro'].map((k) => {
+                            const s = highlightStats[k];
+                            if(!s) return null;
+                            const isDOT = k.includes('dot');
+                            return (
+                                <div key={k} className="glass-card p-6 border-b-4 border-b-indigo-500 hover:scale-[1.02] transition-transform">
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div className="space-y-1">
+                                            <span className={`text-[10px] font-black px-2 py-1 rounded bg-slate-800 border uppercase ${isDOT ? 'text-blue-400 border-blue-500/30' : 'text-purple-400 border-purple-500/30'}`}>
+                                                Destino: {isDOT ? 'Shopping DOT' : 'Microcentro'}
+                                            </span>
+                                            <h4 className="text-2xl font-black text-white">{s.bestBarrio}</h4>
+                                        </div>
+                                        <div className={`p-3 rounded-xl border ${s.reliability > 85 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'}`}>
+                                            <div className="text-[10px] font-bold uppercase text-center mb-1">Predictibilidad</div>
+                                            <div className="text-xl font-black text-center">{s.reliability}%</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                                            <div className="flex items-center gap-2">
+                                                <Zap size={14} className="text-amber-400" />
+                                                <span className="text-xs text-slate-400">Ventana de Oro (Mín. Tráfico)</span>
+                                            </div>
+                                            <span className="font-black text-white bg-slate-800 px-2 py-1 rounded text-sm">{s.bestTime} hs</span>
+                                        </div>
+
+                                        <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                                            <div className="flex items-center gap-2">
+                                                <Activity size={14} className="text-red-400" />
+                                                <span className="text-xs text-slate-400">Impacto Hora Pico (Penalización)</span>
+                                            </div>
+                                            <span className="font-black text-red-400">+{s.peakImpact}m extra</span>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="p-3 bg-slate-900 rounded-xl border border-white/5 text-center">
+                                                <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Día Más Rápido</p>
+                                                <p className="text-lg font-black text-blue-400">{s.bestDOW}</p>
+                                            </div>
+                                            <div className="p-3 bg-slate-900 rounded-xl border border-white/5 text-center">
+                                                <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Día Más Lento</p>
+                                                <p className="text-lg font-black text-red-500">{s.worstDOW}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* TARDE (VUELTA) */}
+                <div className="space-y-6">
+                    <div className="flex items-center gap-4 bg-orange-600/10 p-4 rounded-2xl border border-orange-500/20">
+                        <div className="w-12 h-12 bg-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-600/40">
+                            <Moon size={24} className="text-white" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-black text-white">VUELTA: Hacia Norte</h3>
+                            <p className="text-xs text-orange-400 font-bold uppercase tracking-widest">Franja: 16:00 - 20:00</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {['tarde_dot', 'tarde_centro'].map((k) => {
+                            const s = highlightStats[k];
+                            if(!s) return null;
+                            const isDOT = k.includes('dot');
+                            return (
+                                <div key={k} className="glass-card p-6 border-b-4 border-b-orange-500 hover:scale-[1.02] transition-transform">
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div className="space-y-1">
+                                            <span className={`text-[10px] font-black px-2 py-1 rounded bg-slate-800 border uppercase ${isDOT ? 'text-orange-400 border-orange-500/30' : 'text-pink-400 border-pink-500/30'}`}>
+                                                Desde: {isDOT ? 'Shopping DOT' : 'Microcentro'}
+                                            </span>
+                                            <h4 className="text-2xl font-black text-white">{s.bestBarrio}</h4>
+                                        </div>
+                                        <div className={`p-3 rounded-xl border ${s.reliability > 85 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'}`}>
+                                            <div className="text-[10px] font-bold uppercase text-center mb-1">Predictibilidad</div>
+                                            <div className="text-xl font-black text-center">{s.reliability}%</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                                            <div className="flex items-center gap-2">
+                                                <Zap size={14} className="text-amber-400" />
+                                                <span className="text-xs text-slate-400">Ventana de Oro (Mín. Tráfico)</span>
+                                            </div>
+                                            <span className="font-black text-white bg-slate-800 px-2 py-1 rounded text-sm">{s.bestTime} hs</span>
+                                        </div>
+
+                                        <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                                            <div className="flex items-center gap-2">
+                                                <Activity size={14} className="text-red-400" />
+                                                <span className="text-xs text-slate-400">Impacto Hora Pico (Penalización)</span>
+                                            </div>
+                                            <span className="font-black text-red-400">+{s.peakImpact}m extra</span>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="p-3 bg-slate-900 rounded-xl border border-white/5 text-center">
+                                                <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Día Más Rápido</p>
+                                                <p className="text-lg font-black text-blue-400">{s.bestDOW}</p>
+                                            </div>
+                                            <div className="p-3 bg-slate-900 rounded-xl border border-white/5 text-center">
+                                                <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Día Más Lento</p>
+                                                <p className="text-lg font-black text-red-500">{s.worstDOW}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+             </div>
+          </div>
+      ) : (
+
+    <section className="space-y-8 mb-12 animate-in fade-in duration-700">
       {/* MASTER CONTROL PANEL (Sticky) */}
       <div className="sticky top-2 z-50 glass-card border-blue-500/30 bg-slate-900/80 backdrop-blur-xl p-4 flex flex-wrap gap-6 items-center justify-between shadow-2xl rounded-2xl">
           <div className="flex gap-4 items-center">
@@ -916,18 +936,6 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                             <option value="Ambos">Ambos</option>
                             <option value="DOT">Shopping DOT</option>
                             <option value="Obelisco">Obelisco</option>
-                        </select>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-slate-500 font-bold uppercase">Filtrar Gráfico:</span>
-                        <select 
-                            value={evoMacro} 
-                            onChange={(e) => setEvoMacro(e.target.value)}
-                            className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white outline-none cursor-pointer hover:bg-slate-800 transition-colors"
-                        >
-                            <option value="Todas las Zonas">Todas las Zonas (Vista Macro)</option>
-                            {allMacros.map(m => <option key={m} value={m}>{m}</option>)}
                         </select>
                     </div>
                </div>
@@ -1314,5 +1322,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
           </div>
       </div>
     </section>
+      )}
+    </div>
   )
 }
