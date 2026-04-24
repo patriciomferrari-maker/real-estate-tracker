@@ -73,7 +73,6 @@ export default function DataExplorer({ records }: { records: any[] }) {
         <div className="flex flex-wrap gap-3 text-[10px] font-bold mb-1">
           <span className="text-blue-400 bg-blue-400/10 px-3 py-1.5 rounded-full border border-blue-400/20">IDA: {idaCount}</span>
           <span className="text-purple-400 bg-purple-400/10 px-3 py-1.5 rounded-full border border-purple-400/20">VUELTA: {vueltaCount}</span>
-          <span className="text-emerald-400 bg-emerald-400/10 px-3 py-1.5 rounded-full border border-emerald-400/20 uppercase">San Marco: {sanMarcoCount}</span>
         </div>
       </div>
 

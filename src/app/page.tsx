@@ -97,6 +97,7 @@ export default async function Dashboard({ searchParams }: any) {
           barrio: isIda ? cleanOrigin : cleanDest,
           zona: (isIda ? cleanOrigin : cleanDest).includes("Escobar") ? "Escobar" : 
                 (isIda ? cleanOrigin : cleanDest).includes("Nordelta") ? "Nordelta" : 
+                (isIda ? cleanOrigin : cleanDest).includes("Villa Nueva") || (isIda ? cleanOrigin : cleanDest).includes("San Marco") ? "Tigre/Villa Nueva" :
                 (isIda ? cleanOrigin : cleanDest).includes("Tigre") || (isIda ? cleanOrigin : cleanDest).includes("Pacheco") ? "Tigre/Pacheco" : "Zona Norte"
       };
   });
