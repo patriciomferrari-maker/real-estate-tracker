@@ -7,6 +7,9 @@ export default function DataExplorer({ records }: { records: any[] }) {
   const [fSentido, setFSentido] = useState('');
   const [fDestino, setFDestino] = useState('');
   const [fBarrio, setFBarrio] = useState('');
+
+  // Helper para normalizar strings (sacar tildes, espacios, etc)
+  const clean = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
   
   // Transform records into tabular data
   const gridData = useMemo(() => {
@@ -43,13 +46,18 @@ export default function DataExplorer({ records }: { records: any[] }) {
 
   // Filter apply
   const filteredData = gridData.filter(d => {
-      // Normalizamos a minúsculas y eliminamos espacios para evitar fallos de formato
-      if (fDay && d.diaDeSemana.toLowerCase().trim() !== fDay.toLowerCase().trim()) return false;
-      if (fSentido && d.sentido.toLowerCase().trim() !== fSentido.toLowerCase().trim()) return false;
-      if (fDestino && d.destino.toLowerCase().trim() !== fDestino.toLowerCase().trim()) return false;
-      if (fBarrio && d.barrio.toLowerCase().trim() !== fBarrio.toLowerCase().trim()) return false;
+      if (fDay && clean(d.diaDeSemana) !== clean(fDay)) return false;
+      if (fSentido && clean(d.sentido) !== clean(fSentido)) return false;
+      if (fDestino && clean(d.destino) !== clean(fDestino)) return false;
+      if (fBarrio && clean(d.barrio) !== clean(fBarrio)) return false;
       return true;
   });
+
+  // Estadísticas de coincidencia para debug
+  const matchDay = fDay ? gridData.filter(d => clean(d.diaDeSemana) === clean(fDay)).length : totalCount;
+  const matchSentido = fSentido ? gridData.filter(d => clean(d.sentido) === clean(fSentido)).length : totalCount;
+  const matchDestino = fDestino ? gridData.filter(d => clean(d.destino) === clean(fDestino)).length : totalCount;
+  const matchBarrio = fBarrio ? gridData.filter(d => clean(d.barrio) === clean(fBarrio)).length : totalCount;
 
   return (
     <div className="glass-card mb-12">
@@ -65,37 +73,53 @@ export default function DataExplorer({ records }: { records: any[] }) {
       </div>
 
         {/* FILTERS REDESIGNED */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-            <select value={fDay} onChange={e=>setFDay(e.target.value)} className="bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm outline-none focus:ring-1 focus:ring-emerald-500">
-                <option value="">Cualquier Día...</option>
-                {uniqueDays.map(v => <option key={v} value={v}>{v}</option>)}
-            </select>
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-2">
+            <div className="space-y-1">
+                <select value={fDay} onChange={e=>setFDay(e.target.value)} className="w-full bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm outline-none focus:ring-1 focus:ring-emerald-500">
+                    <option value="">Cualquier Día...</option>
+                    {uniqueDays.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+                {fDay && <p className="text-[10px] text-slate-500 text-center">{matchDay} registros</p>}
+            </div>
 
-            <select value={fSentido} onChange={e=>setFSentido(e.target.value)} className="bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm outline-none focus:ring-1 focus:ring-emerald-500">
-                <option value="">Cualquier Sentido...</option>
-                <option value="Ida">Ida (Hacia CABA)</option>
-                <option value="Vuelta">Vuelta (A Provincia)</option>
-            </select>
+            <div className="space-y-1">
+                <select value={fSentido} onChange={e=>setFSentido(e.target.value)} className="w-full bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm outline-none focus:ring-1 focus:ring-emerald-500">
+                    <option value="">Cualquier Sentido...</option>
+                    <option value="Ida">Ida (Hacia CABA)</option>
+                    <option value="Vuelta">Vuelta (A Provincia)</option>
+                </select>
+                {fSentido && <p className="text-[10px] text-slate-500 text-center">{matchSentido} registros</p>}
+            </div>
 
-            <select value={fDestino} onChange={e=>setFDestino(e.target.value)} className="bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm outline-none focus:ring-1 focus:ring-emerald-500">
-                <option value="">Cualquier Destino...</option>
-                <option value="Shopping DOT">Shopping DOT</option>
-                <option value="Microcentro">Microcentro</option>
-            </select>
+            <div className="space-y-1">
+                <select value={fDestino} onChange={e=>setFDestino(e.target.value)} className="w-full bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm outline-none focus:ring-1 focus:ring-emerald-500">
+                    <option value="">Cualquier Destino...</option>
+                    <option value="Shopping DOT">Shopping DOT</option>
+                    <option value="Microcentro">Microcentro</option>
+                </select>
+                {fDestino && <p className="text-[10px] text-slate-500 text-center">{matchDestino} registros</p>}
+            </div>
 
-            <select value={fBarrio} onChange={e=>setFBarrio(e.target.value)} className="bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm outline-none focus:ring-1 focus:ring-emerald-500">
-                <option value="">Todos los Barrios...</option>
-                {uniqueBarrios.map(v => <option key={v} value={v}>{v}</option>)}
-            </select>
+            <div className="space-y-1">
+                <select value={fBarrio} onChange={e=>setFBarrio(e.target.value)} className="w-full bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm outline-none focus:ring-1 focus:ring-emerald-500">
+                    <option value="">Todos los Barrios...</option>
+                    {uniqueBarrios.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+                {fBarrio && <p className="text-[10px] text-slate-500 text-center">{matchBarrio} registros</p>}
+            </div>
             
-            <div className="flex justify-end items-center">
+            <div className="flex justify-end items-start pt-0.5">
                  <button 
                    onClick={() => { setFDay(''); setFSentido(''); setFDestino(''); setFBarrio(''); }}
-                   className="text-xs font-bold uppercase tracking-tighter text-pink-500 hover:text-pink-400 transition bg-pink-500/10 px-4 py-2 rounded-lg border border-pink-500/20"
+                   className="text-xs font-bold uppercase tracking-tighter text-pink-500 hover:text-pink-400 transition bg-pink-500/10 px-4 py-2 rounded-lg border border-pink-500/20 shadow-lg shadow-pink-500/5"
                  >
-                    Resetear Filtros
+                    Resetear
                  </button>
             </div>
+        </div>
+
+        <div className="mb-6 text-[9px] text-slate-600 italic">
+            Filtrando actualmente {filteredData.length} de {totalCount} registros totales.
         </div>
 
         {/* TABLE */}
@@ -134,7 +158,7 @@ export default function DataExplorer({ records }: { records: any[] }) {
                                         Diagnóstico de Memoria (Primer Registro):
                                     </p>
                                     <pre className="text-[10px] text-slate-300 font-mono overflow-x-auto">
-                                        {JSON.stringify(gridData[0] || "No hay datos en memoria", null, 2)}
+                                        {JSON.stringify(gridData.slice(0, 3) || "No hay datos en memoria", null, 2)}
                                     </pre>
                                 </div>
                             </div>
