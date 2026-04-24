@@ -50,24 +50,22 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   // 1. DATA ENRICHMENT (The performance engine)
   const enrichedRecords = useMemo(() => {
     return records.map(r => {
+        const d = new Date(r.timestamp);
         const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
         const isDOT = isIda ? r.destination.includes("DOT") : r.origin.includes("DOT");
-        const originMacro = getMacro(r.origin);
-        const destMacro = getMacro(r.destination);
         const relevantBarrioRaw = isIda ? r.origin : r.destination;
-        const d = new Date(r.timestamp);
-
+        
         return {
             ...r,
             isIda,
             isDOT,
-            originMacro,
-            destMacro,
+            dayOfWeek: d.getDay(),
+            month: d.getMonth(),
             macro: getMacro(relevantBarrioRaw),
             barrio: shortenBarrioName(relevantBarrioRaw),
-            dateStr: d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
             hours: d.getHours(),
             minutes: d.getMinutes(),
+            dateStr: d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
             timestampDate: d
         };
     }).filter(r => {
@@ -113,6 +111,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const [evoDest, setEvoDest] = useState<string>("Ambos");
   const [evoTimeMode, setEvoTimeMode] = useState<"mañana" | "tarde" | "todo">("todo");
   const [trendTimeMode, setTrendTimeMode] = useState<"mañana" | "tarde">("mañana");
+  const [comparisonMode, setComparisonMode] = useState<"all" | "dow" | "month">("all");
   
   // Helpers derived from global selection
   const allMacros = useMemo(() => Array.from(new Set(zones.map(z => getMacro(z)))).sort(), [zones]);
@@ -135,11 +134,23 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
     const barDOT = new Map<string, { t: number, c: number }>();
     const barCentro = new Map<string, { t: number, c: number }>();
 
+    const todayRec = enrichedRecords.find(r => r.dateStr === todayStr);
+    const todayDOW = todayRec?.dayOfWeek;
+    const todayMonth = todayRec?.month;
+
     enrichedRecords.forEach(r => {
+        const isToday = r.dateStr === todayStr;
+        
         // Global Filter
         if (globalMacro !== "Todas las Zonas" && r.macro !== globalMacro) return;
         if (globalBarrio !== "Todos los Barrios" && r.barrio !== globalBarrio) return;
         
+        // Comparison Context Filter (Only for historical average)
+        if (!isToday) {
+            if (comparisonMode === "dow" && r.dayOfWeek !== todayDOW) return;
+            if (comparisonMode === "month" && r.month !== todayMonth) return;
+        }
+
         // Destination Filter
         if (globalDestination === "DOT" && !r.isDOT) return;
         if (globalDestination === "Obelisco" && r.isDOT) return;
@@ -179,6 +190,11 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   // Evolution Multibarrio (Keep but sync with globalMacro)
   const evolutivoData = useMemo(() => {
     const map = new Map<string, any>();
+    
+    const todayRec = enrichedRecords.find(r => r.dateStr === todayStr);
+    const todayDOW = todayRec?.dayOfWeek;
+    const todayMonth = todayRec?.month;
+
     enrichedRecords.forEach(r => {
         // Local Filter for Evolution
         if (evoMacro !== "Todas las Zonas" && r.macro !== evoMacro) return;
@@ -194,6 +210,13 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
         // Time Filter for Evolution
         if (evoTimeMode === "mañana" && r.hours >= 12) return;
         if (evoTimeMode === "tarde" && r.hours < 12) return;
+
+        // Comparison Context Filter (Only for historical average)
+        const isToday = r.dateStr === todayStr;
+        if (!isToday) {
+            if (comparisonMode === "dow" && r.dayOfWeek !== todayDOW) return;
+            if (comparisonMode === "month" && r.month !== todayMonth) return;
+        }
 
         const bin = Math.floor(r.minutes / 30) * 30; 
         const key = `${r.hours.toString().padStart(2,'0')}:${bin.toString().padStart(2,'0')}`;
@@ -225,7 +248,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
     });
 
     return result;
-  }, [enrichedRecords, evoMacro, evoDest, evoTimeMode, globalDestination]);
+  }, [enrichedRecords, evoMacro, evoDest, evoTimeMode, globalDestination, comparisonMode]);
 
   const evoSummary = useMemo(() => {
       if (evolutivoData.length === 0) return { min: 0, max: 0, avg: 0 };
@@ -242,6 +265,10 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   // BARS: Ranking data
   const comparisonData = useMemo(() => {
     const groups = new Map<string, any>();
+    const todayRec = enrichedRecords.find(r => r.dateStr === todayStr);
+    const todayDOW = todayRec?.dayOfWeek;
+    const todayMonth = todayRec?.month;
+
     enrichedRecords.forEach(r => {
         // Local Filter for BARS
         if (barMacro !== "Todas las Zonas" && r.macro !== barMacro) return;
@@ -263,12 +290,17 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
         });
         const s = groups.get(groupKey)!;
         const isToday = r.dateStr === todayStr;
-        if (r.isDOT) { 
-            s.tDOT += r.durationMins; s.cDOT++; 
-            if (isToday) { s.tdDOT += r.durationMins; s.cdDOT++; }
-        } else { 
-            s.tMicro += r.durationMins; s.cMicro++; 
-            if (isToday) { s.tdMicro += r.durationMins; s.cdMicro++; }
+
+        if (isToday) {
+            if (r.isDOT) { s.tdDOT += r.durationMins; s.cdDOT++; }
+            else { s.tdMicro += r.durationMins; s.cdMicro++; }
+        } else {
+            // Historical context filter
+            if (comparisonMode === "dow" && r.dayOfWeek !== todayDOW) return;
+            if (comparisonMode === "month" && r.month !== todayMonth) return;
+
+            if (r.isDOT) { s.tDOT += r.durationMins; s.cDOT++; }
+            else { s.tMicro += r.durationMins; s.cMicro++; }
         }
     });
     return Array.from(groups.values()).map(s => {
@@ -288,7 +320,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
             "centroZoneLabel": `${s.zone} ${hoyMicro > 0 ? (hoyMicro >= hMicro ? `(+${hoyMicro - hMicro}m)` : `(${hoyMicro - hMicro}m)`) : ''}`
         };
     }).sort((a,b) => (a["Histórico (DOT)"] + a["Histórico (Centro)"]) - (b["Histórico (DOT)"] + b["Histórico (Centro)"]));
-  }, [enrichedRecords, barTimeMode, barMacro, globalMode, todayStr]);
+  }, [enrichedRecords, barTimeMode, barMacro, globalMode, todayStr, comparisonMode]);
 
 
 
@@ -296,7 +328,19 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
     const dotMap = new Map<string, any>();
     const centroMap = new Map<string, any>();
     
+    const todayRec = enrichedRecords.find(r => r.dateStr === todayStr);
+    const todayDOW = todayRec?.dayOfWeek;
+    const todayMonth = todayRec?.month;
+
     enrichedRecords.forEach(r => {
+        const isToday = r.dateStr === todayStr;
+
+        // Context Filter
+        if (!isToday) {
+            if (comparisonMode === "dow" && r.dayOfWeek !== todayDOW) return;
+            if (comparisonMode === "month" && r.month !== todayMonth) return;
+        }
+
         // Destination Filter
         if (globalDestination === "DOT" && !r.isDOT) return;
         if (globalDestination === "Obelisco" && r.isDOT) return;
@@ -318,7 +362,6 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
         
         const label = r.macro;
         const type = r.isIda ? 'Ida' : 'Vuelta';
-        const isToday = r.dateStr === todayStr;
         
         const dataKey = `${label} ${type} (${isToday ? 'Hoy' : 'Hist'})`;
         if (!obj[dataKey]) obj[dataKey + '_s'] = 0, obj[dataKey + '_c'] = 0;
@@ -329,7 +372,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
 
     const fmt = (m: Map<string, any>) => Array.from(m.values()).sort((a,b) => a.timeHourNum - b.timeHourNum);
     return { dot: fmt(dotMap), centro: fmt(centroMap) };
-  }, [enrichedRecords, globalMacro, globalBarrio, globalDestination, todayStr, timeBinSize, trendTimeMode]);
+  }, [enrichedRecords, globalMacro, globalBarrio, globalDestination, todayStr, timeBinSize, trendTimeMode, comparisonMode]);
 
   const LINE_COLORS = [
       "#3b82f6", "#10b981", "#f59e0b", "#f43f5e", "#a855f7", "#06b6d4", "#f97316", "#84cc16",
@@ -601,7 +644,44 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                     <TrendingUp size={20} className="text-blue-400"/> Comparativa de Evolución Multibarrio
                   </h3>
                </div>
-               <div className="flex items-center gap-3">
+               <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Modo Comparativa:</span>
+                    <div className="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1">
+                        <button 
+                            onClick={() => setComparisonMode("all")}
+                            className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${comparisonMode === 'all' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            HISTORIAL TOTAL
+                        </button>
+                        <button 
+                            onClick={() => setComparisonMode("dow")}
+                            className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${comparisonMode === 'dow' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            MISMO DÍA (DOW)
+                        </button>
+                        <button 
+                            onClick={() => setComparisonMode("month")}
+                            className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${comparisonMode === 'month' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            MISMO MES
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <Filter size={14} className="text-slate-500" />
+                    <span className="text-[10px] text-slate-500 font-bold uppercase">Filtrar Zona:</span>
+                    <select 
+                        value={evoMacro} 
+                        onChange={(e) => setEvoMacro(e.target.value)}
+                        className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none cursor-pointer hover:bg-slate-800 transition-colors"
+                    >
+                        <option value="Todas las Zonas">Todas las Zonas (Vista Macro)</option>
+                        {allMacros.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                </div>
+
                     <div className="flex items-center gap-2">
                         <span className="text-[10px] text-slate-500 font-bold uppercase">Turno:</span>
                         <select 
