@@ -6,7 +6,7 @@ import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   ScatterChart, Scatter, ZAxis, Cell, ReferenceLine, Label
 } from "recharts";
-import { Activity, Search, BarChart3, Crosshair, Map as MapIcon, Filter } from "lucide-react";
+import { Activity, Search, BarChart3, Crosshair, Map as MapIcon, Filter, TrendingUp } from "lucide-react";
 
 export default function AnalyticsSection({ records }: { records: any[] }) {
   // Estado original para LineChart
@@ -106,8 +106,70 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const [scatterDestino, setScatterDestino] = useState<"todos" | "dot" | "centro">("todos");
   const [barTimeMode, setBarTimeMode] = useState<"mañana" | "tarde">("mañana");
   const [timeBinSize, setTimeBinSize] = useState<number>(30); 
+  const [selectedZones, setSelectedZones] = useState<string[]>([]);
+  const [lineDestino, setLineDestino] = useState<"todos" | "dot" | "centro">("todos");
 
   const todayStr = useMemo(() => new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }), []);
+
+  // Summary KPIs
+  const summaryStats = useMemo(() => {
+    let dotMin = 999, dotMax = 0, dotSum = 0, dotCount = 0;
+    let centroMin = 999, centroMax = 0, centroSum = 0, centroCount = 0;
+    const barDOT = new Map<string, { t: number, c: number }>();
+    const barCentro = new Map<string, { t: number, c: number }>();
+
+    enrichedRecords.forEach(r => {
+        if (r.isDOT) {
+            dotSum += r.durationMins; dotCount++;
+            if (r.durationMins < dotMin) dotMin = r.durationMins;
+            if (r.durationMins > dotMax) dotMax = r.durationMins;
+            if (!barDOT.has(r.barrio)) barDOT.set(r.barrio, { t: 0, c: 0 });
+            const s = barDOT.get(r.barrio)!; s.t += r.durationMins; s.c++;
+        } else {
+            centroSum += r.durationMins; centroCount++;
+            if (r.durationMins < centroMin) centroMin = r.durationMins;
+            if (r.durationMins > centroMax) centroMax = r.durationMins;
+            if (!barCentro.has(r.barrio)) barCentro.set(r.barrio, { t: 0, c: 0 });
+            const s = barCentro.get(r.barrio)!; s.t += r.durationMins; s.c++;
+        }
+    });
+
+    const getBest = (m: Map<string, any>) => {
+        let best = { name: '-', val: 999 };
+        m.forEach((v, k) => {
+            const avg = v.t / v.c;
+            if (avg < best.val) best = { name: k, val: avg };
+        });
+        return best.name;
+    };
+
+    return {
+        dot: { avg: dotCount > 0 ? Math.round(dotSum/dotCount) : 0, best: getBest(barDOT) },
+        centro: { avg: centroCount > 0 ? Math.round(centroSum/centroCount) : 0, best: getBest(barCentro) },
+        total: enrichedRecords.length
+    };
+  }, [enrichedRecords]);
+
+  // Multibarrio Evolution
+  const evolutivoData = useMemo(() => {
+    const map = new Map<string, any>();
+    enrichedRecords.forEach(r => {
+        if (selectedZones.length > 0 && !selectedZones.includes(r.barrio)) return;
+        if (lineDestino === "dot" && !r.isDOT) return;
+        if (lineDestino === "centro" && r.isDOT) return;
+        
+        const bin = Math.floor(r.minutes / 30) * 30; // Force 30m for generic chart
+        const key = `${r.hours.toString().padStart(2,'0')}:${bin.toString().padStart(2,'0')}`;
+        if (!map.has(key)) map.set(key, { timeTick: key, timeHourNum: r.hours + (bin/60) });
+        const p = map.get(key);
+        const dataKey = `${r.barrio} (${r.isDOT ? 'DOT' : 'Centro'})`;
+        if (!p[dataKey]) p[dataKey + '_s'] = 0, p[dataKey + '_c'] = 0;
+        p[dataKey + '_s'] += r.durationMins;
+        p[dataKey + '_c']++;
+        p[dataKey] = Math.round(p[dataKey + '_s'] / p[dataKey + '_c']);
+    });
+    return Array.from(map.values()).sort((a,b) => a.timeHourNum - b.timeHourNum);
+  }, [enrichedRecords, selectedZones, lineDestino]);
 
   // BARS: Ranking data
   const comparisonData = useMemo(() => {
@@ -367,6 +429,85 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                 ))}
             </div>
         </div>
+      </div>
+
+      {/* KPI SUMMARY CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+          <div className="glass-card border-blue-500/20 bg-blue-500/5">
+              <p className="text-[10px] uppercase font-bold text-blue-400/70 tracking-widest mb-1">Promedio Globlal DOT</p>
+              <div className="flex items-end gap-2">
+                  <span className="text-3xl font-black text-white">{summaryStats.dot.avg}</span>
+                  <span className="text-xs text-slate-400 mb-1.5">min</span>
+              </div>
+          </div>
+          <div className="glass-card border-purple-500/20 bg-purple-500/5">
+              <p className="text-[10px] uppercase font-bold text-purple-400/70 tracking-widest mb-1">Promedio Global Centro</p>
+              <div className="flex items-end gap-2">
+                  <span className="text-3xl font-black text-white">{summaryStats.centro.avg}</span>
+                  <span className="text-xs text-slate-400 mb-1.5">min</span>
+              </div>
+          </div>
+          <div className="glass-card border-emerald-500/20 bg-emerald-500/5">
+              <p className="text-[10px] uppercase font-bold text-emerald-400/70 tracking-widest mb-1">Mejor Barrio (Cerca DOT)</p>
+              <span className="text-lg font-bold text-white block truncate">{summaryStats.dot.best}</span>
+          </div>
+          <div className="glass-card border-amber-500/20 bg-amber-500/5">
+              <p className="text-[10px] uppercase font-bold text-amber-400/70 tracking-widest mb-1">Muestras Analizadas</p>
+              <span className="text-2xl font-black text-white block">{summaryStats.total}</span>
+          </div>
+      </div>
+
+      {/* MULTI-BARRIO EVOLUTION CHART */}
+      <div className="glass-card border-white/5 space-y-6">
+          <div className="flex flex-col xl:flex-row justify-between gap-4 border-b border-white/5 pb-4">
+              <div>
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <TrendingUp size={18} className="text-blue-400"/> Comparativa de Evolución Multibarrio
+                  </h3>
+                  <p className="text-xs text-slate-400">Seleccioná varios barrios para comparar sus curvas de tiempo juntas.</p>
+              </div>
+              <div className="flex flex-wrap gap-4 items-center">
+                  <select 
+                    className="bg-slate-900 border border-slate-700 text-xs rounded-lg px-3 py-1.5"
+                    value={lineDestino}
+                    onChange={(e:any) => setLineDestino(e.target.value)}
+                  >
+                     <option value="todos">Todos los Destinos</option>
+                     <option value="dot">Hacia DOT</option>
+                     <option value="centro">Hacia Centro</option>
+                  </select>
+                  <div className="flex gap-2 max-w-md overflow-x-auto pb-1">
+                      {zones.slice(0, 5).map(z => (
+                          <button 
+                            key={z}
+                            onClick={() => setSelectedZones(prev => prev.includes(z) ? prev.filter(x => x !== z) : [...prev, z])}
+                            className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all border ${selectedZones.includes(z) ? 'bg-blue-600 border-blue-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-400'}`}
+                          >
+                             {z}
+                          </button>
+                      ))}
+                      <span className="text-[10px] text-slate-500 self-center">...</span>
+                  </div>
+              </div>
+          </div>
+          
+          <div className="h-[350px] w-full">
+              {evolutivoData.length === 0 ? <p className="text-center text-slate-500 pt-20">Seleccioná barrios para graficar</p> : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={evolutivoData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                      <XAxis dataKey="timeTick" fontSize={10} stroke="#475569" />
+                      <YAxis fontSize={10} stroke="#475569" unit="m" />
+                      <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px' }} />
+                      <Legend iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
+                      {Object.keys(evolutivoData[0] || {}).map((k, idx) => {
+                          if (k === 'timeTick' || k === 'timeHourNum' || k.endsWith('_s') || k.endsWith('_c')) return null;
+                          return <Line key={k} type="monotone" dataKey={k} stroke={LINE_COLORS[idx % LINE_COLORS.length]} strokeWidth={2} dot={false} connectNulls />;
+                      })}
+                    </LineChart>
+                  </ResponsiveContainer>
+              )}
+          </div>
       </div>
 
 
