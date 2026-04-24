@@ -64,7 +64,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
       return "Otras Zonas";
   };
 
-  const [scatterMode, setScatterMode] = useState<"barrio" | "macro">("barrio");
+  const [scatterMode, setScatterMode] = useState<"barrio" | "macro">("macro");
   const [scatterDestino, setScatterDestino] = useState<"todos" | "dot" | "centro">("todos");
   const [barTimeMode, setBarTimeMode] = useState<"mañana" | "tarde">("mañana");
 
@@ -260,8 +260,10 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
          const isDOT = isIda ? r.destination.includes("DOT") : r.origin.includes("DOT");
          
          const d = new Date(r.timestamp);
-         const timeDecimal = d.getHours() + (d.getMinutes() / 60);
-
+         // Redondear a intervalos de 5 minutos para que el agrupamiento por macro sea eficiente
+         const minutesRounded = Math.floor(d.getMinutes() / 5) * 5;
+         const timeDecimal = d.getHours() + (minutesRounded / 60);
+ 
          return {
             id: r.id,
             isIda,
