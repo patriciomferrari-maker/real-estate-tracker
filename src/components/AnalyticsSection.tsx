@@ -108,7 +108,6 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
   const [timeBinSize, setTimeBinSize] = useState<number>(15);
   const [barTimeMode, setBarTimeMode] = useState<"mañana" | "tarde">("mañana");
   const [barMacro, setBarMacro] = useState<string>("Todas las Zonas");
-  const [barBarrio, setBarBarrio] = useState<string>("Todos los Barrios");
   
   // Helpers derived from global selection
   const allMacros = useMemo(() => Array.from(new Set(zones.map(z => getMacro(z)))).sort(), [zones]);
@@ -194,15 +193,19 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
     enrichedRecords.forEach(r => {
         // Local Filter for BARS
         if (barMacro !== "Todas las Zonas" && r.macro !== barMacro) return;
-        if (barBarrio !== "Todos los Barrios" && r.barrio !== barBarrio) return;
+
+        // Dynamic drill-down: If 'Todas' is selected, group by macro. 
+        // If a specific zone is selected, show its internal barrios.
+        const groupKey = barMacro === "Todas las Zonas" ? r.macro : r.barrio;
 
         if (barTimeMode === "mañana" && !r.isIda) return;
         if (barTimeMode === "tarde" && r.isIda) return;
-        if (!groups.has(r.barrio)) groups.set(r.barrio, { 
-            zone: r.barrio, tDOT: 0, cDOT: 0, tMicro: 0, cMicro: 0,
+        
+        if (!groups.has(groupKey)) groups.set(groupKey, { 
+            zone: groupKey, tDOT: 0, cDOT: 0, tMicro: 0, cMicro: 0,
             tdDOT: 0, cdDOT: 0, tdMicro: 0, cdMicro: 0 
         });
-        const s = groups.get(r.barrio)!;
+        const s = groups.get(groupKey)!;
         const isToday = r.dateStr === todayStr;
         if (r.isDOT) { 
             s.tDOT += r.durationMins; s.cDOT++; 
@@ -219,7 +222,7 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
         "Histórico (Centro)": s.cMicro > 0 ? Math.round(s.tMicro / s.cMicro) : 0,
         "Hoy (Centro)": s.cdMicro > 0 ? Math.round(s.tdMicro / s.cdMicro) : 0,
     })).sort((a,b) => (a["Histórico (DOT)"] + a["Histórico (Centro)"]) - (b["Histórico (DOT)"] + b["Histórico (Centro)"]));
-  }, [enrichedRecords, barTimeMode, barMacro, barBarrio, todayStr]);
+  }, [enrichedRecords, barTimeMode, barMacro, globalMode, todayStr]);
 
 
 
@@ -782,19 +785,11 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                   <span className="text-[10px] text-slate-500 font-bold uppercase">Filtrar Ranking:</span>
                   <select 
                     value={barMacro} 
-                    onChange={(e) => { setBarMacro(e.target.value); setBarBarrio("Todos los Barrios"); }}
+                    onChange={(e) => setBarMacro(e.target.value)}
                     className="bg-slate-800 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none"
                   >
                       <option value="Todas las Zonas">Todas las Zonas</option>
                       {allMacros.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                  <select 
-                    value={barBarrio} 
-                    onChange={(e) => setBarBarrio(e.target.value)}
-                    className="bg-slate-800 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none min-w-[150px]"
-                  >
-                      <option value="Todos los Barrios">Todos los Barrios</option>
-                      {Array.from(new Set(barriosInBarMacro)).sort().map(b => <option key={b} value={b}>{b}</option>)}
                   </select>
               </div>
           </div>
