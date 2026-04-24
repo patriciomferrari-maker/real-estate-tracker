@@ -226,6 +226,18 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
     return result;
   }, [enrichedRecords, evoMacro, evoDest, evoTimeMode, globalDestination]);
 
+  const evoSummary = useMemo(() => {
+      if (evolutivoData.length === 0) return { min: 0, max: 0, avg: 0 };
+      let min = 999, max = 0, sum = 0, count = 0;
+      evolutivoData.forEach(d => {
+          if (d.__min < min) min = d.__min;
+          if (d.__max > max) max = d.__max;
+          sum += d.__avg;
+          count++;
+      });
+      return { min: min === 999 ? 0 : min, max, avg: count > 0 ? Math.round(sum/count) : 0 };
+  }, [evolutivoData]);
+
   // BARS: Ranking data
   const comparisonData = useMemo(() => {
     const groups = new Map<string, any>();
@@ -637,9 +649,9 @@ export default function AnalyticsSection({ records }: { records: any[] }) {
                       <YAxis fontSize={10} stroke="#475569" unit="m" />
                        <Tooltip content={<CustomEvolutionTooltip />} />
                       <Legend iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
-                      <Line type="monotone" dataKey="__avg" name="PROMEDIO GRAL." stroke="#ffffff" strokeWidth={3} strokeDasharray="10 5" dot={false} connectNulls opacity={0.6} />
-                      <Line type="monotone" dataKey="__min" name="MEJOR TIEMPO" stroke="#00ff88" strokeWidth={2} strokeDasharray="3 3" dot={false} connectNulls opacity={0.5} />
-                      <Line type="monotone" dataKey="__max" name="PEOR TIEMPO" stroke="#ff4d4d" strokeWidth={2} strokeDasharray="3 3" dot={false} connectNulls opacity={0.5} />
+                      <ReferenceLine y={evoSummary.max} stroke="#ef4444" strokeDasharray="3 3" label={{ value: `MAX ${evoSummary.max}m`, fill: '#ef4444', fontSize: 10, position: 'insideLeft' }} />
+                      <ReferenceLine y={evoSummary.avg} stroke="#eab308" strokeDasharray="3 3" label={{ value: `AVG ${evoSummary.avg}m`, fill: '#eab308', fontSize: 10, position: 'insideLeft' }} />
+                      <ReferenceLine y={evoSummary.min} stroke="#10b981" strokeDasharray="3 3" label={{ value: `MIN ${evoSummary.min}m`, fill: '#10b981', fontSize: 10, position: 'insideLeft' }} />
 
                       {Object.keys(evolutivoData[0] || {}).map((k, idx) => {
                           if (k === 'timeTick' || k === 'timeHourNum' || k.endsWith('_s') || k.endsWith('_c') || k.startsWith('__')) return null;
