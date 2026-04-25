@@ -55,31 +55,31 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
     return records.map(r => {
         const d = new Date(r.timestamp);
         
-        // Usamos toLocaleString con en-US para obtener componentes numéricos consistentes en Arg
-        // Este es el método más compatible entre navegadores y entornos para forzar la TZ.
-        const argStr = d.toLocaleString("en-US", { 
+        // Método blindado: Extraemos piezas numéricas sin depender de la posición en el string
+        const parts = new Intl.DateTimeFormat("en-US", {
             timeZone: "America/Argentina/Buenos_Aires",
             hour12: false,
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit"
-        });
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit", second: "2-digit"
+        }).formatToParts(d);
+
+        const getP = (type: string) => parts.find(p => p.type === type)?.value || "0";
         
-        // El formato de en-US (hour12: false) es: MM/DD/YYYY, HH:mm:ss
-        const [datePart, timePart] = argStr.split(", ");
-        const [m_m, d_d, y_y] = datePart.split("/");
-        const [h_h, min_min] = timePart.split(":");
+        const y_y = getP('year');
+        const m_m = getP('month');
+        const d_d = getP('day');
+        const h_h = getP('hour');
+        const min_min = getP('minute');
 
         const hour = parseInt(h_h);
         const min = parseInt(min_min);
         
-        // Sincronizamos: Lunes = 0 para que coincida con el bucle for(d=0;d<5...)
-        // getDay() da: Dom=0, Lun=1, Mar=2, Mié=3, Jue=4, Vie=5, Sáb=6
-        const rawDay = new Date(`${y_y}-${m_m}-${d_d}T12:00:00`).getDay();
-        const dayOfWeek = rawDay === 0 ? 6 : rawDay - 1; // Lunes será 0, Martes 1... Domingo 6
+        // Calculamos el día de la semana asegurando hora local
+        // getDay(): Dom=0, Lun=1, Mar=2, Mié=3, Jue=4, Vie=5, Sáb=6
+        // Queremos: Lun=0, Mar=1... Dom=6
+        const dateObj = new Date(`${y_y}-${m_m}-${d_d}T12:00:00`);
+        const rawDay = dateObj.getDay();
+        const dayOfWeek = rawDay === 0 ? 6 : rawDay - 1;
 
         const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
         const isDOT = isIda ? r.destination.includes("DOT") : r.origin.includes("DOT");
