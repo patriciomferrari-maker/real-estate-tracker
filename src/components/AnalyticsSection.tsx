@@ -446,6 +446,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
   const [pulseBarrio, setPulseBarrio] = useState<string>(zones.find(z => getMacro(z) === (allMacros[0] || "Nordelta")) || "Todos los Barrios");
   const [pulseShift, setPulseShift] = useState<"mañana" | "tarde">(defaultShift);
   const [pulseDest, setPulseDest] = useState<"DOT" | "Obelisco">("Obelisco");
+  const [monitorDest, setMonitorDest] = useState<"DOT" | "Centro">("Centro");
 
   const weeklyPulseData = useMemo(() => {
     const dayNames = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -1925,34 +1926,57 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       {/* MONITOR VIEW: REAL-TIME FEED (LAST 10) */}
       {viewMode === "real-time" && (
           <div className="glass-card mt-8 animate-in slide-in-from-bottom duration-500 border-emerald-500/10 border p-8">
-              <div className="flex items-center gap-3 border-b border-white/10 pb-6 mb-8">
-                  <div className="w-4 h-4 bg-emerald-500 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
-                  <h3 className="text-sm font-black text-slate-100 uppercase tracking-[0.2em]">
-                      Monitor de Datos en Tiempo Real (Últimos 10 registros sin filtros)
-                  </h3>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6 mb-8">
+                  <div className="flex items-center gap-3">
+                      <div className="w-4 h-4 bg-emerald-500 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+                      <h3 className="text-sm font-black text-slate-100 uppercase tracking-[0.2em] flex-1">
+                          Monitor de Datos en Tiempo Real (Promedio por Zona)
+                      </h3>
+                  </div>
+                  <div className="flex items-center gap-2 bg-slate-900 p-1 rounded-xl border border-white/5 shadow-inner">
+                       <button onClick={() => setMonitorDest("DOT")} className={`px-5 py-2 rounded-lg text-[11px] font-black uppercase transition-all ${monitorDest === "DOT" ? 'bg-emerald-500 text-slate-900 shadow-lg' : 'bg-transparent text-slate-400 hover:text-white'}`}>Hacia DOT</button>
+                       <button onClick={() => setMonitorDest("Centro")} className={`px-5 py-2 rounded-lg text-[11px] font-black uppercase transition-all ${monitorDest === "Centro" ? 'bg-emerald-500 text-slate-900 shadow-lg' : 'bg-transparent text-slate-400 hover:text-white'}`}>Hacia Centro</button>
+                  </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                  {[...enrichedRecords].sort((a,b) => b.timestampDate.getTime() - a.timestampDate.getTime()).slice(0, 10).map((r, idx) => {
-                      const dayNamesES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-                      const dayName = dayNamesES[r.timestampDate.getDay()];
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {(() => {
+                      const macrosMap = new Map<string, number[]>();
+                      const sorted = [...enrichedRecords].sort((a,b) => b.timestampDate.getTime() - a.timestampDate.getTime());
+                      const filtered = sorted.filter(r => monitorDest === "DOT" ? r.isDOT : !r.isDOT);
                       
-                      return (
-                          <div key={idx} className="bg-[#0f172a]/80 p-5 rounded-lg border border-white/5 space-y-4 hover:border-emerald-500/20 transition-all hover:scale-[1.02]">
-                              <p className="text-[10px] text-slate-500 font-bold tracking-tight">
-                                  {r.dateStr} - {dayName}
+                      filtered.forEach(r => {
+                          if (!macrosMap.has(r.macro)) macrosMap.set(r.macro, []);
+                          const list = macrosMap.get(r.macro)!;
+                          if (list.length < 5) list.push(r.durationMins);
+                      });
+                      
+                      const mList = Array.from(macrosMap.entries()).map(([macro, vals]) => ({
+                          macro,
+                          avg: Math.round(vals.reduce((a,b)=>a+b, 0) / vals.length),
+                          count: vals.length
+                      })).sort((a,b) => b.avg - a.avg);
+
+                      if (mList.length === 0) return <p className="text-slate-500 italic py-8">No hay datos recientes para este sentido.</p>;
+
+                      return mList.map((m, idx) => (
+                          <div key={idx} className="bg-[#0f172a]/80 p-5 rounded-xl border border-emerald-500/10 space-y-4 hover:border-emerald-500/40 transition-all hover:scale-[1.02] shadow-lg shadow-black/20">
+                              <p className="text-[10px] text-slate-500 font-bold tracking-tight uppercase flex justify-between items-center">
+                                  <span>Zona</span>
+                                  <span className="text-[9px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">Top {m.count} viajes</span>
                               </p>
-                              <p className="text-[14px] font-black text-emerald-400 leading-tight">
-                                  {r.barrioRaw.split(',')[0]}
+                              <p className="text-[15px] font-black text-white leading-tight">
+                                  {m.macro}
                               </p>
-                              <div className="pt-2">
-                                  <p className="text-xl font-black text-white">
-                                      {r.durationMins} <span className="text-sm font-bold text-white/70">min</span>
+                              <div className="pt-2 flex justify-between items-end border-t border-white/5 mt-4">
+                                  <p className="text-4xl font-black text-emerald-400 leading-none mt-4">
+                                      {m.avg} <span className="text-sm font-bold text-emerald-600">min</span>
                                   </p>
+                                  <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest pb-1">Actual</p>
                               </div>
                           </div>
-                      );
-                  })}
+                      ));
+                  })()}
               </div>
           </div>
       )}
