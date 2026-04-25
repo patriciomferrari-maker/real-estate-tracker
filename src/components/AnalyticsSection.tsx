@@ -1898,7 +1898,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                                     const d = payload[0].payload;
                                     return (
                                         <div className="bg-[#0f172a]/95 p-3 rounded-xl border border-slate-700 shadow-2xl backdrop-blur-md">
-                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">{d.day} {d.hour}:${d.min === 0 ? '00' : '30'}</p>
+                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">{d.day} {d.hour}:{d.min === 0 ? '00' : '30'}</p>
                                             <p className="text-xl font-black text-white">{d.duration > 0 ? `${d.duration} min` : 'Sin datos'}</p>
                                             <p className="text-[9px] text-slate-500 italic mt-1 uppercase">
                                                 {shortenBarrioName(pulseBarrio)}
