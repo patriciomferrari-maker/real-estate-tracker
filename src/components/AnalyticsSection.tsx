@@ -381,11 +381,11 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
   const [weeklyDest, setWeeklyDest] = useState<"DOT" | "Obelisco">("Obelisco");
 
   const weeklyDowData = useMemo(() => {
-    const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+    const dayNames = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
     const morningMap = new Map<string, any>();
     const afternoonMap = new Map<string, any>(); 
 
-    for(let i=1; i<=5; i++) {
+    for(let i=0; i<7; i++) {
         morningMap.set(dayNames[i], { day: dayNames[i], dayIdx: i });
         afternoonMap.set(dayNames[i], { day: dayNames[i], dayIdx: i });
     }
@@ -395,7 +395,8 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
         if (weeklyDest === "DOT" && !r.isDOT) return;
         if (weeklyDest === "Obelisco" && r.isDOT) return;
 
-        if (r.dayOfWeek === 0 || r.dayOfWeek === 6) return; 
+        // Filtramos solo si queremos una vista laboral estricta, pero por ahora dejamos todo
+        // if (r.dayOfWeek > 4) return; 
 
         // Filter Logic
         if (weeklyMacro !== "Todas las Zonas" && r.macro !== weeklyMacro) return;
@@ -438,7 +439,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       return Array.from(keys).sort();
   }, [weeklyDowData]);
 
-  const [viewMode, setViewMode] = useState<"dashboard" | "charts" | "report" | "data" | "vivo">("dashboard");
+  const [viewMode, setViewMode] = useState<"dashboard" | "charts" | "report" | "data" | "monitor" | "vivo">("dashboard");
 
   // Local state for Weekly Pulse
   const [pulseMacro, setPulseMacro] = useState<string>(allMacros[0] || "Nordelta");
@@ -447,11 +448,11 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
   const [pulseDest, setPulseDest] = useState<"DOT" | "Obelisco">("Obelisco");
 
   const weeklyPulseData = useMemo(() => {
-    const dayNames = ["Lun", "Mar", "Mié", "Jue", "Vie"];
+    const dayNames = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
     const timeline: any[] = [];
     
-    // Generar el esqueleto de la semana laboral (Lunes=0 a Viernes=4)
-    for(let d=0; d<5; d++) {
+    // Generar el esqueleto de la semana (Lunes=0 a Domingo=6)
+    for(let d=0; d<7; d++) {
         // Ventana Mañana
         for(let h=6; h<=8; h++) {
             for(let m of [0, 30]) {
@@ -481,7 +482,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
     }
 
     enrichedRecords.forEach(r => {
-        if (r.dayOfWeek === 0 || r.dayOfWeek === 6) return;
+        // No filtramos días aquí para permitir ver el fin de semana si hay datos
         
         // Destination Filter
         if (pulseDest === "DOT" && !r.isDOT) return;
@@ -1075,12 +1076,13 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                   {id: 'charts', label: 'GRÁFICOS'},
                   {id: 'report', label: 'REPORTE'},
                   {id: 'data', label: 'DATOS'},
+                  {id: 'monitor', label: 'MONITOR'},
                   {id: 'vivo', label: 'VIVO'}
                 ].map(tab => (
                   <button 
                     key={tab.id}
                     onClick={() => setViewMode(tab.id as any)}
-                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === tab.id ? "bg-blue-600 text-white shadow-lg" : "text-slate-400 hover:text-white"} ${tab.id === 'vivo' ? 'animate-pulse text-rose-400' : ''}`}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === tab.id ? "bg-blue-600 text-white shadow-lg" : "text-slate-400 hover:text-white"} ${tab.id === 'monitor' || tab.id === 'vivo' ? 'animate-pulse text-rose-400' : ''}`}
                   >
                     {tab.label}
                   </button>
@@ -1173,7 +1175,8 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
 
 
       {/* MULTI-BARRIO EVOLUTION CHART */}
-      <div className="glass-card border-white/5 space-y-6">
+      {viewMode === 'charts' && (
+        <div className="glass-card border-white/5 space-y-6 mb-8">
           <div className="flex flex-col xl:flex-row justify-between gap-4 border-b border-white/5 pb-4">
                 <div>
                    <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1245,12 +1248,12 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                   </ResponsiveContainer>
               )}
           </div>
-      </div>
-
-
+        </div>
+      )}
 
       {/* DISPERSION SCATTER PLOTS */}
-      <div className="glass-card mt-8 border-violet-500/20 border-2">
+      {viewMode === 'charts' && (
+        <div className="glass-card mt-8 border-violet-500/20 border-2">
          <div className="flex flex-col md:flex-row justify-between items-start border-b border-white/10 pb-6 mb-6">
             <div className="mb-4 md:mb-0">
                <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1345,12 +1348,13 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                 </div>
             </div>
 
-         </div>
-      </div>
-
+          </div>
+        </div>
+      )}
 
       {/* COMPARATIVE TREND CHARTS (TODAY VS HISTORY) */}
-      <div className="glass-card mb-8 border-amber-500/10 border">
+      {viewMode === 'dashboard' && (
+        <div className="glass-card mb-8 border-amber-500/10 border">
           <div className="flex flex-col md:flex-row justify-between items-center border-b border-white/5 pb-4 mb-6">
               <div>
                 <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1457,13 +1461,15 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                              })}
                         </LineChart>
                     </ResponsiveContainer>
-                </div>
             </div>
+          </div>
         </div>
       </div>
+      )}
 
-      {/* COMPARISON BAR CHARTS (MOVED TO END) */}
-      <div className="glass-card mt-8 border-blue-500/20 border-2">
+      {/* COMPARISON BAR CHARTS (Ranking) */}
+      {viewMode === 'dashboard' && (
+        <div className="glass-card mt-8 border-blue-500/20 border-2">
           <div className="flex justify-between items-center border-b border-white/10 pb-4 mb-6">
               <div>
                   <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1676,14 +1682,16 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                                </Bar>
                             </BarChart>
                           </ResponsiveContainer>
-                      )}
-                  </div>
-              </div>
-          </div>
-      </div>
+                        )}
+                   </div>
+               </div>
+           </div>
+         </div>
+       )}
 
       {/* WEEKLY STABILITY ANALYSIS (OBELISCO) */}
-      <div className="glass-card mt-8 border-purple-500/10 border">
+      {viewMode === 'charts' && (
+        <div className="glass-card mt-8 border-purple-500/10 border">
           <div className="border-b border-white/5 pb-4 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1784,10 +1792,12 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                   </div>
               </div>
           </div>
-      </div>
+        </div>
+      )}
 
       {/* WEEKLY PULSE ANALYSIS (30 MIN PRECISION) */}
-      <div className="glass-card mt-8 border-indigo-500/10 border pb-8">
+      {viewMode === 'dashboard' && (
+        <div className="glass-card mt-8 border-indigo-500/10 border pb-8">
           <div className="border-b border-white/5 pb-4 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1924,8 +1934,78 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                         </Bar>
                     </BarChart>
                 </ResponsiveContainer>
+             </div>
           </div>
-      </div>
+      )}
+
+      {/* DATOS VIEW: TABLA CRUDA */}
+      {viewMode === "data" && (
+         <div className="glass-card mt-8 animate-in fade-in duration-500">
+             <div className="flex items-center justify-between mb-6">
+                 <h3 className="text-xl font-bold">Base de Datos: {globalMacro}</h3>
+                 <span className="text-xs text-slate-500 italic">{enrichedRecords.length} registros totales</span>
+             </div>
+             <div className="overflow-x-auto">
+                 <table className="w-full text-left text-xs">
+                     <thead className="bg-slate-800/50 text-slate-400">
+                         <tr>
+                             <th className="p-3">Destino</th>
+                             <th className="p-3">Barrio</th>
+                             <th className="p-3">Fecha</th>
+                             <th className="p-3">Hora</th>
+                             <th className="p-3">Tiempo</th>
+                         </tr>
+                     </thead>
+                     <tbody className="divide-y divide-white/5">
+                         {enrichedRecords.slice(0, 50).map((r, i) => (
+                             <tr key={i} className="hover:bg-white/5">
+                                 <td className="p-3 font-bold text-indigo-400">{r.isDOT ? 'DOT' : 'Centro'}</td>
+                                 <td className="p-3 text-white">{r.barrio}</td>
+                                 <td className="p-3 text-slate-400">{r.dateStr}</td>
+                                 <td className="p-3 text-slate-300 font-mono">{r.hours.toString().padStart(2,'0')}:{r.minutes.toString().padStart(2,'0')}</td>
+                                 <td className="p-3 font-black text-white">{r.durationMins}m</td>
+                             </tr>
+                         ))}
+                     </tbody>
+                 </table>
+             </div>
+         </div>
+      )}
+
+      {/* MONITOR VIEW: REAL-TIME FEED (LAST 10) */}
+      {viewMode === "monitor" && (
+          <div className="glass-card mt-8 animate-in slide-in-from-bottom duration-500 border-emerald-500/10 border p-8">
+              <div className="flex items-center gap-3 border-b border-white/10 pb-6 mb-8">
+                  <div className="w-4 h-4 bg-emerald-500 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+                  <h3 className="text-sm font-black text-slate-100 uppercase tracking-[0.2em]">
+                      Monitor de Datos en Tiempo Real (Últimos 10 registros sin filtros)
+                  </h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                  {[...enrichedRecords].sort((a,b) => b.timestampDate.getTime() - a.timestampDate.getTime()).slice(0, 10).map((r, idx) => {
+                      const dayNamesES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+                      const dayName = dayNamesES[r.timestampDate.getDay()];
+                      
+                      return (
+                          <div key={idx} className="bg-[#0f172a]/80 p-5 rounded-lg border border-white/5 space-y-4 hover:border-emerald-500/20 transition-all hover:scale-[1.02]">
+                              <p className="text-[10px] text-slate-500 font-bold tracking-tight">
+                                  {r.dateStr} - {dayName}
+                              </p>
+                              <p className="text-[14px] font-black text-emerald-400 leading-tight">
+                                  {r.barrioRaw.split(',')[0]}
+                              </p>
+                              <div className="pt-2">
+                                  <p className="text-xl font-black text-white">
+                                      {r.durationMins} <span className="text-sm font-bold text-white/70">min</span>
+                                  </p>
+                              </div>
+                          </div>
+                      );
+                  })}
+              </div>
+          </div>
+      )}
 
       {/* VIVO VIEW MODE */}
       {viewMode === "vivo" && (
@@ -1945,7 +2025,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
             </div>
 
             <div className="grid grid-cols-1 gap-2">
-                {enrichedRecords.filter(r => r.isToday).sort((a,b) => b.timestamp.getTime() - a.timestamp.getTime()).map((r, idx) => {
+                {enrichedRecords.filter(r => r.isToday).sort((a,b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, 15).map((r, idx) => {
                     const dowMatch = enrichedRecords.filter(old => !old.isToday && old.dayOfWeek === r.dayOfWeek && old.hours === r.hours && Math.abs(old.minutes - r.minutes) < 15 && old.barrioRaw === r.barrioRaw && old.isDOT === r.isDOT);
                     const avg = dowMatch.length > 0 ? Math.round(dowMatch.reduce((acc, curr) => acc + curr.durationMins, 0) / dowMatch.length) : 0;
                     const diff = avg > 0 ? r.durationMins - avg : 0;
