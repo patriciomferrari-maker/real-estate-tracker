@@ -1175,7 +1175,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
 
 
       {/* MULTI-BARRIO EVOLUTION CHART */}
-      {viewMode === 'charts' && (
+      {(viewMode === 'charts' || viewMode === 'dashboard') && (
         <div className="glass-card border-white/5 space-y-6 mb-8">
           <div className="flex flex-col xl:flex-row justify-between gap-4 border-b border-white/5 pb-4">
                 <div>
@@ -1252,7 +1252,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       )}
 
       {/* DISPERSION SCATTER PLOTS */}
-      {viewMode === 'charts' && (
+      {(viewMode === 'charts' || viewMode === 'dashboard') && (
         <div className="glass-card mt-8 border-violet-500/20 border-2">
          <div className="flex flex-col md:flex-row justify-between items-start border-b border-white/10 pb-6 mb-6">
             <div className="mb-4 md:mb-0">
@@ -1353,7 +1353,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       )}
 
       {/* COMPARATIVE TREND CHARTS (TODAY VS HISTORY) */}
-      {viewMode === 'dashboard' && (
+      {(viewMode === 'dashboard' || viewMode === 'charts') && (
         <div className="glass-card mb-8 border-amber-500/10 border">
           <div className="flex flex-col md:flex-row justify-between items-center border-b border-white/5 pb-4 mb-6">
               <div>
@@ -1468,7 +1468,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       )}
 
       {/* COMPARISON BAR CHARTS (Ranking) */}
-      {viewMode === 'dashboard' && (
+      {(viewMode === 'dashboard' || viewMode === 'charts') && (
         <div className="glass-card mt-8 border-blue-500/20 border-2">
           <div className="flex justify-between items-center border-b border-white/10 pb-4 mb-6">
               <div>
@@ -1690,7 +1690,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
        )}
 
       {/* WEEKLY STABILITY ANALYSIS (OBELISCO) */}
-      {viewMode === 'charts' && (
+      {(viewMode === 'charts' || viewMode === 'dashboard') && (
         <div className="glass-card mt-8 border-purple-500/10 border">
           <div className="border-b border-white/5 pb-4 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -1796,7 +1796,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       )}
 
       {/* WEEKLY PULSE ANALYSIS (30 MIN PRECISION) */}
-      {viewMode === 'dashboard' && (
+      {(viewMode === 'dashboard' || viewMode === 'charts') && (
         <div className="glass-card mt-8 border-indigo-500/10 border pb-8">
           <div className="border-b border-white/5 pb-4 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
