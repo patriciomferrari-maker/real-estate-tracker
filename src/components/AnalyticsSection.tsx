@@ -55,27 +55,27 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
     return records.map(r => {
         const d = new Date(r.timestamp);
         
-        // Extraemos componentes en hora local de Argentina para evitar desfasajes UTC
-        const formatter = new Intl.DateTimeFormat('es-AR', {
-            hour: 'numeric',
-            minute: 'numeric',
-            weekday: 'long',
-            day: 'numeric',
-            month: 'numeric',
-            year: 'numeric',
-            timeZone: 'America/Argentina/Buenos_Aires'
+        // Usamos toLocaleString con en-US para obtener componentes numéricos consistentes en Arg
+        // Este es el método más compatible entre navegadores y entornos para forzar la TZ.
+        const argStr = d.toLocaleString("en-US", { 
+            timeZone: "America/Argentina/Buenos_Aires",
+            hour12: false,
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
         });
         
-        const parts = formatter.formatToParts(d);
-        const getPart = (type: string) => parts.find(p => p.type === type)?.value;
-        
-        const hour = parseInt(getPart('hour') || '0');
-        const min = parseInt(getPart('minute') || '0');
-        
-        // Mapear día lucide-style (0=Dom, 1=Lun...)
-        const dayMap: Record<string, number> = { 'domingo': 0, 'lunes': 1, 'martes': 2, 'miércoles': 3, 'jueves': 4, 'viernes': 5, 'sábado': 6 };
-        const dayStr = getPart('weekday')?.toLowerCase() || 'lunes';
-        const dayOfWeek = dayMap[dayStr] ?? d.getDay();
+        // El formato de en-US (hour12: false) es: MM/DD/YYYY, HH:mm:ss
+        const [datePart, timePart] = argStr.split(", ");
+        const [m_m, d_d, y_y] = datePart.split("/");
+        const [h_h, min_min] = timePart.split(":");
+
+        const hour = parseInt(h_h);
+        const min = parseInt(min_min);
+        const dayOfWeek = new Date(`${y_y}-${m_m}-${d_d}T12:00:00`).getDay();
 
         const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
         const isDOT = isIda ? r.destination.includes("DOT") : r.origin.includes("DOT");
@@ -86,13 +86,13 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
             isIda,
             isDOT,
             dayOfWeek,
-            month: d.getMonth(),
+            month: parseInt(m_m) - 1,
             macro: getMacro(relevantBarrioRaw),
             barrio: shortenBarrioName(relevantBarrioRaw),
             barrioRaw: relevantBarrioRaw,
             hours: hour,
             minutes: min,
-            dateStr: d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Argentina/Buenos_Aires' }),
+            dateStr: `${d_d}/${m_m}/${y_y}`,
             timestampDate: d
         };
     }).filter(r => {
