@@ -136,7 +136,9 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
   const [globalBarrio, setGlobalBarrio] = useState<string>("Todos los Barrios");
   const [globalDestination, setGlobalDestination] = useState<string>("Ambos");
   const [timeBinSize, setTimeBinSize] = useState<number>(15);
-  const currentHour = new Date().getHours();
+  // Detección de hora actual en Argentina para auto-turno
+  const argNow = new Date().toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires", hour12: false });
+  const currentHour = parseInt(argNow.split(", ")[1].split(":")[0]);
   const defaultShift = currentHour < 12 ? "mañana" : "tarde";
   const [barTimeMode, setBarTimeMode] = useState<"mañana" | "tarde">(defaultShift);
   const [barMacro, setBarMacro] = useState<string>("Todas las Zonas");
@@ -159,7 +161,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       return zones.filter(z => getMacro(z) === barMacro).map(z => shortenBarrioName(z));
   }, [barMacro, zones]);
 
-  const todayStr = useMemo(() => new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }), []);
+  const todayStr = useMemo(() => new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Argentina/Buenos_Aires' }), []);
 
   // Summary KPIs
   const summaryStats = useMemo(() => {
