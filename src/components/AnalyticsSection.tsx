@@ -11,7 +11,7 @@ import {
   Sun, Moon, Zap, Navigation, MapPin, Calendar 
 } from "lucide-react";
 
-export default function AnalyticsSection({ records, mode = "charts" }: { records: any[], mode?: "charts" | "report" }) {
+export default function AnalyticsSection({ records, mode = "charts" }: { records: any[], mode?: "charts" | "report" | "real-time" }) {
   // Estado original para LineChart
 
   // Nuevos estados para los filtros Scatter
@@ -439,7 +439,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       return Array.from(keys).sort();
   }, [weeklyDowData]);
 
-  const [viewMode, setViewMode] = useState<"dashboard" | "charts" | "report" | "data" | "monitor" | "vivo">("dashboard");
+  const [viewMode, setViewMode] = useState<string>(mode);
 
   // Local state for Weekly Pulse
   const [pulseMacro, setPulseMacro] = useState<string>(allMacros[0] || "Nordelta");
@@ -1920,42 +1920,10 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
           </div>
       )}
 
-      {/* DATOS VIEW: TABLA CRUDA */}
-      {true && (
-         <div className="glass-card mt-8 animate-in fade-in duration-500">
-             <div className="flex items-center justify-between mb-6">
-                 <h3 className="text-xl font-bold">Base de Datos: {globalMacro}</h3>
-                 <span className="text-xs text-slate-500 italic">{enrichedRecords.length} registros totales</span>
-             </div>
-             <div className="overflow-x-auto">
-                 <table className="w-full text-left text-xs">
-                     <thead className="bg-slate-800/50 text-slate-400">
-                         <tr>
-                             <th className="p-3">Destino</th>
-                             <th className="p-3">Barrio</th>
-                             <th className="p-3">Fecha</th>
-                             <th className="p-3">Hora</th>
-                             <th className="p-3">Tiempo</th>
-                         </tr>
-                     </thead>
-                     <tbody className="divide-y divide-white/5">
-                         {enrichedRecords.slice(0, 50).map((r, i) => (
-                             <tr key={i} className="hover:bg-white/5">
-                                 <td className="p-3 font-bold text-indigo-400">{r.isDOT ? 'DOT' : 'Centro'}</td>
-                                 <td className="p-3 text-white">{r.barrio}</td>
-                                 <td className="p-3 text-slate-400">{r.dateStr}</td>
-                                 <td className="p-3 text-slate-300 font-mono">{r.hours.toString().padStart(2,'0')}:{r.minutes.toString().padStart(2,'0')}</td>
-                                 <td className="p-3 font-black text-white">{r.durationMins}m</td>
-                             </tr>
-                         ))}
-                     </tbody>
-                 </table>
-             </div>
-         </div>
-      )}
+
 
       {/* MONITOR VIEW: REAL-TIME FEED (LAST 10) */}
-      {true && (
+      {viewMode === "real-time" && (
           <div className="glass-card mt-8 animate-in slide-in-from-bottom duration-500 border-emerald-500/10 border p-8">
               <div className="flex items-center gap-3 border-b border-white/10 pb-6 mb-8">
                   <div className="w-4 h-4 bg-emerald-500 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
@@ -1990,7 +1958,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       )}
 
       {/* VIVO VIEW MODE */}
-      {true && (
+      {viewMode === "real-time" && (
          <div className="glass-card mt-8 animate-in slide-in-from-bottom duration-500 border-rose-500/20 border-2">
             <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
                 <div>

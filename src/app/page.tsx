@@ -284,9 +284,9 @@ export default async function Dashboard({ searchParams }: any) {
         </header>
 
         <nav className="flex gap-2 mb-10 overflow-x-auto pb-2 scrollbar-hide">
-          {["dashboard", "graficos", "reporte", "datos"].map(t => (
+          {["dashboard", "graficos", "reporte", "datos", "real-time"].map(t => (
             <Link key={t} href={`?tab=${t}`} className={`px-5 py-2.5 rounded-xl text-[10px] font-black transition-all ${currentTab === t ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-500 hover:text-slate-300'}`}>
-              {t.toUpperCase()}
+              {t.replace('-', ' ').toUpperCase()}
             </Link>
           ))}
         </nav>
@@ -318,6 +318,7 @@ export default async function Dashboard({ searchParams }: any) {
         {currentTab === 'graficos' && <AnalyticsSection records={serializableRecords} mode="charts" />}
         {currentTab === 'reporte' && <AnalyticsSection records={serializableRecords} mode="report" />}
         {currentTab === 'datos' && <DataExplorer records={serializableRecords} />}
+        {currentTab === 'real-time' && <AnalyticsSection records={serializableRecords} mode="real-time" />}
 
         <footer className="mt-20 pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-bold text-slate-600 uppercase tracking-widest">
             <span>Core Intelligence Engine v4.0</span>
