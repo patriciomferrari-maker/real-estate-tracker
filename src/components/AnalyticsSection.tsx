@@ -75,7 +75,11 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
 
         const hour = parseInt(h_h);
         const min = parseInt(min_min);
-        const dayOfWeek = new Date(`${y_y}-${m_m}-${d_d}T12:00:00`).getDay();
+        
+        // Sincronizamos: Lunes = 0 para que coincida con el bucle for(d=0;d<5...)
+        // getDay() da: Dom=0, Lun=1, Mar=2, Mié=3, Jue=4, Vie=5, Sáb=6
+        const rawDay = new Date(`${y_y}-${m_m}-${d_d}T12:00:00`).getDay();
+        const dayOfWeek = rawDay === 0 ? 6 : rawDay - 1; // Lunes será 0, Martes 1... Domingo 6
 
         const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
         const isDOT = isIda ? r.destination.includes("DOT") : r.origin.includes("DOT");
