@@ -1069,25 +1069,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
     <section className="space-y-8 mb-12 animate-in fade-in duration-700">
       {/* MASTER CONTROL PANEL (Sticky & Ultra-Compact) */}
       <div className="sticky top-2 z-50 glass-card border-blue-500/10 bg-slate-900/40 backdrop-blur-md p-2 px-4 flex flex-wrap gap-4 items-center justify-between shadow-2xl rounded-xl">
-             {/* Navegación Principal */}
-             <div className="flex bg-slate-900/60 p-0.5 rounded-lg border border-white/5">
-                {[
-                  {id: 'dashboard', label: 'DASHBOARD'},
-                  {id: 'charts', label: 'GRÁFICOS'},
-                  {id: 'report', label: 'REPORTE'},
-                  {id: 'data', label: 'DATOS'},
-                  {id: 'monitor', label: 'MONITOR'},
-                  {id: 'vivo', label: 'VIVO'}
-                ].map(tab => (
-                  <button 
-                    key={tab.id}
-                    onClick={() => setViewMode(tab.id as any)}
-                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === tab.id ? "bg-blue-600 text-white shadow-lg" : "text-slate-400 hover:text-white"} ${tab.id === 'monitor' || tab.id === 'vivo' ? 'animate-pulse text-rose-400' : ''}`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-             </div>
+             {/* Navigation Navigation removed as per user request */}
 
              <div className="flex gap-3 items-center border-l border-white/10 pl-4">
                 <button 
@@ -1939,7 +1921,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       )}
 
       {/* DATOS VIEW: TABLA CRUDA */}
-      {viewMode === "data" && (
+      {true && (
          <div className="glass-card mt-8 animate-in fade-in duration-500">
              <div className="flex items-center justify-between mb-6">
                  <h3 className="text-xl font-bold">Base de Datos: {globalMacro}</h3>
@@ -1973,7 +1955,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       )}
 
       {/* MONITOR VIEW: REAL-TIME FEED (LAST 10) */}
-      {viewMode === "monitor" && (
+      {true && (
           <div className="glass-card mt-8 animate-in slide-in-from-bottom duration-500 border-emerald-500/10 border p-8">
               <div className="flex items-center gap-3 border-b border-white/10 pb-6 mb-8">
                   <div className="w-4 h-4 bg-emerald-500 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
@@ -2008,7 +1990,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       )}
 
       {/* VIVO VIEW MODE */}
-      {viewMode === "vivo" && (
+      {true && (
          <div className="glass-card mt-8 animate-in slide-in-from-bottom duration-500 border-rose-500/20 border-2">
             <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
                 <div>
