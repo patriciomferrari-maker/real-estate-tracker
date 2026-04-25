@@ -447,11 +447,11 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
   const [pulseDest, setPulseDest] = useState<"DOT" | "Obelisco">("Obelisco");
 
   const weeklyPulseData = useMemo(() => {
-    const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+    const dayNames = ["Lun", "Mar", "Mié", "Jue", "Vie"];
     const timeline: any[] = [];
     
-    // Generar el esqueleto de la semana laboral enfocado en PICOS (6-9hs y 16.30-19.30hs)
-    for(let d=1; d<=5; d++) {
+    // Generar el esqueleto de la semana laboral (Lunes=0 a Viernes=4)
+    for(let d=0; d<5; d++) {
         // Ventana Mañana
         for(let h=6; h<=8; h++) {
             for(let m of [0, 30]) {
@@ -462,8 +462,8 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
         // Mañana termina a las 9:00 exactas
         timeline.push({ key: `${dayNames[d]} 09:00`, day: dayNames[d], hour: 9, min: 0, dayIdx: d, absMin: (d * 24 * 60) + (9 * 60), val_s: 0, val_c: 0, duration: 0 });
         
-        // Espaciador para mañana
-        if (d < 5) timeline.push({ key: `GAP_M_${d}`, isSpacer: true, hour: 10, absMin: (d * 24 * 60) + (10 * 60), val_s: 0, val_c: 0, duration: 0 });
+        // Espaciador para mañana (hueco entre días)
+        timeline.push({ key: `GAP_M_${d}`, isSpacer: true, hour: 10, absMin: (d * 24 * 60) + (10 * 60), val_s: 0, val_c: 0, duration: 0 });
 
         // Ventana Tarde (16:30 a 19:30)
         for(let h=16; h<=19; h++) {
@@ -477,7 +477,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
         timeline.push({ key: `${dayNames[d]} 19:30`, day: dayNames[d], hour: 19, min: 30, dayIdx: d, absMin: (d * 24 * 60) + (19 * 60) + 30, val_s: 0, val_c: 0, duration: 0 });
         
         // Espaciador para tarde
-        if (d < 5) timeline.push({ key: `GAP_T_${d}`, isSpacer: true, hour: 20, absMin: (d * 24 * 60) + (20 * 60), val_s: 0, val_c: 0, duration: 0 });
+        timeline.push({ key: `GAP_T_${d}`, isSpacer: true, hour: 20, absMin: (d * 24 * 60) + (20 * 60), val_s: 0, val_c: 0, duration: 0 });
     }
 
     enrichedRecords.forEach(r => {
