@@ -1408,7 +1408,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                                  const type = trendTimeMode === 'mañana' ? 'Ida' : 'Vuelta';
                                  return (
                                      <React.Fragment key={m}>
-                                         <Line type="monotone" dataKey={`${m} ${type} (Hoy)`} name={`${m} Hoy`} stroke={color} strokeWidth={4} dot={{ r: 4, fill: color }} connectNulls activeDot={{ r: 8 }} />
+                                         <Line type="monotone" dataKey={`${m} ${type} (Hoy)`} name={`${m} Hoy`} stroke={color} strokeWidth={3} dot={{ r: 2, fill: color }} connectNulls activeDot={{ r: 5 }} />
                                          <Line type="monotone" dataKey={`${m} ${type} (Hist)`} name={`${m} ${comparisonMode === 'dow' ? 'Prom. DOW' : 'Prom. Gral.'}`} stroke={color} strokeWidth={2} strokeDasharray="5 5" dot={false} connectNulls opacity={0.4} />
                                      </React.Fragment>
                                  );
@@ -1437,7 +1437,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                                  const type = trendTimeMode === 'mañana' ? 'Ida' : 'Vuelta';
                                  return (
                                      <React.Fragment key={m}>
-                                         <Line type="monotone" dataKey={`${m} ${type} (Hoy)`} name={`${m} Hoy`} stroke={color} strokeWidth={4} dot={{ r: 4, fill: color }} connectNulls activeDot={{ r: 8 }} />
+                                         <Line type="monotone" dataKey={`${m} ${type} (Hoy)`} name={`${m} Hoy`} stroke={color} strokeWidth={3} dot={{ r: 2, fill: color }} connectNulls activeDot={{ r: 5 }} />
                                          <Line type="monotone" dataKey={`${m} ${type} (Hist)`} name={`${m} ${comparisonMode === 'dow' ? 'Prom. DOW' : 'Prom. Gral.'}`} stroke={color} strokeWidth={2} strokeDasharray="5 5" dot={false} connectNulls opacity={0.4} />
                                      </React.Fragment>
                                  );
