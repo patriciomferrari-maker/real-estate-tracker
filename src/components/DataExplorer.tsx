@@ -7,6 +7,10 @@ export default function DataExplorer({ records }: { records: any[] }) {
   const [fSentido, setFSentido] = useState('');
   const [fDestino, setFDestino] = useState('');
   const [fBarrio, setFBarrio] = useState('');
+  const [fFecha, setFFecha] = useState('');
+  const [fZona, setFZona] = useState('');
+  const [fAno, setFAno] = useState('');
+  const [fMes, setFMes] = useState('');
 
   // Helper para normalizar strings (sacar tildes, espacios, etc)
   const clean = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -19,11 +23,14 @@ export default function DataExplorer({ records }: { records: any[] }) {
         const barrioCrudo = isIda ? r.origin : r.destination;
         const barrio = (barrioCrudo || "").split(',')[0].replace("Barrio", "").trim();
         const dow = d.toLocaleDateString('es-ES', { weekday: 'long' });
+        const mesStr = d.toLocaleDateString('es-ES', { month: 'long' });
         
         return {
             ...r,
             diaDeSemana: dow.charAt(0).toUpperCase() + dow.slice(1),
             fecha: d.toLocaleDateString('es-AR'),
+            año: d.getFullYear().toString(),
+            mes: mesStr.charAt(0).toUpperCase() + mesStr.slice(1),
             sentido: r.isIda ? 'Ida' : 'Vuelta',
             destino: r.isDOT ? 'Shopping DOT' : 'Microcentro',
             tiempo: r.durationMins
@@ -38,6 +45,15 @@ export default function DataExplorer({ records }: { records: any[] }) {
   // Extracts lists for selects
   const uniqueDays = Array.from(new Set(gridData.map(d => d.diaDeSemana))).sort();
   const uniqueBarrios = Array.from(new Set(gridData.map(d => d.barrio))).sort();
+  const uniqueZonas = Array.from(new Set(gridData.map(d => d.zona as string))).sort();
+  const uniqueAnos = Array.from(new Set(gridData.map(d => d.año as string))).sort();
+  const mesesOrder = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+  const uniqueMeses = Array.from(new Set(gridData.map(d => d.mes as string))).sort((a, b) => mesesOrder.indexOf(a) - mesesOrder.indexOf(b));
+  const uniqueFechas = Array.from(new Set(gridData.map(d => d.fecha as string))).sort((a, b) => {
+       const [d1, m1, y1] = a.split('/');
+       const [d2, m2, y2] = b.split('/');
+       return new Date(`${y1}-${m1}-${d1}`).getTime() - new Date(`${y2}-${m2}-${d2}`).getTime();
+  });
 
   // Filter apply
   const filteredData = gridData.filter(d => {
@@ -45,6 +61,10 @@ export default function DataExplorer({ records }: { records: any[] }) {
       if (fSentido && clean(d.sentido) !== clean(fSentido)) return false;
       if (fDestino && clean(d.destino) !== clean(fDestino)) return false;
       if (fBarrio && clean(d.barrio) !== clean(fBarrio)) return false;
+      if (fFecha && d.fecha !== fFecha) return false;
+      if (fZona && clean(d.zona) !== clean(fZona)) return false;
+      if (fAno && d.año !== fAno) return false;
+      if (fMes && clean(d.mes) !== clean(fMes)) return false;
       return true;
   });
 
@@ -53,7 +73,10 @@ export default function DataExplorer({ records }: { records: any[] }) {
   const matchSentido = fSentido ? gridData.filter(d => clean(d.sentido) === clean(fSentido)).length : totalCount;
   const matchDestino = fDestino ? gridData.filter(d => clean(d.destino) === clean(fDestino)).length : totalCount;
   const matchBarrio = fBarrio ? gridData.filter(d => clean(d.barrio) === clean(fBarrio)).length : totalCount;
-  const sanMarcoCount = gridData.filter(d => clean(d.barrio).includes("marco")).length;
+  const matchFecha = fFecha ? gridData.filter(d => d.fecha === fFecha).length : totalCount;
+  const matchZona = fZona ? gridData.filter(d => clean(d.zona) === clean(fZona)).length : totalCount;
+  const matchAno = fAno ? gridData.filter(d => d.año === fAno).length : totalCount;
+  const matchMes = fMes ? gridData.filter(d => clean(d.mes) === clean(fMes)).length : totalCount;
 
   // Generar Matriz Día vs Sentido para Diagnóstico
   const days = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
@@ -77,13 +100,38 @@ export default function DataExplorer({ records }: { records: any[] }) {
       </div>
 
         {/* FILTERS REDESIGNED */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-4 mb-2 items-start">
+            
+            <div className="space-y-1">
+                <select value={fAno} onChange={e=>setFAno(e.target.value)} className="w-full bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm outline-none focus:ring-1 focus:ring-emerald-500">
+                    <option value="">Cualquier Año...</option>
+                    {uniqueAnos.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+                {fAno && <p className="text-[10px] text-slate-500 text-center">{matchAno} regs</p>}
+            </div>
+
+            <div className="space-y-1">
+                <select value={fMes} onChange={e=>setFMes(e.target.value)} className="w-full bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm outline-none focus:ring-1 focus:ring-emerald-500">
+                    <option value="">Cualquier Mes...</option>
+                    {uniqueMeses.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+                {fMes && <p className="text-[10px] text-slate-500 text-center">{matchMes} regs</p>}
+            </div>
+
+            <div className="space-y-1">
+                <select value={fFecha} onChange={e=>setFFecha(e.target.value)} className="w-full bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm outline-none focus:ring-1 focus:ring-emerald-500">
+                    <option value="">Cualquier Fecha...</option>
+                    {uniqueFechas.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+                {fFecha && <p className="text-[10px] text-slate-500 text-center">{matchFecha} regs</p>}
+            </div>
+
             <div className="space-y-1">
                 <select value={fDay} onChange={e=>setFDay(e.target.value)} className="w-full bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm outline-none focus:ring-1 focus:ring-emerald-500">
                     <option value="">Cualquier Día...</option>
                     {uniqueDays.map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
-                {fDay && <p className="text-[10px] text-slate-500 text-center">{matchDay} registros</p>}
+                {fDay && <p className="text-[10px] text-slate-500 text-center">{matchDay} regs</p>}
             </div>
 
             <div className="space-y-1">
@@ -92,7 +140,7 @@ export default function DataExplorer({ records }: { records: any[] }) {
                     <option value="Ida">Ida (Hacia CABA)</option>
                     <option value="Vuelta">Vuelta (A Provincia)</option>
                 </select>
-                {fSentido && <p className="text-[10px] text-slate-500 text-center">{matchSentido} registros</p>}
+                {fSentido && <p className="text-[10px] text-slate-500 text-center">{matchSentido} regs</p>}
             </div>
 
             <div className="space-y-1">
@@ -101,21 +149,29 @@ export default function DataExplorer({ records }: { records: any[] }) {
                     <option value="Shopping DOT">Shopping DOT</option>
                     <option value="Microcentro">Microcentro</option>
                 </select>
-                {fDestino && <p className="text-[10px] text-slate-500 text-center">{matchDestino} registros</p>}
+                {fDestino && <p className="text-[10px] text-slate-500 text-center">{matchDestino} regs</p>}
+            </div>
+
+            <div className="space-y-1">
+                <select value={fZona} onChange={e=>setFZona(e.target.value)} className="w-full bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm outline-none focus:ring-1 focus:ring-emerald-500">
+                    <option value="">Cualquier Zona...</option>
+                    {uniqueZonas.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+                {fZona && <p className="text-[10px] text-slate-500 text-center">{matchZona} regs</p>}
             </div>
 
             <div className="space-y-1">
                 <select value={fBarrio} onChange={e=>setFBarrio(e.target.value)} className="w-full bg-slate-900 border border-slate-700 text-white rounded p-2 text-sm outline-none focus:ring-1 focus:ring-emerald-500">
-                    <option value="">Todos los Barrios...</option>
+                    <option value="">Cualquier Barrio...</option>
                     {uniqueBarrios.map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
-                {fBarrio && <p className="text-[10px] text-slate-500 text-center">{matchBarrio} registros</p>}
+                {fBarrio && <p className="text-[10px] text-slate-500 text-center">{matchBarrio} regs</p>}
             </div>
             
-            <div className="flex justify-end items-start pt-0.5">
+            <div className="flex pt-0.5 h-full">
                  <button 
-                   onClick={() => { setFDay(''); setFSentido(''); setFDestino(''); setFBarrio(''); }}
-                   className="text-xs font-bold uppercase tracking-tighter text-pink-500 hover:text-pink-400 transition bg-pink-500/10 px-4 py-2 rounded-lg border border-pink-500/20 shadow-lg shadow-pink-500/5"
+                   onClick={() => { setFDay(''); setFSentido(''); setFDestino(''); setFBarrio(''); setFFecha(''); setFZona(''); setFAno(''); setFMes(''); }}
+                   className="text-xs font-bold uppercase tracking-tighter text-pink-500 hover:text-pink-400 transition bg-pink-500/10 w-full h-[38px] rounded-lg border border-pink-500/20 shadow-lg shadow-pink-500/5 flex items-center justify-center"
                  >
                     Resetear
                  </button>
