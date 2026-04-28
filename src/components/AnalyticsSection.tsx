@@ -8,7 +8,7 @@ import {
 } from "recharts";
 import { 
   Activity, Search, BarChart3, Crosshair, Map as MapIcon, Filter, TrendingUp, TrendingDown,
-  Sun, Moon, Zap, Navigation, MapPin, Calendar 
+  Sun, Moon, Zap, Navigation, MapPin, Calendar, Maximize2, Minimize2 
 } from "lucide-react";
 
 export default function AnalyticsSection({ records, mode = "charts" }: { records: any[], mode?: "charts" | "report" | "real-time" }) {
@@ -446,6 +446,28 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
   const [pulseBarrio, setPulseBarrio] = useState<string>(zones.find(z => getMacro(z) === (allMacros[0] || "Nordelta")) || "Todos los Barrios");
   const [pulseShift, setPulseShift] = useState<"mañana" | "tarde">(defaultShift);
   const [pulseDest, setPulseDest] = useState<"DOT" | "Obelisco">("Obelisco");
+  const [expandedChart, setExpandedChart] = useState<string | null>(null);
+
+  const toggleExpand = (chartId: string) => {
+      setExpandedChart(prev => prev === chartId ? null : chartId);
+  };
+  
+  const getCardClasses = (chartId: string, baseClasses: string) => {
+      if (expandedChart === chartId) {
+          return `fixed inset-0 z-[100] m-4 overflow-y-auto bg-[#020617]/98 backdrop-blur-3xl shadow-[0_0_100px_rgba(0,0,0,0.8)] border border-white/10 ${baseClasses} flex flex-col p-8 rounded-2xl`;
+      }
+      return `${expandedChart && expandedChart !== chartId ? 'hidden' : ''} ${baseClasses}`;
+  };
+
+  const renderExpandBtn = (chartId: string) => (
+      <button 
+        onClick={() => toggleExpand(chartId)}
+        className="p-1.5 hover:bg-white/10 bg-white/5 rounded-lg transition-colors text-slate-400 hover:text-white border border-white/10 ml-4"
+        title={expandedChart === chartId ? "Restaurar" : "Pantalla Completa"}
+      >
+          {expandedChart === chartId ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+      </button>
+  );
 
   const weeklyPulseData = useMemo(() => {
     const dayNames = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -1158,13 +1180,14 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
 
       {/* MULTI-BARRIO EVOLUTION CHART */}
       {(viewMode === 'charts' || viewMode === 'dashboard') && (
-        <div className="glass-card border-white/5 space-y-6 mb-8">
+        <div className={getCardClasses('evoChart', "glass-card border-white/5 space-y-6 mb-8")}>
           <div className="flex flex-col xl:flex-row justify-between gap-4 border-b border-white/5 pb-4">
-                <div>
+                <div className="flex items-center justify-between w-full xl:w-auto">
                    <h3 className="text-xl font-bold flex items-center gap-2">
                      <TrendingUp size={20} className="text-blue-400"/> 
                      Evolución {globalMacro}: Hoy vs. {comparisonMode === 'dow' ? 'Mismo Día Histórico' : (comparisonMode === 'month' ? 'Mismo Mes Histórico' : 'Promedio Histórico')}
                    </h3>
+                   <span className="xl:hidden">{renderExpandBtn('evoChart')}</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-4">
 
@@ -1207,6 +1230,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                         </select>
                     </div>
                </div>
+               <span className="hidden xl:block ml-2">{renderExpandBtn('evoChart')}</span>
           </div>
           
           <div className="h-[350px] w-full">
@@ -1235,15 +1259,17 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
 
       {/* DISPERSION SCATTER PLOTS */}
       {(viewMode === 'charts' || viewMode === 'dashboard') && (
-        <div className="glass-card mt-8 border-violet-500/20 border-2">
+        <div className={getCardClasses('scatterChart', "glass-card mt-8 border-violet-500/20 border-2 relative")}>
+          <div className="absolute top-6 right-6 md:hidden">{renderExpandBtn('scatterChart')}</div>
          <div className="flex flex-col md:flex-row justify-between items-start border-b border-white/10 pb-6 mb-6">
-            <div className="mb-4 md:mb-0">
+            <div className="mb-4 md:mb-0 pr-12 md:pr-0">
                <h3 className="text-xl font-bold flex items-center gap-2">
                    <Crosshair size={20} className="text-cyan-400" /> 
                    Dispersión de Peajes y Horarios
                </h3>
-               <p className="text-slate-400 text-sm max-w-xl">Mapeo de nube de puntos. Cada punto es un viaje real registrado. Analiza la densidad de viajes y la brecha entre ir al DOT (Azul) vs Centro (Verde).</p>
+               <p className="text-slate-400 text-sm max-w-xl mt-1">Mapeo de nube de puntos. Cada punto es un viaje real registrado. Analiza la densidad de viajes y la brecha entre ir al DOT (Azul) vs Centro (Verde).</p>
             </div>            
+            <div className="hidden md:block">{renderExpandBtn('scatterChart')}</div>
          </div>
 
          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
@@ -1336,9 +1362,10 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
 
       {/* COMPARATIVE TREND CHARTS (TODAY VS HISTORY) */}
       {(viewMode === 'dashboard' || viewMode === 'charts') && (
-        <div className="glass-card mb-8 border-amber-500/10 border">
-          <div className="flex flex-col md:flex-row justify-between items-center border-b border-white/5 pb-4 mb-6">
-              <div>
+        <div className={getCardClasses('trendChart', "glass-card mb-8 border-amber-500/10 border relative")}>
+          <div className="absolute top-6 right-6 md:hidden">{renderExpandBtn('trendChart')}</div>
+          <div className="flex flex-col md:flex-row justify-between items-start border-b border-white/5 pb-4 mb-6">
+              <div className="pr-12 md:pr-0">
                 <h3 className="text-xl font-bold flex items-center gap-2">
                     <Activity size={20} className="text-amber-400" />
                     Comparativa de Tendencia: Hoy vs. {comparisonMode === 'dow' ? 'Mismo Día (DOW)' : 'Histórico Total'}
@@ -1350,7 +1377,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                     </span>
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-3 mt-4 md:mt-0">
+              <div className="flex flex-wrap items-center justify-between md:justify-end gap-3 mt-4 md:mt-0 w-full md:w-auto">
                   {/* Selector Mañana/Tarde */}
                   <div className="flex bg-slate-900 border border-slate-700 rounded-lg p-1">
                       <button 
@@ -1384,6 +1411,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                         MISMO DÍA (DOW)
                       </button>
                   </div>
+                  <div className="hidden md:block ml-2">{renderExpandBtn('trendChart')}</div>
               </div>
           </div>
 
@@ -1451,18 +1479,20 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
 
       {/* COMPARISON BAR CHARTS (Ranking) */}
       {(viewMode === 'dashboard' || viewMode === 'charts') && (
-        <div className="glass-card mt-8 border-blue-500/20 border-2">
-          <div className="flex justify-between items-center border-b border-white/10 pb-4 mb-6">
-              <div>
+        <div className={getCardClasses('comparisonChart', "glass-card mt-8 border-blue-500/20 border-2 relative")}>
+          <div className="absolute top-6 right-6 lg:hidden">{renderExpandBtn('comparisonChart')}</div>
+          <div className="flex flex-col lg:flex-row justify-between items-start border-b border-white/10 pb-4 mb-6">
+              <div className="pr-12 lg:pr-0">
                   <h3 className="text-xl font-bold flex items-center gap-2">
                       <BarChart3 size={20} className="text-blue-400" />
                       Ranking Comparativo de Tiempos
                   </h3>
-                  <p className="text-slate-400 text-sm">Promedios generales por barrio hacia los destinos principales.</p>
+                  <p className="text-slate-400 text-sm mt-1">Promedios generales por barrio hacia los destinos principales.</p>
               </div>
 
-              <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2 mr-4">
+              <div className="flex flex-wrap items-center gap-4 mt-4 lg:mt-0 w-full lg:w-auto">
+                  <div className="hidden lg:block ml-auto order-last">{renderExpandBtn('comparisonChart')}</div>
+                  <div className="flex items-center gap-2 lg:mr-4">
                       <Filter size={14} className="text-slate-500" />
                       <select 
                         value={barMacro} 
@@ -1673,17 +1703,20 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
 
       {/* WEEKLY STABILITY ANALYSIS (OBELISCO) */}
       {(viewMode === 'charts' || viewMode === 'dashboard') && (
-        <div className="glass-card mt-8 border-purple-500/10 border">
-          <div className="border-b border-white/5 pb-4 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
+        <div className={getCardClasses('stabilityChart', "glass-card mt-8 border-purple-500/10 border relative")}>
+          <div className="absolute top-6 right-6 md:hidden">{renderExpandBtn('stabilityChart')}</div>
+          <div className="border-b border-white/5 pb-4 mb-6 flex flex-col md:flex-row md:items-start justify-between gap-4">
+                <div className="pr-12 md:pr-0">
                     <h3 className="text-xl font-bold flex items-center gap-2">
                         <Calendar size={20} className="text-purple-400" />
                         Estabilidad Semanal: Destino {weeklyDest === "DOT" ? "Shopping DOT" : "Microcentro / Obelisco"}
                     </h3>
-                    <p className="text-xs text-slate-400">¿Cuál es el mejor y peor día de la semana para viajar? Promedios históricos.</p>
+                    <p className="text-xs text-slate-400 mt-1">¿Cuál es el mejor y peor día de la semana para viajar? Promedios históricos.</p>
                 </div>
 
-                <div className="flex items-center gap-3 bg-slate-900/50 p-2 rounded-xl border border-white/5 self-start md:self-auto">
+                <div className="flex flex-wrap items-center gap-3 mt-2 md:mt-0">
+                    <div className="hidden md:block mr-2">{renderExpandBtn('stabilityChart')}</div>
+                    <div className="flex items-center gap-3 bg-slate-900/50 p-2 rounded-xl border border-white/5 self-start md:self-auto">
                     <div className="flex items-center gap-2">
                         <MapPin size={14} className="text-purple-500 ml-1" />
                         <select 
@@ -1718,6 +1751,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                             return <option key={b} value={b} className="bg-slate-900 text-white">{b}</option>
                         })}
                     </select>
+                </div>
                 </div>
           </div>
 
@@ -1779,17 +1813,20 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
 
       {/* WEEKLY PULSE ANALYSIS (30 MIN PRECISION) */}
       {(viewMode === 'dashboard' || viewMode === 'charts') && (
-        <div className="glass-card mt-8 border-indigo-500/10 border pb-8">
-          <div className="border-b border-white/5 pb-4 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
+        <div className={getCardClasses('pulseChart', "glass-card mt-8 border-indigo-500/10 border pb-8 relative")}>
+          <div className="absolute top-6 right-6 md:hidden">{renderExpandBtn('pulseChart')}</div>
+          <div className="border-b border-white/5 pb-4 mb-6 flex flex-col md:flex-row md:items-start justify-between gap-4">
+                <div className="pr-12 md:pr-0">
                     <h3 className="text-xl font-bold flex items-center gap-2">
                         <TrendingUp size={20} className="text-indigo-400" />
                         Pulso Semanal de Tráfico (Detallado)
                     </h3>
-                    <p className="text-xs text-slate-400">Evolución de tiempos de viaje por cada bloque de 30 min de Lunes a Viernes.</p>
+                    <p className="text-xs text-slate-400 mt-1">Evolución de tiempos de viaje por cada bloque de 30 min de Lunes a Viernes.</p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 bg-slate-900/50 p-2 rounded-xl border border-white/5 self-start md:self-auto">
+                <div className="flex flex-wrap items-center gap-3 mt-2 md:mt-0">
+                    <div className="hidden md:block mr-2">{renderExpandBtn('pulseChart')}</div>
+                    <div className="flex flex-wrap items-center gap-3 bg-slate-900/50 p-2 rounded-xl border border-white/5 self-start md:self-auto">
                     {/* Destination Select */}
                     <div className="flex items-center gap-2">
                         <MapPin size={14} className="text-indigo-500 ml-1" />
@@ -1828,6 +1865,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                             return <option key={shortenBarrioName(z)} value={z} className="bg-slate-900 text-white">{shortenBarrioName(z)}</option>
                         })}
                     </select>
+                </div>
                 </div>
           </div>
 
