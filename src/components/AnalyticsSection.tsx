@@ -1233,7 +1233,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                <span className="hidden xl:block ml-2">{renderExpandBtn('evoChart')}</span>
           </div>
           
-          <div className={expandedChart === 'evoChart' ? "flex-1 w-full min-h-[400px] mt-4" : "h-[350px] w-full"}>
+          <div className={expandedChart === 'evoChart' ? "h-[65vh] w-full mt-4" : "h-[350px] w-full"}>
               {evolutivoData.length === 0 ? <p className="text-center text-slate-500 pt-20">Seleccioná barrios para graficar</p> : (
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={evolutivoData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
@@ -1272,12 +1272,12 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
             <div className="hidden md:block">{renderExpandBtn('scatterChart')}</div>
          </div>
 
-         <div className={`grid grid-cols-1 xl:grid-cols-2 gap-8 ${expandedChart === 'scatterChart' ? 'flex-1 min-h-0' : ''}`}>
+         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
             
             {/* SCATTER IDA */}
             <div className="space-y-2 flex flex-col">
                 <h4 className="text-emerald-400 font-semibold mb-4 text-center">☀️ Nube de IDA (Mañana)</h4>
-                <div className={expandedChart === 'scatterChart' ? "flex-1 w-full min-h-[300px]" : "h-[300px] w-full"}>
+                <div className={expandedChart === 'scatterChart' ? "h-[500px] w-full" : "h-[300px] w-full"}>
                     {scatterSeriesIda.length === 0 ? <p className="text-center text-slate-500 pt-16">Sin registros para este filtro</p> : (
                         <ResponsiveContainer width="100%" height="100%">
                             <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: -20 }}>
@@ -1318,7 +1318,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
             {/* SCATTER VUELTA */}
             <div className="space-y-2 flex flex-col">
                 <h4 className="text-amber-400 font-semibold mb-4 text-center">🌙 Nube de VUELTA (Tarde)</h4>
-                <div className={expandedChart === 'scatterChart' ? "flex-1 w-full min-h-[300px]" : "h-[300px] w-full"}>
+                <div className={expandedChart === 'scatterChart' ? "h-[500px] w-full" : "h-[300px] w-full"}>
                     {scatterSeriesVuelta.length === 0 ? <p className="text-center text-slate-500 pt-16">Sin registros para este filtro</p> : (
                         <ResponsiveContainer width="100%" height="100%">
                             <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: -20 }}>
@@ -1415,13 +1415,13 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
               </div>
           </div>
 
-        <div className={`grid grid-cols-1 xl:grid-cols-2 gap-8 ${expandedChart === 'trendChart' ? 'flex-1 min-h-0' : ''}`}>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
             {/* CHART DESTINO: DOT */}
             <div className="bg-slate-900/30 p-4 rounded-xl border border-white/5 flex flex-col">
                 <h4 className="text-sm font-bold uppercase tracking-widest text-blue-400 mb-4 flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-blue-400" /> Destino: Shopping DOT
                 </h4>
-                <div className={expandedChart === 'trendChart' ? "flex-1 w-full min-h-[300px]" : "h-[350px] w-full"}>
+                <div className={expandedChart === 'trendChart' ? "h-[500px] w-full" : "h-[350px] w-full"}>
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={trendData.dot} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
@@ -1450,7 +1450,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                 <h4 className="text-sm font-bold uppercase tracking-widest text-purple-400 mb-4 flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-purple-400" /> Destino: Obelisco / Centro
                 </h4>
-                <div className={expandedChart === 'trendChart' ? "flex-1 w-full min-h-[300px]" : "h-[350px] w-full"}>
+                <div className={expandedChart === 'trendChart' ? "h-[500px] w-full" : "h-[350px] w-full"}>
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={trendData.centro} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
@@ -1521,10 +1521,10 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
               </div>
           </div>
 
-          <div className={`grid grid-cols-1 lg:grid-cols-2 gap-8 ${expandedChart === 'comparisonChart' ? 'flex-1 min-h-0' : ''}`}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div className="space-y-4 flex flex-col">
                   <h4 className="text-blue-400 font-semibold text-center border-b border-blue-500/20 pb-2">Destino: Shopping DOT</h4>
-                  <div className={expandedChart === 'comparisonChart' ? "flex-1 w-full min-h-[300px]" : "h-[350px] w-full"}>
+                  <div className={expandedChart === 'comparisonChart' ? "h-[600px] w-full" : "h-[350px] w-full"}>
                       {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
                           <ResponsiveContainer width="100%" height="100%">
                             <BarChart 
@@ -1612,7 +1612,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
 
               <div className="space-y-4 flex flex-col">
                   <h4 className="text-purple-400 font-semibold text-center border-b border-purple-500/20 pb-2">Destino: Microcentro</h4>
-                  <div className={expandedChart === 'comparisonChart' ? "flex-1 w-full min-h-[300px]" : "h-[350px] w-full"}>
+                  <div className={expandedChart === 'comparisonChart' ? "h-[600px] w-full" : "h-[350px] w-full"}>
                       {comparisonData.length === 0 ? <p className="text-center text-slate-500 pt-20">Faltan datos</p> : (
                           <ResponsiveContainer width="100%" height="100%">
                             <BarChart 
@@ -1755,13 +1755,13 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                 </div>
           </div>
 
-          <div className={`grid grid-cols-1 xl:grid-cols-2 gap-16 ${expandedChart === 'stabilityChart' ? 'flex-1 min-h-0' : ''}`}>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-16">
               {/* Morning DOW */}
               <div className="space-y-6 flex flex-col">
                   <h4 className="text-sm font-black text-indigo-400 uppercase tracking-widest text-center flex items-center justify-center gap-2 py-1 bg-indigo-500/5 rounded-full">
                     <Sun size={14} /> Mañana: Ida al {weeklyDest === "DOT" ? "DOT" : "Centro"} (06-12hs)
                   </h4>
-                  <div className={expandedChart === 'stabilityChart' ? "flex-1 w-full min-h-[300px]" : "h-[320px] w-full"}>
+                  <div className={expandedChart === 'stabilityChart' ? "h-[500px] w-full" : "h-[320px] w-full"}>
                       <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={weeklyDowData.morning} margin={{ top: 25, right: 30, left: -20, bottom: 0 }}>
                               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
@@ -1787,7 +1787,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                   <h4 className="text-sm font-black text-amber-400 uppercase tracking-widest text-center flex items-center justify-center gap-2 py-1 bg-amber-500/5 rounded-full">
                     <Moon size={14} /> Tarde: Ida al {weeklyDest === "DOT" ? "DOT" : "Centro"} (13-20hs)
                   </h4>
-                  <div className={expandedChart === 'stabilityChart' ? "flex-1 w-full min-h-[300px]" : "h-[320px] w-full"}>
+                  <div className={expandedChart === 'stabilityChart' ? "h-[500px] w-full" : "h-[320px] w-full"}>
                       <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={weeklyDowData.afternoon} margin={{ top: 25, right: 30, left: -20, bottom: 0 }}>
                               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
@@ -1869,7 +1869,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                 </div>
           </div>
 
-          <div className={expandedChart === 'pulseChart' ? "flex-1 w-full min-h-[400px] mt-4" : "h-[400px] w-full"}>
+          <div className={expandedChart === 'pulseChart' ? "h-[65vh] w-full mt-4" : "h-[400px] w-full"}>
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={weeklyPulseData} margin={{ top: 25, right: 30, left: 0, bottom: 20 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={true} horizontal={false} />
