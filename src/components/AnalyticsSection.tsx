@@ -1272,7 +1272,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
             <div className="hidden md:block">{renderExpandBtn('scatterChart')}</div>
          </div>
 
-         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+         <div className="grid grid-cols-1 gap-8">
             
             {/* SCATTER IDA */}
             <div className="space-y-2 flex flex-col">
