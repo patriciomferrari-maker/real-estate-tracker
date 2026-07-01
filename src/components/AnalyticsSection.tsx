@@ -52,58 +52,10 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
 
   // 1. DATA ENRICHMENT (The performance engine)
   const enrichedRecords = useMemo(() => {
-    return records.map(r => {
-        const d = new Date(r.timestamp);
-        
-        // Método blindado: Extraemos piezas numéricas sin depender de la posición en el string
-        const parts = new Intl.DateTimeFormat("en-US", {
-            timeZone: "America/Argentina/Buenos_Aires",
-            hour12: false,
-            year: "numeric", month: "2-digit", day: "2-digit",
-            hour: "2-digit", minute: "2-digit", second: "2-digit"
-        }).formatToParts(d);
-
-        const getP = (type: string) => parts.find(p => p.type === type)?.value || "0";
-        
-        const y_y = getP('year');
-        const m_m = getP('month');
-        const d_d = getP('day');
-        const h_h = getP('hour');
-        const min_min = getP('minute');
-
-        const hour = parseInt(h_h);
-        const min = parseInt(min_min);
-        
-        // Calculamos el día de la semana asegurando hora local
-        // getDay(): Dom=0, Lun=1, Mar=2, Mié=3, Jue=4, Vie=5, Sáb=6
-        // Queremos: Lun=0, Mar=1... Dom=6
-        const dateObj = new Date(`${y_y}-${m_m}-${d_d}T12:00:00`);
-        const rawDay = dateObj.getDay();
-        const dayOfWeek = rawDay === 0 ? 6 : rawDay - 1;
-
-        const isIda = r.destination.includes("DOT") || r.destination.includes("Microcentro") || r.destination.includes("Florida") || r.destination.includes("Obelisco");
-        const isDOT = isIda ? r.destination.includes("DOT") : r.origin.includes("DOT");
-        const relevantBarrioRaw = isIda ? r.origin : r.destination;
-        
-        return {
-            ...r,
-            isIda,
-            isDOT,
-            dayOfWeek,
-            month: parseInt(m_m) - 1,
-            macro: getMacro(relevantBarrioRaw),
-            barrio: shortenBarrioName(relevantBarrioRaw),
-            barrioRaw: relevantBarrioRaw,
-            hours: hour,
-            minutes: min,
-            dateStr: `${d_d}/${m_m}/${y_y}`,
-            timestampDate: d
-        };
-    }).filter(r => {
-        // Purge generic locations that distort averages
-        if (r.barrio === "Villa Nueva (Gral)" || r.barrio === "Villa Nueva") return false;
-        return true;
-    });
+    return records.map(r => ({
+      ...r,
+      timestampDate: new Date(r.timestamp)
+    }));
   }, [records]);
 
   const metadata = useMemo(() => {

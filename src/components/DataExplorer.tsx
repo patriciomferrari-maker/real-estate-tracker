@@ -16,27 +16,7 @@ export default function DataExplorer({ records }: { records: any[] }) {
   const clean = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
   
   // Transform records into tabular data
-  const gridData = useMemo(() => {
-     return records.map(r => {
-        const d = new Date(r.timestamp);
-        const isIda = r.isIda;
-        const barrioCrudo = isIda ? r.origin : r.destination;
-        const barrio = (barrioCrudo || "").split(',')[0].replace("Barrio", "").trim();
-        const dow = d.toLocaleDateString('es-ES', { weekday: 'long' });
-        const mesStr = d.toLocaleDateString('es-ES', { month: 'long' });
-        
-        return {
-            ...r,
-            diaDeSemana: dow.charAt(0).toUpperCase() + dow.slice(1),
-            fecha: d.toLocaleDateString('es-AR'),
-            año: d.getFullYear().toString(),
-            mes: mesStr.charAt(0).toUpperCase() + mesStr.slice(1),
-            sentido: r.isIda ? 'Ida' : 'Vuelta',
-            destino: r.isDOT ? 'Shopping DOT' : 'Microcentro',
-            tiempo: r.durationMins
-        };
-      });
-   }, [records]);
+  const gridData = records;
 
    const totalCount = records.length;
    const idaCount = records.filter(r => r.isIda).length;
