@@ -6,7 +6,7 @@ console.log("- Los horarios configurados son: Lun-Dom, 6:00-11:00 y 15:00-20:00"
 console.log("- Corriendo ahora motor independiente del Dashboard.");
 
 // Mañana
-cron.schedule("*/10 6-11 * * *", async () => {
+cron.schedule("*/15 6-11 * * *", async () => {
   console.log(`\n[DAEMON] ⏰ Iniciando Ciclo Mañana: ${new Date().toLocaleString()}`);
   try {
     await runFullSync();
@@ -17,7 +17,7 @@ cron.schedule("*/10 6-11 * * *", async () => {
 });
 
 // Tarde
-cron.schedule("*/10 15-20 * * *", async () => {
+cron.schedule("*/15 15-20 * * *", async () => {
   console.log(`\n[DAEMON] ⏰ Iniciando Ciclo Tarde: ${new Date().toLocaleString()}`);
   try {
     await runFullSync();
