@@ -140,6 +140,8 @@ export default async function Dashboard() {
         
         return {
           id: String(e.id),
+          origin: String(e.origin),
+          destination: String(e.destination),
           timestamp: d.toISOString(),
           durationMins,
           isIda,
