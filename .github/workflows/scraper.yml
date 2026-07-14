@@ -1,0 +1,35 @@
+name: Travel Time Scraper
+
+on:
+  schedule:
+    # Corre cada 15 minutos en los horarios pico de Argentina (UTC-3)
+    # Mañana ARG: 06:00 a 11:00 -> UTC: 09:00 a 14:00 (las 14:00 en punto es la última)
+    # Tarde ARG: 15:00 a 20:00 -> UTC: 18:00 a 23:00 (las 23:00 en punto es la última)
+    # Expresión cron en UTC: minutos 0, 15, 30, 45, horas 9-13 y 18-22 UTC
+    - cron: '0,15,30,45 9-13,18-22 * * *'
+  workflow_dispatch: # Permite dispararlo manualmente para probar
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Run Scraper
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx tsx run-sync.ts
