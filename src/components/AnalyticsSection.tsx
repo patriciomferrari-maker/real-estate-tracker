@@ -1842,6 +1842,16 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                         <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '15px' }} />
                         {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((day, idx) => (
                             <Bar key={day} dataKey={day} name={day} fill={LINE_COLORS[idx % LINE_COLORS.length]} radius={[4, 4, 0, 0]} barSize={12}>
+                                {monthlyDOWData.map((entry: any, index: number) => {
+                                    const value = entry[day] || 0;
+                                    let color = '#64748b'; // default gray
+                                    if (value > 0) {
+                                        if (value < 35) color = '#10b981'; // Green
+                                        else if (value < 50) color = '#f59e0b'; // Yellow
+                                        else color = '#ef4444'; // Red
+                                    }
+                                    return <Cell key={`cell-${day}-${index}`} fill={color} />;
+                                })}
                                 <LabelList 
                                     dataKey={day} 
                                     position="top" 
