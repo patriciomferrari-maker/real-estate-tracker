@@ -11,26 +11,21 @@ import {
   Sun, Moon, Zap, Navigation, MapPin, Calendar, Maximize2, Minimize2, Clock 
 } from "lucide-react";
 
-const getColorFromScale = (value: number) => {
+const getColorFromScale = (value: number, minVal: number, maxVal: number) => {
   if (value <= 0) return '#64748b'; // default gray
+  if (maxVal === minVal) return 'rgb(245, 158, 11)'; // default yellow if flat
   
-  // Clamping value between 15 and 75
-  const val = Math.max(15, Math.min(75, value));
+  const midVal = (minVal + maxVal) / 2;
+  const val = Math.max(minVal, Math.min(maxVal, value));
   
-  if (val <= 45) {
-    // Green (15) -> Yellow (45)
-    // Green: rgb(16, 185, 129)
-    // Yellow: rgb(245, 158, 11)
-    const ratio = (val - 15) / 30;
+  if (val <= midVal) {
+    const ratio = (val - minVal) / (midVal - minVal || 1);
     const r = Math.round(16 + ratio * (245 - 16));
     const g = Math.round(185 + ratio * (158 - 185));
     const b = Math.round(129 + ratio * (11 - 129));
     return `rgb(${r}, ${g}, ${b})`;
   } else {
-    // Yellow (45) -> Red (75)
-    // Yellow: rgb(245, 158, 11)
-    // Red: rgb(239, 68, 68)
-    const ratio = (val - 45) / 30;
+    const ratio = (val - midVal) / (maxVal - midVal || 1);
     const r = Math.round(245 + ratio * (239 - 245));
     const g = Math.round(158 + ratio * (68 - 158));
     const b = Math.round(11 + ratio * (68 - 11));
@@ -515,6 +510,52 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       return row;
     });
   }, [enrichedRecords, pulseDest, pulseMacro, pulseBarrio, pulseHour]);
+
+  const morningMinMax = useMemo(() => {
+    let minVal = 999;
+    let maxVal = 0;
+    weeklyDowData.morning.forEach(entry => {
+      weeklySeriesKeys.forEach(m => {
+        const val = entry[m];
+        if (val && val > 0) {
+          if (val < minVal) minVal = val;
+          if (val > maxVal) maxVal = val;
+        }
+      });
+    });
+    return { min: minVal === 999 ? 15 : minVal, max: maxVal === 0 ? 75 : maxVal };
+  }, [weeklyDowData, weeklySeriesKeys]);
+
+  const afternoonMinMax = useMemo(() => {
+    let minVal = 999;
+    let maxVal = 0;
+    weeklyDowData.afternoon.forEach(entry => {
+      weeklySeriesKeys.forEach(m => {
+        const val = entry[m];
+        if (val && val > 0) {
+          if (val < minVal) minVal = val;
+          if (val > maxVal) maxVal = val;
+        }
+      });
+    });
+    return { min: minVal === 999 ? 15 : minVal, max: maxVal === 0 ? 75 : maxVal };
+  }, [weeklyDowData, weeklySeriesKeys]);
+
+  const monthlyMinMax = useMemo(() => {
+    let minVal = 999;
+    let maxVal = 0;
+    const dayNames = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+    monthlyDOWData.forEach(entry => {
+      dayNames.forEach(day => {
+        const val = entry[day];
+        if (val && val > 0) {
+          if (val < minVal) minVal = val;
+          if (val > maxVal) maxVal = val;
+        }
+      });
+    });
+    return { min: minVal === 999 ? 15 : minVal, max: maxVal === 0 ? 75 : maxVal };
+  }, [monthlyDOWData]);
 
   const highlightStats = useMemo(() => {
       const cats = {
@@ -1748,14 +1789,33 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                               <YAxis stroke="#64748b" fontSize={10} unit="m" />
                               <Tooltip 
                                 cursor={{fill: 'rgba(255,255,255,0.03)'}}
-                                contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)' }}
+                                content={({ active, payload, label }: any) => {
+                                    if (active && payload && payload.length) {
+                                        return (
+                                            <div className="bg-[#0f172a]/95 p-3 rounded-xl border border-slate-700 shadow-2xl backdrop-blur-md">
+                                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1.5 border-b border-white/5 pb-1">
+                                                    Día: ${label} (Mañana: 06-12hs)
+                                                </p>
+                                                <div className="space-y-1 max-h-[200px] overflow-y-auto pr-1">
+                                                    {payload.map((p: any) => (
+                                                        <p key={p.name} className="text-[11px] font-bold text-white flex justify-between gap-4">
+                                                            <span style={{ color: p.color }}>${p.name}:</span>
+                                                            <span>${p.value} min</span>
+                                                        </p>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                }}
                               />
                               <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '15px' }} />
                               {weeklySeriesKeys.map((m, idx) => (
                                   <Bar key={m} dataKey={m} name={m} fill={LINE_COLORS[idx % LINE_COLORS.length]} radius={[4, 4, 0, 0]} barSize={weeklySeriesKeys.length > 5 ? 12 : 24}>
                                       {weeklyDowData.morning.map((entry: any, index: number) => {
                                           const value = entry[m] || 0;
-                                          const color = getColorFromScale(value);
+                                          const color = getColorFromScale(value, morningMinMax.min, morningMinMax.max);
                                           return <Cell key={`cell-morning-${m}-${index}`} fill={color} />;
                                       })}
                                       <LabelList dataKey={m} position="top" formatter={(v:any) => v > 0 ? `${v}m` : ''} style={{ fill: '#94a3b8', fontSize: '9px', fontWeight: 'bold' }} />
@@ -1779,14 +1839,33 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                               <YAxis stroke="#64748b" fontSize={10} unit="m" />
                               <Tooltip 
                                 cursor={{fill: 'rgba(255,255,255,0.03)'}}
-                                contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)' }}
+                                content={({ active, payload, label }: any) => {
+                                    if (active && payload && payload.length) {
+                                        return (
+                                            <div className="bg-[#0f172a]/95 p-3 rounded-xl border border-slate-700 shadow-2xl backdrop-blur-md">
+                                                <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-1.5 border-b border-white/5 pb-1">
+                                                    Día: ${label} (Tarde: 13-20hs)
+                                                </p>
+                                                <div className="space-y-1 max-h-[200px] overflow-y-auto pr-1">
+                                                    {payload.map((p: any) => (
+                                                        <p key={p.name} className="text-[11px] font-bold text-white flex justify-between gap-4">
+                                                            <span style={{ color: p.color }}>${p.name}:</span>
+                                                            <span>${p.value} min</span>
+                                                        </p>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                }}
                               />
                               <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '15px' }} />
                               {weeklySeriesKeys.map((m, idx) => (
                                   <Bar key={m} dataKey={m} name={m} fill={LINE_COLORS[idx % LINE_COLORS.length]} radius={[4, 4, 0, 0]} barSize={weeklySeriesKeys.length > 5 ? 12 : 24}>
                                       {weeklyDowData.afternoon.map((entry: any, index: number) => {
                                           const value = entry[m] || 0;
-                                          const color = getColorFromScale(value);
+                                          const color = getColorFromScale(value, afternoonMinMax.min, afternoonMinMax.max);
                                           return <Cell key={`cell-afternoon-${m}-${index}`} fill={color} />;
                                       })}
                                       <LabelList dataKey={m} position="top" formatter={(v:any) => v > 0 ? `${v}m` : ''} style={{ fill: '#94a3b8', fontSize: '9px', fontWeight: 'bold' }} />
@@ -1808,7 +1887,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                 <div className="pr-12 md:pr-0">
                     <h3 className="text-xl font-bold flex items-center gap-2">
                         <TrendingUp size={20} className="text-indigo-400" />
-                        Pulso Semanal de Tráfico (Detallado)
+                        Evolución por Día de la Semana y Mes
                     </h3>
                     <p className="text-xs text-slate-400 mt-1">Evolución histórica de tiempos de viaje promedio para cada día de la semana agrupado por mes.</p>
                 </div>
@@ -1874,20 +1953,39 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                         <YAxis stroke="#475569" fontSize={10} unit="m" />
                         <Tooltip 
                             cursor={{fill: 'rgba(255,255,255,0.03)'}}
-                            contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)' }}
+                            content={({ active, payload, label }: any) => {
+                                if (active && payload && payload.length) {
+                                    return (
+                                        <div className="bg-[#0f172a]/95 p-3 rounded-xl border border-slate-700 shadow-2xl backdrop-blur-md">
+                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1.5 border-b border-white/5 pb-1">
+                                                Mes: ${label} (Hora: ${String(pulseHour).padStart(2, '0')}:00 hs)
+                                            </p>
+                                            <div className="space-y-1">
+                                                {payload.map((p: any) => (
+                                                    <p key={p.name} className="text-xs font-bold text-white flex justify-between gap-4">
+                                                        <span style={{ color: p.color }}>${p.name}:</span>
+                                                        <span>${p.value} min</span>
+                                                    </p>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            }}
                         />
                         <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '15px' }} />
                         {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((day, idx) => (
                             <Bar key={day} dataKey={day} name={day} fill={LINE_COLORS[idx % LINE_COLORS.length]} radius={[4, 4, 0, 0]} barSize={12}>
                                 {monthlyDOWData.map((entry: any, index: number) => {
                                     const value = entry[day] || 0;
-                                    const color = getColorFromScale(value);
+                                    const color = getColorFromScale(value, monthlyMinMax.min, monthlyMinMax.max);
                                     return <Cell key={`cell-${day}-${index}`} fill={color} />;
                                 })}
                                 <LabelList 
                                     dataKey={day} 
                                     position="top" 
-                                    formatter={(v) => typeof v === 'number' && v > 0 ? `${v}m` : ''} 
+                                    formatter={(v) => typeof v === 'number' && v > 0 ? `${day} ${v}m` : ''} 
                                     style={{ fill: '#94a3b8', fontSize: '8px', fontWeight: 'bold' }} 
                                 />
                             </Bar>
