@@ -1779,7 +1779,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
               {/* Morning DOW */}
               <div className="space-y-6 flex flex-col">
                   <h4 className="text-sm font-black text-indigo-400 uppercase tracking-widest text-center flex items-center justify-center gap-2 py-1 bg-indigo-500/5 rounded-full">
-                    <Sun size={14} /> Mañana: Ida al {weeklyDest === "DOT" ? "DOT" : "Centro"} (06-12hs)
+                    <Sun size={14} /> Mañana: Ida al {weeklyDest === "DOT" ? "DOT" : "Centro"} (Promedio 06:00 a 12:00 hs)
                   </h4>
                   <div className={expandedChart === 'stabilityChart' ? "h-[500px] w-full" : "h-[320px] w-full"}>
                       <ResponsiveContainer width="100%" height="100%">
@@ -1829,7 +1829,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
               {/* Afternoon DOW */}
               <div className="space-y-6 flex flex-col">
                   <h4 className="text-sm font-black text-amber-400 uppercase tracking-widest text-center flex items-center justify-center gap-2 py-1 bg-amber-500/5 rounded-full">
-                    <Moon size={14} /> Tarde: Ida al {weeklyDest === "DOT" ? "DOT" : "Centro"} (13-20hs)
+                    <Moon size={14} /> Tarde: Ida al {weeklyDest === "DOT" ? "DOT" : "Centro"} (Promedio 13:00 a 20:00 hs)
                   </h4>
                   <div className={expandedChart === 'stabilityChart' ? "h-[500px] w-full" : "h-[320px] w-full"}>
                       <ResponsiveContainer width="100%" height="100%">
@@ -1889,7 +1889,8 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                         <TrendingUp size={20} className="text-indigo-400" />
                         Evolución por Día de la Semana y Mes
                     </h3>
-                    <p className="text-xs text-slate-400 mt-1">Evolución histórica de tiempos de viaje promedio para cada día de la semana agrupado por mes.</p>
+                    <p className="text-xs text-slate-400 mt-1">Evolución histórica de tiempos de viaje promedio para cada día de la semana agrupado por mes a las {String(pulseHour).padStart(2, '0')}:00 hs.</p>
+                    <p className="text-[10px] font-bold text-indigo-400/80 mt-2 uppercase tracking-wider">Orden de las barras: Lun ➔ Mar ➔ Mié ➔ Jue ➔ Vie ➔ Sáb ➔ Dom</p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 mt-2 md:mt-0">
