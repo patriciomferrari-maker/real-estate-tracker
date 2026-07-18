@@ -8,7 +8,7 @@ import {
 } from "recharts";
 import { 
   Activity, Search, BarChart3, Crosshair, Map as MapIcon, Filter, TrendingUp, TrendingDown,
-  Sun, Moon, Zap, Navigation, MapPin, Calendar, Maximize2, Minimize2 
+  Sun, Moon, Zap, Navigation, MapPin, Calendar, Maximize2, Minimize2, Clock 
 } from "lucide-react";
 
 export default function AnalyticsSection({ records, mode = "charts" }: { records: any[], mode?: "charts" | "report" | "real-time" }) {
@@ -396,7 +396,21 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
   // Local state for Weekly Pulse
   const [pulseMacro, setPulseMacro] = useState<string>(allMacros[0] || "Nordelta");
   const [pulseBarrio, setPulseBarrio] = useState<string>(zones.find(z => getMacro(z) === (allMacros[0] || "Nordelta")) || "Todos los Barrios");
-  const [pulseShift, setPulseShift] = useState<"mañana" | "tarde">(defaultShift);
+  const [pulseHour, setPulseHour] = useState<number>(8);
+
+  const availableHours = useMemo(() => {
+    const hoursSet = new Set<number>();
+    enrichedRecords.forEach(r => {
+      hoursSet.add(r.hours);
+    });
+    return Array.from(hoursSet).sort((a, b) => a - b);
+  }, [enrichedRecords]);
+
+  React.useEffect(() => {
+    if (availableHours.length > 0 && !availableHours.includes(pulseHour)) {
+      setPulseHour(availableHours[0]);
+    }
+  }, [availableHours, pulseHour]);
   const [pulseDest, setPulseDest] = useState<"DOT" | "Obelisco">("Obelisco");
   const [expandedChart, setExpandedChart] = useState<string | null>(null);
 
@@ -421,73 +435,59 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       </button>
   );
 
-  const weeklyPulseData = useMemo(() => {
+  const monthlyDOWData = useMemo(() => {
+    const filtered = enrichedRecords.filter(r => {
+      if (pulseDest === "DOT" && !r.isDOT) return false;
+      if (pulseDest === "Obelisco" && r.isDOT) return false;
+      if (pulseMacro !== "Todas las Zonas" && r.macro !== pulseMacro) return false;
+      if (pulseBarrio !== "Todos los Barrios" && r.barrioRaw !== pulseBarrio) return false;
+      if (r.hours !== pulseHour) return false;
+      return true;
+    });
+
+    const groupMap = new Map<string, Map<number, { sum: number; count: number }>>();
+    const monthOrderMap = new Map<string, number>();
+
+    filtered.forEach(r => {
+      const mName = r.mes;
+      monthOrderMap.set(mName, r.month);
+
+      if (!groupMap.has(mName)) {
+        groupMap.set(mName, new Map());
+      }
+      const dayMap = groupMap.get(mName)!;
+      if (!dayMap.has(r.dayOfWeek)) {
+        dayMap.set(r.dayOfWeek, { sum: 0, count: 0 });
+      }
+      const stats = dayMap.get(r.dayOfWeek)!;
+      stats.sum += r.durationMins;
+      stats.count++;
+    });
+
+    const sortedMonths = Array.from(groupMap.keys()).sort((a, b) => {
+      const idxA = monthOrderMap.get(a) || 0;
+      const idxB = monthOrderMap.get(b) || 0;
+      return idxA - idxB;
+    });
+
     const dayNames = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-    const timeline: any[] = [];
     
-    // Generar el esqueleto de la semana (Lunes=0 a Domingo=6)
-    for(let d=0; d<7; d++) {
-        // Ventana Mañana
-        for(let h=6; h<=8; h++) {
-            for(let m of [0, 30]) {
-                const timeStr = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
-                timeline.push({ key: `${dayNames[d]} ${timeStr}`, day: dayNames[d], hour: h, min: m, dayIdx: d, absMin: (d * 24 * 60) + (h * 60) + m, val_s: 0, val_c: 0, duration: 0 });
-            }
+    return sortedMonths.map(mName => {
+      const dayMap = groupMap.get(mName)!;
+      const row: any = { month: mName };
+      
+      dayNames.forEach((dayLabel, dayIdx) => {
+        const stats = dayMap.get(dayIdx);
+        if (stats && stats.count > 0) {
+          row[dayLabel] = Math.round(stats.sum / stats.count);
+        } else {
+          row[dayLabel] = 0;
         }
-        // Mañana termina a las 9:00 exactas
-        timeline.push({ key: `${dayNames[d]} 09:00`, day: dayNames[d], hour: 9, min: 0, dayIdx: d, absMin: (d * 24 * 60) + (9 * 60), val_s: 0, val_c: 0, duration: 0 });
-        
-        // Espaciador para mañana (hueco entre días)
-        timeline.push({ key: `GAP_M_${d}`, isSpacer: true, hour: 10, absMin: (d * 24 * 60) + (10 * 60), val_s: 0, val_c: 0, duration: 0 });
-
-        // Ventana Tarde (16:30 a 19:30)
-        for(let h=16; h<=19; h++) {
-            for(let m of [0, 30]) {
-                if (h === 16 && m === 0) continue; // Empezar 16:30
-                if (h === 19 && m === 30) continue; // Cortar antes
-                const timeStr = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
-                timeline.push({ key: `${dayNames[d]} ${timeStr}`, day: dayNames[d], hour: h, min: m, dayIdx: d, absMin: (d * 24 * 60) + (h * 60) + m, val_s: 0, val_c: 0, duration: 0 });
-            }
-        }
-        timeline.push({ key: `${dayNames[d]} 19:30`, day: dayNames[d], hour: 19, min: 30, dayIdx: d, absMin: (d * 24 * 60) + (19 * 60) + 30, val_s: 0, val_c: 0, duration: 0 });
-        
-        // Espaciador para tarde
-        timeline.push({ key: `GAP_T_${d}`, isSpacer: true, hour: 20, absMin: (d * 24 * 60) + (20 * 60), val_s: 0, val_c: 0, duration: 0 });
-    }
-
-    enrichedRecords.forEach(r => {
-        // No filtramos días aquí para permitir ver el fin de semana si hay datos
-        
-        // Destination Filter
-        if (pulseDest === "DOT" && !r.isDOT) return;
-        if (pulseDest === "Obelisco" && r.isDOT) return;
-
-        // Parent Filters
-        if (pulseMacro !== "Todas las Zonas" && r.macro !== pulseMacro) return;
-        if (pulseBarrio !== "Todos los Barrios" && r.barrioRaw !== pulseBarrio) return;
-
-        // Shift Filter
-        if (pulseShift === "mañana" && r.hours >= 13) return;
-        if (pulseShift === "tarde" && r.hours < 13) return;
-
-        const binMins = Math.floor(r.minutes / 30) * 30;
-        const absMin = (r.dayOfWeek * 24 * 60) + (r.hours * 60) + binMins;
-        
-        const point = timeline.find(t => t.absMin === absMin);
-        if (point) {
-            point.val_s += r.durationMins;
-            point.val_c++;
-            point.duration = Math.round(point.val_s / point.val_c);
-        }
+      });
+      
+      return row;
     });
-
-    // Filtrar timeline para mostrar solo el turno seleccionado + spacers
-    return timeline.filter(t => {
-        if (t.isSpacer) return true;
-        if (pulseShift === "mañana") return t.hour < 13;
-        return t.hour >= 13;
-    });
-  }, [enrichedRecords, pulseMacro, pulseBarrio, pulseShift, pulseDest]);
+  }, [enrichedRecords, pulseDest, pulseMacro, pulseBarrio, pulseHour]);
 
   const highlightStats = useMemo(() => {
       const cats = {
@@ -1773,7 +1773,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                         <TrendingUp size={20} className="text-indigo-400" />
                         Pulso Semanal de Tráfico (Detallado)
                     </h3>
-                    <p className="text-xs text-slate-400 mt-1">Evolución de tiempos de viaje por cada bloque de 30 min de Lunes a Viernes.</p>
+                    <p className="text-xs text-slate-400 mt-1">Evolución histórica de tiempos de viaje promedio para cada día de la semana agrupado por mes.</p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 mt-2 md:mt-0">
@@ -1788,13 +1788,16 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                             <option value="DOT">Shopping DOT</option>
                         </select>
                     </div>
-                    {/* Shift Select */}
+                    {/* Hour Select (Pivot) */}
                     <div className="flex items-center gap-2">
-                        <Filter size={14} className="text-slate-500" />
-                        <select value={pulseShift} onChange={(e) => setPulseShift(e.target.value as any)}
+                        <Clock size={14} className="text-slate-500" />
+                        <select value={pulseHour} onChange={(e) => setPulseHour(Number(e.target.value))}
                                 className="bg-transparent text-[10px] font-black text-slate-300 outline-none border-r border-white/10 pr-2 cursor-pointer uppercase">
-                            <option value="mañana" className="bg-slate-900">Mañana</option>
-                            <option value="tarde" className="bg-slate-900">Tarde</option>
+                            {availableHours.map(h => (
+                                <option key={h} value={h} className="bg-slate-900 text-white">
+                                    {String(h).padStart(2, '0')}:00 hs
+                                </option>
+                            ))}
                         </select>
                     </div>
                     {/* Macro Select */}
@@ -1823,87 +1826,30 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
 
           <div className={expandedChart === 'pulseChart' ? "h-[65vh] w-full mt-4" : "h-[400px] w-full"}>
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={weeklyPulseData} margin={{ top: 25, right: 30, left: 0, bottom: 20 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={true} horizontal={false} />
+                    <BarChart data={monthlyDOWData} margin={{ top: 25, right: 30, left: 0, bottom: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                         <XAxis 
-                            dataKey="key" 
-                            stroke="#475569" 
-                            height={55}
-                            tickFormatter={(v:string) => {
-                                if (v.includes("GAP") || v.includes("SEP")) return "";
-                                const parts = v.split(' ');
-                                if (parts.length < 2) return "";
-                                return parts[1]; // Devolver solo la hora
-                            }}
-                            interval={0}
-                            tick={(props) => {
-                                const { x, y, payload } = props;
-                                if (payload.value.includes("GAP") || payload.value.includes("SEP")) return null;
-                                
-                                const [day, time] = payload.value.split(' ');
-                                const isHourStart = time && time.endsWith(":00");
-                                
-                                // Definir qué hora usamos de centro para el nombre del día
-                                const centerTime = pulseShift === 'mañana' ? '07:30' : '18:00';
-                                const isCenter = time === centerTime;
-
-                                return (
-                                    <g>
-                                        {/* Fila de Horas */}
-                                        {isHourStart && (
-                                            <text x={x} y={(Number(y) || 0) + 12} fill="#64748b" fontSize={9} textAnchor="middle">
-                                                {time}
-                                            </text>
-                                        )}
-                                        
-                                        {/* Fila de Días (Centrada) */}
-                                        {isCenter && (
-                                            <text x={x} y={(Number(y) || 0) + 32} fill="#60a5fa" fontSize={11} fontWeight="black" textAnchor="middle" className="uppercase tracking-widest">
-                                                {day}
-                                            </text>
-                                        )}
-                                    </g>
-                                );
-                            }}
+                            dataKey="month" 
+                            stroke="#64748b" 
+                            fontSize={11}
+                            tick={{ fill: '#94a3b8', fontWeight: 'bold' }}
                         />
                         <YAxis stroke="#475569" fontSize={10} unit="m" />
-
-                        {/* Divisores de días */}
-                        {["Mar", "Mié", "Jue", "Vie"].map(d => (
-                            <ReferenceLine key={d} x={`${d} ${pulseShift === 'mañana' ? '06:00' : '16:30'}`} stroke="rgba(255,255,255,0.3)" strokeDasharray="3 3" />
-                        ))}
-
                         <Tooltip 
-                            cursor={{fill: 'rgba(255,255,255,0.05)'}}
-                            content={({ active, payload }: any) => {
-                                if (active && payload && payload.length) {
-                                    const d = payload[0].payload;
-                                    return (
-                                        <div className="bg-[#0f172a]/95 p-3 rounded-xl border border-slate-700 shadow-2xl backdrop-blur-md">
-                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">{d.day} {d.hour}:{d.min === 0 ? '00' : '30'}</p>
-                                            <p className="text-xl font-black text-white">{d.duration > 0 ? `${d.duration} min` : 'Sin datos'}</p>
-                                            <p className="text-[9px] text-slate-500 italic mt-1 uppercase">
-                                                {shortenBarrioName(pulseBarrio)}
-                                            </p>
-                                        </div>
-                                    );
-                                }
-                                return null;
-                            }}
+                            cursor={{fill: 'rgba(255,255,255,0.03)'}}
+                            contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)' }}
                         />
-                        <Bar 
-                            dataKey="duration" 
-                            fill="#818cf8" 
-                            radius={[4, 4, 0, 0]}
-                            activeBar={{ fill: '#6366f1' }}
-                        >
-                            <LabelList 
-                                dataKey="duration" 
-                                position="top" 
-                                formatter={(v:any) => v > 0 ? `${v}m` : ''} 
-                                style={{ fill: '#6366f1', fontSize: '9px', fontWeight: 'bold' }} 
-                            />
-                        </Bar>
+                        <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '15px' }} />
+                        {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((day, idx) => (
+                            <Bar key={day} dataKey={day} name={day} fill={LINE_COLORS[idx % LINE_COLORS.length]} radius={[4, 4, 0, 0]} barSize={12}>
+                                <LabelList 
+                                    dataKey={day} 
+                                    position="top" 
+                                    formatter={(v) => typeof v === 'number' && v > 0 ? `${v}m` : ''} 
+                                    style={{ fill: '#94a3b8', fontSize: '8px', fontWeight: 'bold' }} 
+                                />
+                            </Bar>
+                        ))}
                     </BarChart>
                 </ResponsiveContainer>
              </div>
