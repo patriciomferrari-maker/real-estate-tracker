@@ -11,6 +11,33 @@ import {
   Sun, Moon, Zap, Navigation, MapPin, Calendar, Maximize2, Minimize2, Clock 
 } from "lucide-react";
 
+const getColorFromScale = (value: number) => {
+  if (value <= 0) return '#64748b'; // default gray
+  
+  // Clamping value between 15 and 75
+  const val = Math.max(15, Math.min(75, value));
+  
+  if (val <= 45) {
+    // Green (15) -> Yellow (45)
+    // Green: rgb(16, 185, 129)
+    // Yellow: rgb(245, 158, 11)
+    const ratio = (val - 15) / 30;
+    const r = Math.round(16 + ratio * (245 - 16));
+    const g = Math.round(185 + ratio * (158 - 185));
+    const b = Math.round(129 + ratio * (11 - 129));
+    return `rgb(${r}, ${g}, ${b})`;
+  } else {
+    // Yellow (45) -> Red (75)
+    // Yellow: rgb(245, 158, 11)
+    // Red: rgb(239, 68, 68)
+    const ratio = (val - 45) / 30;
+    const r = Math.round(245 + ratio * (239 - 245));
+    const g = Math.round(158 + ratio * (68 - 158));
+    const b = Math.round(11 + ratio * (68 - 11));
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+};
+
 export default function AnalyticsSection({ records, mode = "charts" }: { records: any[], mode?: "charts" | "report" | "real-time" }) {
   // Estado original para LineChart
 
@@ -1726,6 +1753,11 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                               <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '15px' }} />
                               {weeklySeriesKeys.map((m, idx) => (
                                   <Bar key={m} dataKey={m} name={m} fill={LINE_COLORS[idx % LINE_COLORS.length]} radius={[4, 4, 0, 0]} barSize={weeklySeriesKeys.length > 5 ? 12 : 24}>
+                                      {weeklyDowData.morning.map((entry: any, index: number) => {
+                                          const value = entry[m] || 0;
+                                          const color = getColorFromScale(value);
+                                          return <Cell key={`cell-morning-${m}-${index}`} fill={color} />;
+                                      })}
                                       <LabelList dataKey={m} position="top" formatter={(v:any) => v > 0 ? `${v}m` : ''} style={{ fill: '#94a3b8', fontSize: '9px', fontWeight: 'bold' }} />
                                   </Bar>
                               ))}
@@ -1752,6 +1784,11 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                               <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '15px' }} />
                               {weeklySeriesKeys.map((m, idx) => (
                                   <Bar key={m} dataKey={m} name={m} fill={LINE_COLORS[idx % LINE_COLORS.length]} radius={[4, 4, 0, 0]} barSize={weeklySeriesKeys.length > 5 ? 12 : 24}>
+                                      {weeklyDowData.afternoon.map((entry: any, index: number) => {
+                                          const value = entry[m] || 0;
+                                          const color = getColorFromScale(value);
+                                          return <Cell key={`cell-afternoon-${m}-${index}`} fill={color} />;
+                                      })}
                                       <LabelList dataKey={m} position="top" formatter={(v:any) => v > 0 ? `${v}m` : ''} style={{ fill: '#94a3b8', fontSize: '9px', fontWeight: 'bold' }} />
                                   </Bar>
                               ))}
@@ -1844,12 +1881,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                             <Bar key={day} dataKey={day} name={day} fill={LINE_COLORS[idx % LINE_COLORS.length]} radius={[4, 4, 0, 0]} barSize={12}>
                                 {monthlyDOWData.map((entry: any, index: number) => {
                                     const value = entry[day] || 0;
-                                    let color = '#64748b'; // default gray
-                                    if (value > 0) {
-                                        if (value < 35) color = '#10b981'; // Green
-                                        else if (value < 50) color = '#f59e0b'; // Yellow
-                                        else color = '#ef4444'; // Red
-                                    }
+                                    const color = getColorFromScale(value);
                                     return <Cell key={`cell-${day}-${index}`} fill={color} />;
                                 })}
                                 <LabelList 
