@@ -1,8 +1,7 @@
 import prisma from "@/lib/prisma"
 import DashboardContainer, { ProcessedRecord } from "@/components/DashboardContainer"
 
-// ISR: Cache on Vercel CDN Edge for 3 minutes for blazing fast sub-100ms load
-export const revalidate = 180;
+export const dynamic = 'force-dynamic';
 
 function formatZoneName(raw: string | null | undefined) {
   if (!raw) return "Desconocido";
