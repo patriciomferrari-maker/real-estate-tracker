@@ -8,13 +8,12 @@ function formatZoneName(raw: string | null | undefined) {
   const str = raw.toLowerCase();
   
   // Barrios específicos
-  if (str.includes("san matias")) return "San Matías";
-  if (str.includes("puertos")) return "Puertos";
-  if (str.includes("canton")) return "El Cantón";
-  if (str.includes("santa ana")) return "Santa Ana";
+  if (str.includes("santa teresa")) return "Santa Teresa";
+  if (str.includes("santa clara")) return "Santa Clara";
+  if (str.includes("comarca")) return "La Comarca";
   if (str.includes("san marco")) return "San Marco";
   if (str.includes("santa barbara")) return "Santa Bárbara";
-  if (str.includes("castaños") || str.includes("castañon")) return "Castaños";
+  if (str.includes("castaños") || str.includes("castañon") || str.includes("castanos")) return "Castaños";
   if (str.includes("glorietas")) return "Glorietas";
   if (str.includes("barbarita")) return "Barbarita";
   if (str.includes("escondida")) return "La Escondida";
@@ -23,7 +22,6 @@ function formatZoneName(raw: string | null | undefined) {
   if (str.includes("encuentro")) return "El Encuentro";
   if (str.includes("altos de pacheco")) return "Altos de Pacheco";
   if (str.includes("buenavista")) return "Buenavista";
-  if (str.includes("sucre") || str.includes("dardo rocha")) return "San Isidro";
 
   // Destinos
   if (str.includes("dot")) return "Shopping DOT";
@@ -38,7 +36,25 @@ export default async function Dashboard() {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const records = await prisma.commuteRecord.findMany({
-      where: { timestamp: { gte: thirtyDaysAgo } },
+      where: { 
+        timestamp: { gte: thirtyDaysAgo },
+        NOT: [
+          { origin: { contains: 'Escobar' } },
+          { destination: { contains: 'Escobar' } },
+          { origin: { contains: 'Canton' } },
+          { destination: { contains: 'Canton' } },
+          { origin: { contains: 'San Matias' } },
+          { destination: { contains: 'San Matias' } },
+          { origin: { contains: 'Puertos' } },
+          { destination: { contains: 'Puertos' } },
+          { origin: { contains: 'Santa Ana' } },
+          { destination: { contains: 'Santa Ana' } },
+          { origin: { contains: 'Sucre' } },
+          { destination: { contains: 'Sucre' } },
+          { origin: { contains: 'Dardo Rocha' } },
+          { destination: { contains: 'Dardo Rocha' } }
+        ]
+      },
       orderBy: { timestamp: 'desc' }
     });
 
@@ -98,20 +114,21 @@ export default async function Dashboard() {
         // Shorten barrio name using the precise logic expected by AnalyticsSection
         const shortenBarrioName = (raw: string) => {
           let friendly = raw;
-          if (friendly.includes("San Matias")) return "San Matías";
-          if (friendly.includes("Puertos")) return "Puertos";
-          if (friendly.includes("Canton")) return "El Cantón";
+          if (friendly.includes("Santa Teresa")) return "Santa Teresa";
+          if (friendly.includes("Santa Clara")) return "Santa Clara";
+          if (friendly.includes("Comarca")) return "La Comarca";
           if (friendly.includes("Liebres")) return "Liebres";
           if (friendly.includes("Boulevares")) return "Boulevares";
           if (friendly.includes("Glorietas")) return "Glorietas";
-          if (friendly.includes("Castaños")) return "Castaños";
-          if (friendly.includes("Santa Barbara")) return "Santa Bárbara";
+          if (friendly.includes("Castaños") || friendly.includes("Casta\uFFFDos")) return "Castaños";
+          if (friendly.includes("Santa Barbara") || friendly.includes("Santa B\uFFFDrbara")) return "Santa Bárbara";
           if (friendly.includes("Barbarita")) return "Barbarita";
           if (friendly.includes("San Marco")) return "San Marco";
-          if (friendly.includes("Santa Ana")) return "Santa Ana";
           if (friendly === "Villa Nueva, Buenos Aires") return "Villa Nueva (Gral)";
           if (friendly.includes("Villa Nueva")) return "Villa Nueva";
           if (friendly.includes("Encuentro")) return "El Encuentro";
+          if (friendly.includes("Altos de Pacheco")) return "Altos de Pacheco";
+          if (friendly.includes("Buenavista")) return "Buenavista";
           if (friendly.includes("Escondida")) return "La Escondida";
           if (friendly.includes("Tigre")) return "Tigre";
           return friendly.split(',')[0].replace("Barrio", "").trim();
@@ -121,11 +138,10 @@ export default async function Dashboard() {
         
         // Get Macro using the precise logic from AnalyticsSection
         const getMacro = (name: string) => {
-          if (name.includes("Escobar") || name.includes("San Matias") || name.includes("Canton") || name.includes("Puertos")) return "Escobar";
-          if (name.includes("Nordelta") || name.includes("Glorietas") || name.includes("Castaños") || name.includes("Santa Barbara") || name.includes("Barbarita")) return "Nordelta";
-          if (name.includes("Villa Nueva") || name.includes("San Marco") || name.includes("Santa Ana")) return "Villa Nueva";
+          if (name.includes("Nordelta") || name.includes("Glorietas") || name.includes("Casta") || name.includes("Santa Barbara") || name.includes("Barbarita")) return "Nordelta";
+          if (name.includes("Villa Nueva") || name.includes("San Marco") || name.includes("Santa Teresa") || name.includes("Santa Clara")) return "Villa Nueva";
           if (name.includes("Tortugas") || name.includes("Liebres") || name.includes("Boulevares")) return "Tortugas";
-          if (name.includes("Pacheco") || name.includes("Benavidez") || name.includes("Encuentro")) return "Benavidez / Pacheco";
+          if (name.includes("Pacheco") || name.includes("Benavidez") || name.includes("Encuentro") || name.includes("Comarca")) return "Benavidez / Pacheco";
           if (name.includes("Tigre") || name.includes("Escondida")) return "Tigre";
           if (name.includes("San Isidro") || name.includes("Buenavista") || name.includes("Lomas")) return "San Isidro / Bancalari";
           return "Otras Zonas";
@@ -168,6 +184,9 @@ export default async function Dashboard() {
     }).filter(r => {
         // Purge generic locations that distort averages
         if (r.barrio === "Villa Nueva (Gral)" || r.barrio === "Villa Nueva") return false;
+        if (r.macro === "Escobar" || r.barrioRaw.includes("Escobar") || r.barrioRaw.includes("San Matias") || r.barrioRaw.includes("Canton") || r.barrioRaw.includes("Puertos")) return false;
+        if (r.barrio === "Santa Ana" || r.barrioRaw.includes("Santa Ana")) return false;
+        if (r.barrio === "San Isidro" || r.barrioRaw.includes("Sucre") || r.barrioRaw.includes("Dardo Rocha")) return false;
         return true;
     });
 

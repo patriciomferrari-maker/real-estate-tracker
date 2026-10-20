@@ -3,22 +3,20 @@ import { scrapeCommuteTime } from "./scrapers/mapsScraper"
 import puppeteer from 'puppeteer'
 
 const ZONES = [
-  "Barrio San Matias, Escobar, Buenos Aires",
-  "Puertos de Escobar, Buenos Aires",
-  "Barrio El Canton, Escobar, Buenos Aires",
-  "Barrio Santa Ana, Villa Nueva, Buenos Aires",
+  "Barrio Santa Teresa, Villa Nueva, Buenos Aires",
+  "Barrio Santa Clara, Villa Nueva, Buenos Aires",
   "Barrio San Marco, Villa Nueva, Buenos Aires",
   "Barrio Santa Barbara, General Pacheco, Buenos Aires",
   "Barrio Castaños, Nordelta, Buenos Aires",
   "Barrio Las Glorietas, Nordelta, Buenos Aires",
   "Barrio Barbarita, General Pacheco, Buenos Aires",
   "Barrio La Escondida, Tigre, Buenos Aires",
-  "Avenida Sucre y Avenida Dardo Rocha, San Isidro, Buenos Aires",
   "Barrio Buenavista, Victoria, San Fernando, Buenos Aires",
   "Barrio Las Liebres, Tortuguitas, Buenos Aires",
   "Barrio Los Boulevares, Tortuguitas, Buenos Aires",
   "Barrio El Encuentro, Benavidez, Buenos Aires",
-  "Barrio Altos de Pacheco, General Pacheco, Buenos Aires"
+  "Barrio Altos de Pacheco, General Pacheco, Buenos Aires",
+  "Barrio La Comarca, Cnel. Artigas, B1617 Gral. Pacheco, Provincia de Buenos Aires"
 ]
 
 const DOT = "Shopping DOT Baires, Vedia, CABA";
