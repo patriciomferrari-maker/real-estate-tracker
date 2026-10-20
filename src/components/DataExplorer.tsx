@@ -15,8 +15,20 @@ export default function DataExplorer({ records }: { records: any[] }) {
   // Helper para normalizar strings (sacar tildes, espacios, etc)
   const clean = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
   
-  // Transform records into tabular data
-  const gridData = records;
+  // Transform records into tabular data with derived display fields
+  const daysES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+  const gridData = useMemo(() => {
+    return records.map(r => ({
+      ...r,
+      diaDeSemana: daysES[r.dayOfWeek],
+      fecha: r.dateStr,
+      año: r.dateStr.split('/')[2],
+      sentido: r.isIda ? 'Ida' : 'Vuelta',
+      destino: r.isDOT ? 'Shopping DOT' : 'Microcentro',
+      tiempo: r.durationMins,
+      zona: r.macro
+    }));
+  }, [records]);
 
    const totalCount = records.length;
    const idaCount = records.filter(r => r.isIda).length;

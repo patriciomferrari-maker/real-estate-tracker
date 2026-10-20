@@ -17,6 +17,8 @@ model CommuteRecord {
   distanceKm    Float
   isPeakHour    Boolean  @default(false)
   notes         String?
+
+  @@index([timestamp(sort: Desc)])
 }
 
 model PropertyListing {

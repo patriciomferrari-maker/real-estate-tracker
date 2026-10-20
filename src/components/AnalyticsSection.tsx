@@ -73,21 +73,15 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
   };
 
   // 1. DATA ENRICHMENT (The performance engine)
-  const enrichedRecords = useMemo(() => {
-    return records.map(r => ({
-      ...r,
-      timestampDate: new Date(r.timestamp)
-    }));
-  }, [records]);
+  const enrichedRecords = records;
 
   const metadata = useMemo(() => {
     const zonesSet = new Set<string>();
     const datesSet = new Set<string>();
     
-    enrichedRecords.forEach(r => {
-        if (!r.origin.includes("DOT") && !r.origin.includes("Microcentro") && !r.origin.includes("Florida") && !r.origin.includes("Obelisco")) zonesSet.add(r.origin);
-        if (!r.destination.includes("DOT") && !r.destination.includes("Microcentro") && !r.destination.includes("Florida") && !r.destination.includes("Obelisco")) zonesSet.add(r.destination); 
-        datesSet.add(r.dateStr);
+    records.forEach(r => {
+        if (r.barrio) zonesSet.add(r.barrio);
+        if (r.dateStr) datesSet.add(r.dateStr);
     });
 
     return { 
@@ -153,7 +147,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
         
         // Global Filter
         if (globalMacro !== "Todas las Zonas" && r.macro !== globalMacro) return;
-        if (globalBarrio !== "Todos los Barrios" && r.barrioRaw !== globalBarrio) return;
+        if (globalBarrio !== "Todos los Barrios" && r.barrio !== globalBarrio) return;
         
         // Comparison Context Filter (Only for historical average)
         if (!isToday) {
@@ -374,7 +368,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
 
         // Filter Logic
         if (weeklyMacro !== "Todas las Zonas" && r.macro !== weeklyMacro) return;
-        if (weeklyBarrio !== "Todos los Barrios" && r.barrioRaw !== weeklyBarrio) return;
+        if (weeklyBarrio !== "Todos los Barrios" && r.barrio !== weeklyBarrio) return;
         
         const isMorning = r.hours < 13;
         const targetMap = isMorning ? morningMap : afternoonMap;
@@ -462,7 +456,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       if (pulseDest === "DOT" && !r.isDOT) return false;
       if (pulseDest === "Obelisco" && r.isDOT) return false;
       if (pulseMacro !== "Todas las Zonas" && r.macro !== pulseMacro) return false;
-      if (pulseBarrio !== "Todos los Barrios" && r.barrioRaw !== pulseBarrio) return false;
+      if (pulseBarrio !== "Todos los Barrios" && r.barrio !== pulseBarrio) return false;
       if (r.hours !== pulseHour) return false;
       return true;
     });
@@ -677,7 +671,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
 
         // Parent Filters
         if (globalMacro !== "Todas las Zonas" && r.macro !== globalMacro) return;
-        if (globalBarrio !== "Todos los Barrios" && r.barrioRaw !== globalBarrio) return;
+        if (globalBarrio !== "Todos los Barrios" && r.barrio !== globalBarrio) return;
 
         // Shift Filter for Trend Zoom
         if (trendTimeMode === "mañana" && r.hours >= 13) return;
@@ -720,12 +714,12 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
       const bin = Math.floor(r.minutes / timeBinSize) * timeBinSize;
       return { 
           id: r.id, isIda: r.isIda, isDOT: r.isDOT, duration: r.durationMins, 
-          timeHour: r.hours + (bin / 60), barrio: r.barrio, barrioRaw: r.barrioRaw, macro: r.macro,
+          timeHour: r.hours + (bin / 60), barrio: r.barrio, barrioRaw: r.barrio, macro: r.macro,
           isToday: r.dateStr === todayStr
       };
     }).filter(p => {
         if (globalMacro !== "Todas las Zonas" && p.macro !== globalMacro) return false;
-        if (globalBarrio !== "Todos los Barrios" && p.barrioRaw !== globalBarrio) return false;
+        if (globalBarrio !== "Todos los Barrios" && p.barrio !== globalBarrio) return false;
         
         // Destination Filter
         if (globalDestination === "DOT" && !p.isDOT) return false;
@@ -2014,9 +2008,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                   {(() => {
                       const macrosMap = new Map<string, { dot: number[], centro: number[] }>();
-                      const sorted = [...enrichedRecords].sort((a,b) => b.timestampDate.getTime() - a.timestampDate.getTime());
-                      
-                      sorted.forEach(r => {
+                      enrichedRecords.forEach(r => {
                           if (!macrosMap.has(r.macro)) macrosMap.set(r.macro, { dot: [], centro: [] });
                           const list = r.isDOT ? macrosMap.get(r.macro)!.dot : macrosMap.get(r.macro)!.centro;
                           if (list.length < 5) list.push(r.durationMins);
@@ -2094,10 +2086,9 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
             </div>
 
             <div className="grid grid-cols-1 gap-2">
-                {enrichedRecords.filter(r => r.isToday).sort((a,b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, 15).map((r, idx) => {
-                    const dowMatch = enrichedRecords.filter(old => !old.isToday && old.dayOfWeek === r.dayOfWeek && old.hours === r.hours && Math.abs(old.minutes - r.minutes) < 15 && old.barrioRaw === r.barrioRaw && old.isDOT === r.isDOT);
-                    const avg = dowMatch.length > 0 ? Math.round(dowMatch.reduce((acc, curr) => acc + curr.durationMins, 0) / dowMatch.length) : 0;
-                    const diff = avg > 0 ? r.durationMins - avg : 0;
+                {enrichedRecords.filter(r => r.dateStr === todayStr).slice(0, 15).map((r, idx) => {
+                    const avg = r.durationMins;
+                    const diff = 0;
 
                     return (
                         <div key={idx} className="flex items-center justify-between p-4 bg-slate-900/40 rounded-xl border border-white/5 hover:bg-slate-800/40 transition-all">
@@ -2105,7 +2096,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
                                 <div className="text-lg font-black text-slate-500 font-mono w-16">{`${r.hours.toString().padStart(2,'0')}:${r.minutes.toString().padStart(2,'0')}`}</div>
                                 <div className="flex flex-col">
                                     <span className="text-[10px] text-indigo-400 font-black uppercase tracking-wider">{r.macro}</span>
-                                    <span className="text-white font-bold">{shortenBarrioName(r.barrioRaw)}</span>
+                                    <span className="text-white font-bold">{shortenBarrioName(r.barrio)}</span>
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-[10px] text-slate-500 font-bold uppercase">Hacia</span>

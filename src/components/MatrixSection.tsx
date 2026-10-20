@@ -2,30 +2,9 @@
 
 import React, { useState, useMemo } from 'react';
 import { Clock, Filter } from 'lucide-react';
+import { ProcessedRecord } from '@/components/DashboardContainer';
 
-interface ProcessedRecord {
-  id: string;
-  timestamp: string;
-  durationMins: number;
-  isIda: boolean;
-  isDOT: boolean;
-  dayOfWeek: number;
-  month: number;
-  macro: string;
-  barrio: string;
-  barrioRaw: string;
-  hours: number;
-  minutes: number;
-  dateStr: string;
-  diaDeSemana: string;
-  fecha: string;
-  año: string;
-  mes: string;
-  sentido: string;
-  destino: string;
-  tiempo: number;
-  zona: string;
-}
+
 
 export default function MatrixSection({ records }: { records: ProcessedRecord[] }) {
   // State for filters
@@ -42,13 +21,13 @@ export default function MatrixSection({ records }: { records: ProcessedRecord[] 
 
   // Extract unique options dynamically
   const uniqueZonas = useMemo(() => {
-    return Array.from(new Set(records.map(r => r.zona))).filter(Boolean).sort();
+    return Array.from(new Set(records.map(r => r.macro))).filter(Boolean).sort();
   }, [records]);
 
   const uniqueBarrios = useMemo(() => {
     // If a zone is selected, we filter barrios inside that zone
     const targetRecords = selectedZona 
-      ? records.filter(r => clean(r.zona) === clean(selectedZona))
+      ? records.filter(r => clean(r.macro) === clean(selectedZona))
       : records;
     return Array.from(new Set(targetRecords.map(r => r.barrio))).filter(Boolean).sort();
   }, [records, selectedZona]);
@@ -70,7 +49,7 @@ export default function MatrixSection({ records }: { records: ProcessedRecord[] 
     return records.filter(r => {
       // Filter by Zone or Barrio
       if (filterType === 'zona') {
-        if (selectedZona && clean(r.zona) !== clean(selectedZona)) return false;
+        if (selectedZona && clean(r.macro) !== clean(selectedZona)) return false;
       } else {
         if (selectedBarrio && clean(r.barrio) !== clean(selectedBarrio)) return false;
       }

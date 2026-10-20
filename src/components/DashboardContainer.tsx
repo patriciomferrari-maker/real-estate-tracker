@@ -7,8 +7,8 @@ import DataExplorer from "@/components/DataExplorer"
 import MatrixSection from "@/components/MatrixSection"
 import { syncAllData } from "@/app/actions"
 
-interface ProcessedRecord {
-  id: string;
+export interface ProcessedRecord {
+  id: number;
   timestamp: string;
   durationMins: number;
   isIda: boolean;
@@ -17,18 +17,10 @@ interface ProcessedRecord {
   month: number;
   macro: string;
   barrio: string;
-  barrioRaw: string;
   hours: number;
   minutes: number;
   dateStr: string;
-  diaDeSemana: string;
-  fecha: string;
-  año: string;
   mes: string;
-  sentido: string;
-  destino: string;
-  tiempo: number;
-  zona: string;
 }
 
 export default function DashboardContainer({ records }: { records: ProcessedRecord[] }) {
@@ -98,7 +90,7 @@ export default function DashboardContainer({ records }: { records: ProcessedReco
           <span>Core Intelligence Engine v4.0</span>
           <div className="flex gap-6">
             <span>{records.length} DATA_POINTS</span>
-            <span className="text-blue-500">Local Daemon: ACTIVE</span>
+            <span className="text-blue-500">Edge Cache: ENABLED</span>
           </div>
       </footer>
     </main>
