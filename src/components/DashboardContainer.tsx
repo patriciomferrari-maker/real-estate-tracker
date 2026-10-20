@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import { TrendingUp, RefreshCw } from "lucide-react"
+import LiveSection from "@/components/LiveSection"
 import AnalyticsSection from "@/components/AnalyticsSection"
 import DataExplorer from "@/components/DataExplorer"
 import MatrixSection from "@/components/MatrixSection"
@@ -24,8 +25,8 @@ export interface ProcessedRecord {
 }
 
 export default function DashboardContainer({ records }: { records: ProcessedRecord[] }) {
-  const [currentTab, setCurrentTab] = useState<string>("graficos");
-  const [visitedTabs, setVisitedTabs] = useState<string[]>(["graficos"]);
+  const [currentTab, setCurrentTab] = useState<string>("ahora");
+  const [visitedTabs, setVisitedTabs] = useState<string[]>(["ahora"]);
 
   const handleTabChange = (tab: string) => {
     setCurrentTab(tab);
@@ -54,16 +55,28 @@ export default function DashboardContainer({ records }: { records: ProcessedReco
       </header>
 
       <nav className="flex gap-2 mb-10 overflow-x-auto pb-2 scrollbar-hide">
-        {["graficos", "matriz", "datos"].map(t => (
+        {["ahora", "graficos", "matriz", "datos"].map(t => (
           <button 
             key={t} 
             onClick={() => handleTabChange(t)} 
-            className={`px-5 py-2.5 rounded-xl text-[10px] font-black transition-all ${currentTab === t ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-500 hover:text-slate-300'}`}
+            className={`px-5 py-2.5 rounded-xl text-[10px] font-black transition-all flex items-center gap-2 ${
+              currentTab === t 
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
+                : 'bg-white/5 text-slate-500 hover:text-slate-300'
+            }`}
           >
+            {t === 'ahora' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
             {t.replace('-', ' ').toUpperCase()}
           </button>
         ))}
       </nav>
+
+      {/* Tab: Ahora */}
+      {visitedTabs.includes('ahora') && (
+        <div style={{ display: currentTab === 'ahora' ? 'block' : 'none' }}>
+          <LiveSection records={records} />
+        </div>
+      )}
 
       {/* Tab: Graficos */}
       {visitedTabs.includes('graficos') && (
@@ -90,7 +103,7 @@ export default function DashboardContainer({ records }: { records: ProcessedReco
           <span>Core Intelligence Engine v4.0</span>
           <div className="flex gap-6">
             <span>{records.length} DATA_POINTS</span>
-            <span className="text-blue-500">Edge Cache: ENABLED</span>
+            <span className="text-emerald-400">Live Traffic: ACTIVE</span>
           </div>
       </footer>
     </main>
