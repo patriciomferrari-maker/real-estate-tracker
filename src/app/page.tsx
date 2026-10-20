@@ -3,6 +3,24 @@ import DashboardContainer, { ProcessedRecord } from "@/components/DashboardConta
 
 export const dynamic = 'force-dynamic';
 
+const ACTIVE_BARRIOS = new Set([
+  "Castaños",
+  "Las Glorietas",
+  "Santa Bárbara",
+  "Barbarita",
+  "San Marco",
+  "Santa Teresa",
+  "Santa Clara",
+  "El Encuentro",
+  "Altos de Pacheco",
+  "La Comarca",
+  "Las Liebres",
+  "Los Boulevares",
+  "La Escondida",
+  "Buenavista"
+]);
+
+
 function formatZoneName(raw: string | null | undefined) {
   if (!raw) return "Desconocido";
   const str = raw.toLowerCase();
@@ -117,8 +135,7 @@ export default async function Dashboard() {
           mes: mesStr
         };
     }).filter(r => {
-        if (r.barrio === "Villa Nueva (Gral)" || r.barrio === "Villa Nueva" || r.barrio === "Desconocido") return false;
-        return true;
+        return ACTIVE_BARRIOS.has(r.barrio);
     });
 
     return <DashboardContainer records={preEnrichedRecords} />;

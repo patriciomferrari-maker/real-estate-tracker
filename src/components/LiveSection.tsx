@@ -85,16 +85,8 @@ export default function LiveSection({ records }: LiveSectionProps) {
       }
     });
 
-    // Detectar todas las macro-zonas únicas
-    const detectedMacros = Array.from(new Set(records.map(r => r.macro)));
-    const sortedMacros = detectedMacros.sort((a, b) => {
-      const idxA = macroOrder.indexOf(a);
-      const idxB = macroOrder.indexOf(b);
-      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-      if (idxA !== -1) return -1;
-      if (idxB !== -1) return 1;
-      return a.localeCompare(b);
-    });
+    // Solo incluir las 6 macro-zonas activas
+    const sortedMacros = macroOrder;
 
     return sortedMacros.map(macro => {
       // Barrios en esta macro
@@ -142,7 +134,7 @@ export default function LiveSection({ records }: LiveSectionProps) {
         macroDotAvg,
         macroCentroAvg
       };
-    });
+    }).filter(group => group.barrios.length > 0);
   }, [records, isIdaMode, historicalAverages]);
 
   // Labels dinámicos solicitados por el usuario
