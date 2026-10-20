@@ -1773,7 +1773,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
               {/* Morning DOW */}
               <div className="space-y-6 flex flex-col">
                   <h4 className="text-sm font-black text-indigo-400 uppercase tracking-widest text-center flex items-center justify-center gap-2 py-1 bg-indigo-500/5 rounded-full">
-                    <Sun size={14} /> Mañana: Ida al {weeklyDest === "DOT" ? "DOT" : "Centro"} (Promedio 06:00 a 12:00 hs)
+                    <Sun size={14} /> Mañana: Ida al {weeklyDest === "DOT" ? "DOT" : "Centro"} (Promedio 06:00 a 10:00 hs)
                   </h4>
                   <div className={expandedChart === 'stabilityChart' ? "h-[500px] w-full" : "h-[320px] w-full"}>
                       <ResponsiveContainer width="100%" height="100%">
@@ -1823,7 +1823,7 @@ export default function AnalyticsSection({ records, mode = "charts" }: { records
               {/* Afternoon DOW */}
               <div className="space-y-6 flex flex-col">
                   <h4 className="text-sm font-black text-amber-400 uppercase tracking-widest text-center flex items-center justify-center gap-2 py-1 bg-amber-500/5 rounded-full">
-                    <Moon size={14} /> Tarde: Ida al {weeklyDest === "DOT" ? "DOT" : "Centro"} (Promedio 13:00 a 20:00 hs)
+                    <Moon size={14} /> Tarde: Ida al {weeklyDest === "DOT" ? "DOT" : "Centro"} (Promedio 15:00 a 20:30 hs)
                   </h4>
                   <div className={expandedChart === 'stabilityChart' ? "h-[500px] w-full" : "h-[320px] w-full"}>
                       <ResponsiveContainer width="100%" height="100%">
