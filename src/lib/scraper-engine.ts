@@ -1,6 +1,9 @@
 import prisma from "./prisma"
 import { scrapeCommuteTime } from "./scrapers/mapsScraper"
 import puppeteer from 'puppeteer'
+import os from 'os'
+import path from 'path'
+import fs from 'fs'
 
 const ZONES = [
   "Barrio Santa Teresa, Villa Nueva, Buenos Aires",
@@ -24,12 +27,23 @@ const MICROCENTRO = "Obelisco, CABA";
 const DESTINATIONS = [DOT, MICROCENTRO];
 
 export async function runFullSync() {
-  const browser = await puppeteer.launch({ 
-    headless: true,
-    args: ['--no-sandbox']
-  });
-  
+  const runId = Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+  const tempProfileDir = path.join(os.tmpdir(), `commute_chrome_${runId}`);
+
+  let browser;
   try {
+    browser = await puppeteer.launch({ 
+      headless: true,
+      userDataDir: tempProfileDir,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--no-first-run',
+        '--disable-gpu'
+      ]
+    });
+
     const page = await browser.newPage();
     const now = new Date();
     const argHour = (now.getUTCHours() - 3 + 24) % 24; 
@@ -43,26 +57,43 @@ export async function runFullSync() {
          const runDest = isMorning ? dest : zone;
 
          console.log(`[Scraper Engine] ${isMorning ? 'IDA' : 'VUELTA'}: ${runOrigin.split(',')[0]} -> ${runDest.split(',')[0]} (Hora ARG: ${argHour})`);
-         const { durationMins, distanceKm } = await scrapeCommuteTime(runOrigin, runDest, page);
-         
-         if (durationMins > 0) {
-            await prisma.commuteRecord.create({
-              data: {
-                origin: runOrigin,
-                destination: runDest,
-                durationMins,
-                distanceKm,
-                isPeakHour
-              }
-            });
+         try {
+           const { durationMins, distanceKm } = await scrapeCommuteTime(runOrigin, runDest, page);
+           
+           if (durationMins > 0) {
+              await prisma.commuteRecord.create({
+                data: {
+                  origin: runOrigin,
+                  destination: runDest,
+                  durationMins,
+                  distanceKm,
+                  isPeakHour
+                }
+              });
+           }
+         } catch (scrapeErr) {
+           console.error(`[Scraper Error ${runOrigin} -> ${runDest}]:`, scrapeErr);
          }
-         await new Promise(r => setTimeout(r, 1500));
+         await new Promise(r => setTimeout(r, 1200));
       }
     }
 
   } catch (err) {
     console.error("[Scraper Engine Error]:", err);
   } finally {
-    await browser.close();
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeErr) {
+        console.error("[Scraper Engine] Error al cerrar browser:", closeErr);
+      }
+    }
+    try {
+      if (fs.existsSync(tempProfileDir)) {
+        fs.rmSync(tempProfileDir, { recursive: true, force: true });
+      }
+    } catch (rmErr) {
+      // Ignorar lock temporal de Windows al borrar
+    }
   }
 }
