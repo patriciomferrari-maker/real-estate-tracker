@@ -1,4 +1,4 @@
-import cron from "node-cron";
+﻿import cron from "node-cron";
 import { runFullSync } from "./src/lib/scraper-engine";
 
 // Blindaje contra excepciones no capturadas en procesos asíncronos en Windows
@@ -9,7 +9,7 @@ process.on('uncaughtException', (err) => {
   console.error('[DAEMON] Uncaught Exception:', err);
 });
 
-console.log("🚦 Arrancando Servidor de Automatización (Daemon v2) 🚦");
+console.log("🚀 Arrancando Servidor de Automatización (Daemon v2) 🚀");
 console.log("- Horarios configurados: Lun-Dom, Mañana: 06:00 a 10:00 hs | Tarde: 15:00 a 20:30 hs");
 console.log("- Corriendo ahora motor independiente del Dashboard.");
 
@@ -52,16 +52,17 @@ cron.schedule("*/15 15-20 * * *", async () => {
   await executeCycle("Tarde");
 });
 
-// Ejecución inmediata si estamos en franja
+// Ejecución inmediata si estamos en franja o si se pasa flag --now
+const forceNow = process.argv.includes('--now');
 const now = new Date();
 const currentArgHour = (now.getUTCHours() - 3 + 24) % 24;
 const currentMinute = now.getUTCMinutes();
 const inMorning = (currentArgHour >= 6 && currentArgHour < 10) || (currentArgHour === 10 && currentMinute === 0);
 const inAfternoon = (currentArgHour >= 15 && currentArgHour < 20) || (currentArgHour === 20 && currentMinute <= 30);
 
-if (inMorning || inAfternoon) {
-    console.log("⚡ Estamos en franja horaria. Iniciando primer ciclo inmediato...");
-    executeCycle(inMorning ? "Mañana" : "Tarde");
+if (inMorning || inAfternoon || forceNow) {
+    console.log("🚀 Iniciando ciclo inmediato...");
+    executeCycle(inMorning ? "Mañana" : (inAfternoon ? "Tarde" : "Manual"));
 }
 
 console.log("Esperando cron...\n");
