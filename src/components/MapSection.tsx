@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { ProcessedRecord } from '@/components/DashboardContainer'
@@ -10,18 +10,20 @@ import {
   Building2, 
   Clock, 
   Calendar, 
-  Filter, 
   Sparkles, 
   TrendingUp, 
   TrendingDown, 
   Minus, 
   Layers,
-  ChevronRight,
   RotateCcw,
   Info,
   ZoomIn,
-  Eye,
-  SlidersHorizontal
+  Sun,
+  Moon,
+  BarChart3,
+  CheckCircle2,
+  ChevronRight,
+  ArrowUpDown
 } from 'lucide-react'
 
 export interface BarrioGeo {
@@ -49,11 +51,10 @@ export const BARRIOS_GEO: Record<string, BarrioGeo> = {
   "Buenavista": { name: "Buenavista", macro: "San Isidro / Bancalari", lat: -34.4820, lng: -58.5480 }
 }
 
-// Polígonos de delimitación para resaltar visualmente cada zona en el mapa
 export const MACRO_ZONES_POLYGONS: Record<string, { label: string; color: string; center: [number, number]; coords: [number, number][] }> = {
   "Nordelta": {
     label: "Zona Nordelta",
-    color: "#3b82f6", // Azul
+    color: "#3b82f6",
     center: [-34.425, -58.647],
     coords: [
       [-34.398, -58.672],
@@ -65,7 +66,7 @@ export const MACRO_ZONES_POLYGONS: Record<string, { label: string; color: string
   },
   "Villa Nueva": {
     label: "Zona Villa Nueva",
-    color: "#a855f7", // Violeta
+    color: "#a855f7",
     center: [-34.370, -58.697],
     coords: [
       [-34.352, -58.718],
@@ -76,7 +77,7 @@ export const MACRO_ZONES_POLYGONS: Record<string, { label: string; color: string
   },
   "Benavidez / Pacheco": {
     label: "Zona Benavídez / Pacheco",
-    color: "#06b6d4", // Cian
+    color: "#06b6d4",
     center: [-34.438, -58.666],
     coords: [
       [-34.395, -58.705],
@@ -87,7 +88,7 @@ export const MACRO_ZONES_POLYGONS: Record<string, { label: string; color: string
   },
   "Tortugas": {
     label: "Zona Tortugas",
-    color: "#f59e0b", // Ámbar
+    color: "#f59e0b",
     center: [-34.458, -58.744],
     coords: [
       [-34.442, -58.765],
@@ -98,7 +99,7 @@ export const MACRO_ZONES_POLYGONS: Record<string, { label: string; color: string
   },
   "Tigre": {
     label: "Zona Tigre",
-    color: "#10b981", // Esmeralda
+    color: "#10b981",
     center: [-34.420, -58.590],
     coords: [
       [-34.402, -58.612],
@@ -109,7 +110,7 @@ export const MACRO_ZONES_POLYGONS: Record<string, { label: string; color: string
   },
   "San Isidro / Bancalari": {
     label: "Zona Bancalari / Buenavista",
-    color: "#ec4899", // Rosa
+    color: "#ec4899",
     center: [-34.482, -58.548],
     coords: [
       [-34.468, -58.568],
@@ -155,10 +156,9 @@ interface MapSectionProps {
 }
 
 export default function MapSection({ records }: MapSectionProps) {
-  // Capa base limpia y minimalista sin ruido visual (por defecto "oscuro")
   const [activeTileKey, setActiveTileKey] = useState<'oscuro' | 'claro' | 'calles' | 'satelite'>('oscuro')
 
-  // Filtros interactivos
+  // Filtros del Mapa
   const [destFilter, setDestFilter] = useState<'dot' | 'centro' | 'ambos'>('ambos')
   const [sentidoFilter, setSentidoFilter] = useState<'ida' | 'vuelta' | 'ambos'>('ida')
   const [dayFilter, setDayFilter] = useState<'todos' | 'habiles' | 'finde' | '0' | '1' | '2' | '3' | '4' | '5' | '6'>('habiles')
@@ -167,7 +167,7 @@ export default function MapSection({ records }: MapSectionProps) {
   const [monthFilter, setMonthFilter] = useState<string>('todos')
   const [macroFilter, setMacroFilter] = useState<string>('todas')
 
-  // Barrio seleccionado para ficha de inspección
+  // Barrio seleccionado para la ficha de inspección debajo del mapa
   const [selectedBarrio, setSelectedBarrio] = useState<string>('Santa Teresa')
 
   // Referencias para Leaflet
@@ -189,7 +189,13 @@ export default function MapSection({ records }: MapSectionProps) {
 
   const macroList = useMemo(() => Object.keys(MACRO_ZONES_POLYGONS), [])
 
-  // Filtrado reactivo de records
+  // Lista única de barrios para los selectores
+  const uniqueBarriosList = useMemo(() => {
+    const list = Object.values(BARRIOS_GEO).map(b => b.name)
+    return Array.from(new Set(list)).sort()
+  }, [])
+
+  // Filtrado reactivo de records para el mapa
   const filteredRecords = useMemo(() => {
     return records.filter(r => {
       if (destFilter === 'dot' && !r.isDOT) return false
@@ -215,7 +221,16 @@ export default function MapSection({ records }: MapSectionProps) {
     })
   }, [records, destFilter, sentidoFilter, dayFilter, timePreset, selectedHour, monthFilter, macroFilter])
 
-  // Estadísticas globales e históricas por barrio
+  // Helper de colores de tráfico
+  const getTrafficColor = (mins: number | null) => {
+    if (mins === null) return { bg: '#475569', text: '#94a3b8', badgeClass: 'bg-slate-800 text-slate-400 border-slate-700' }
+    if (mins <= 42) return { bg: '#10b981', text: '#34d399', badgeClass: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' }
+    if (mins <= 56) return { bg: '#f59e0b', text: '#fbbf24', badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/40' }
+    if (mins <= 72) return { bg: '#f97316', text: '#fb923c', badgeClass: 'bg-orange-500/20 text-orange-400 border-orange-500/40' }
+    return { bg: '#ef4444', text: '#f87171', badgeClass: 'bg-red-500/20 text-red-400 border-red-500/40' }
+  }
+
+  // Estadísticas para los marcadores en el mapa
   const barrioStats = useMemo(() => {
     const overallMap = new Map<string, { sum: number; count: number }>()
     records.forEach(r => {
@@ -232,86 +247,122 @@ export default function MapSection({ records }: MapSectionProps) {
       }
     })
 
-    const filteredMap = new Map<string, { 
-      sum: number
-      count: number
-      min: number
-      max: number
-      hoursDist: Map<number, { sum: number; count: number }> 
-    }>()
-
+    const filteredMap = new Map<string, { sum: number; count: number }>()
     filteredRecords.forEach(r => {
-      if (!filteredMap.has(r.barrio)) {
-        filteredMap.set(r.barrio, {
-          sum: 0,
-          count: 0,
-          min: 999,
-          max: 0,
-          hoursDist: new Map()
-        })
-      }
+      if (!filteredMap.has(r.barrio)) filteredMap.set(r.barrio, { sum: 0, count: 0 })
       const it = filteredMap.get(r.barrio)!
       it.sum += r.durationMins
       it.count++
-      if (r.durationMins < it.min) it.min = r.durationMins
-      if (r.durationMins > it.max) it.max = r.durationMins
-
-      if (!it.hoursDist.has(r.hours)) it.hoursDist.set(r.hours, { sum: 0, count: 0 })
-      const h = it.hoursDist.get(r.hours)!
-      h.sum += r.durationMins
-      h.count++
     })
 
-    const statsMap: Record<string, {
-      avg: number | null
-      delta: number | null
-      min: number | null
-      max: number | null
-      count: number
-      overallAvg: number | null
-      hourlyAvg: { hour: number; avg: number }[]
-    }> = {}
-
+    const statsMap: Record<string, { avg: number | null; delta: number | null }> = {}
     Object.keys(BARRIOS_GEO).forEach(bName => {
       const geo = BARRIOS_GEO[bName]
       const f = filteredMap.get(bName) || filteredMap.get(geo.name)
       const o = overallMap.get(bName) || overallMap.get(geo.name)
-
       const overallAvg = o && o.count > 0 ? Math.round(o.sum / o.count) : null
       const avg = f && f.count > 0 ? Math.round(f.sum / f.count) : null
       const delta = avg && overallAvg ? avg - overallAvg : null
-
-      const hourlyAvg: { hour: number; avg: number }[] = []
-      if (f) {
-        for (let h = 6; h <= 21; h++) {
-          const item = f.hoursDist.get(h)
-          if (item && item.count > 0) {
-            hourlyAvg.push({ hour: h, avg: Math.round(item.sum / item.count) })
-          }
-        }
-      }
-
-      statsMap[bName] = {
-        avg,
-        delta,
-        min: f && f.count > 0 ? f.min : null,
-        max: f && f.count > 0 ? f.max : null,
-        count: f ? f.count : 0,
-        overallAvg,
-        hourlyAvg
-      }
+      statsMap[bName] = { avg, delta }
     })
-
     return statsMap
   }, [records, filteredRecords, destFilter, sentidoFilter])
 
-  // Helper de colores de tráfico (Fluido, Normal, Congestión, Demora Alta)
-  const getTrafficColor = (mins: number | null) => {
-    if (mins === null) return { bg: '#475569', border: '#64748b', text: '#94a3b8', badgeClass: 'bg-slate-800 text-slate-400 border-slate-700' }
-    if (mins <= 42) return { bg: '#10b981', border: '#059669', text: '#34d399', badgeClass: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' }
-    if (mins <= 56) return { bg: '#f59e0b', border: '#d97706', text: '#fbbf24', badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/40' }
-    if (mins <= 72) return { bg: '#f97316', border: '#ea580c', text: '#fb923c', badgeClass: 'bg-orange-500/20 text-orange-400 border-orange-500/40' }
-    return { bg: '#ef4444', border: '#dc2626', text: '#f87171', badgeClass: 'bg-red-500/20 text-red-400 border-red-500/40' }
+  // DESGLOSE COMPLETO Y PROFUNDO PARA EL BARRIO SELECCIONADO (FICHA DE INSPECCIÓN)
+  const selectedBarrioDetails = useMemo(() => {
+    const targetName = selectedBarrio
+    const bRecords = records.filter(r => r.barrio === targetName)
+
+    const calcSubset = (list: ProcessedRecord[]) => {
+      if (list.length === 0) return { avg: null, min: null, max: null, count: 0 }
+      const sum = list.reduce((a, b) => a + b.durationMins, 0)
+      const min = Math.min(...list.map(r => r.durationMins))
+      const max = Math.max(...list.map(r => r.durationMins))
+      return { avg: Math.round(sum / list.length), min, max, count: list.length }
+    }
+
+    // 1. Mañana (Ida a CABA): DOT vs Centro (06 a 11 hs)
+    const mananaDOT = calcSubset(bRecords.filter(r => r.isIda && r.isDOT && r.hours >= 6 && r.hours <= 11))
+    const mananaCentro = calcSubset(bRecords.filter(r => r.isIda && !r.isDOT && r.hours >= 6 && r.hours <= 11))
+
+    // 2. Tarde (Vuelta a Barrios): DOT vs Centro (14 a 21 hs)
+    const tardeDOT = calcSubset(bRecords.filter(r => !r.isIda && r.isDOT && r.hours >= 14 && r.hours <= 21))
+    const tardeCentro = calcSubset(bRecords.filter(r => !r.isIda && !r.isDOT && r.hours >= 14 && r.hours <= 21))
+
+    // 3. Desglose por Día de la Semana (0=Lun ... 6=Dom)
+    const daysName = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+    const dayBreakdown = daysName.map((name, idx) => {
+      const dRecords = bRecords.filter(r => r.dayOfWeek === idx)
+      const stats = calcSubset(dRecords)
+      return { name, dayIndex: idx, ...stats }
+    })
+
+    // 4. Desglose por Mes
+    const monthsOrder = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+    const availableMesesForBarrio = Array.from(new Set(bRecords.map(r => r.mes))).filter(Boolean)
+      .sort((a, b) => monthsOrder.indexOf(a) - monthsOrder.indexOf(b))
+
+    const monthBreakdown = availableMesesForBarrio.map(mesName => {
+      const mRecords = bRecords.filter(r => r.mes === mesName)
+      const stats = calcSubset(mRecords)
+      return { name: mesName, ...stats }
+    })
+
+    // 5. Curva Horaria (6 a 21 hs)
+    const hourlyCurve: { hour: number; avg: number; count: number }[] = []
+    for (let h = 6; h <= 21; h++) {
+      const hRecords = bRecords.filter(r => r.hours === h)
+      if (hRecords.length > 0) {
+        const stats = calcSubset(hRecords)
+        hourlyCurve.push({ hour: h, avg: stats.avg!, count: stats.count })
+      }
+    }
+
+    // Promedio general de este barrio
+    const overall = calcSubset(bRecords)
+
+    return {
+      barrio: targetName,
+      macro: BARRIOS_GEO[targetName]?.macro || 'Zona Norte',
+      overall,
+      mananaDOT,
+      mananaCentro,
+      tardeDOT,
+      tardeCentro,
+      dayBreakdown,
+      monthBreakdown,
+      hourlyCurve
+    }
+  }, [records, selectedBarrio])
+
+  // Handlers para interactuar con el mapa
+  const handleMacroChange = (macroKey: string) => {
+    setMacroFilter(prev => prev === macroKey ? 'todas' : macroKey)
+    const zone = MACRO_ZONES_POLYGONS[macroKey]
+    if (zone && mapInstanceRef.current) {
+      mapInstanceRef.current.flyTo(zone.center, 12.5, { duration: 0.6 })
+    }
+  }
+
+  const handleResetView = () => {
+    if (mapInstanceRef.current) {
+      const L = (window as any).L
+      if (L) {
+        const bounds = L.latLngBounds([
+          [-34.615, -58.760],
+          [-34.350, -58.370]
+        ])
+        mapInstanceRef.current.fitBounds(bounds, { padding: [35, 35] })
+      }
+    }
+  }
+
+  const handleSelectBarrio = (barrioName: string) => {
+    setSelectedBarrio(barrioName)
+    const geo = BARRIOS_GEO[barrioName]
+    if (geo && mapInstanceRef.current) {
+      mapInstanceRef.current.flyTo([geo.lat, geo.lng], 13.5, { duration: 0.6 })
+    }
   }
 
   // 1. CARGA DINÁMICA DE ASSETS LEAFLET
@@ -344,9 +395,7 @@ export default function MapSection({ records }: MapSectionProps) {
           })
         }
 
-        if (isMounted) {
-          setMapLoaded(true)
-        }
+        if (isMounted) setMapLoaded(true)
       } catch (err) {
         console.error('Error loading Leaflet:', err)
         if (isMounted) setLeafletError(true)
@@ -380,14 +429,13 @@ export default function MapSection({ records }: MapSectionProps) {
 
     L.control.zoom({ position: 'bottomright' }).addTo(map)
 
-    map.fitBounds(bounds, { padding: [30, 30] })
+    map.fitBounds(bounds, { padding: [35, 35] })
 
     const tileConfig = TILE_LAYERS[activeTileKey]
-    const tileLayer = L.tileLayer(tileConfig.url, {
+    tileLayerRef.current = L.tileLayer(tileConfig.url, {
       maxZoom: tileConfig.maxZoom,
       attribution: tileConfig.attribution
     }).addTo(map)
-    tileLayerRef.current = tileLayer
 
     mapInstanceRef.current = map
 
@@ -423,13 +471,12 @@ export default function MapSection({ records }: MapSectionProps) {
     map.invalidateSize()
   }, [activeTileKey])
 
-  // 4. DIBUJO DE POLÍGONOS DE ZONAS RESALTADAS, BARRIOS Y RUTAS
+  // 4. POLÍGONOS DE ZONAS, BARRIOS Y LÍNEAS DE RUTA
   useEffect(() => {
     const map = mapInstanceRef.current
     const L = (window as any).L
     if (!map || !L) return
 
-    // Limpiar capas previas
     zonesLayerRef.current.forEach(z => z.remove())
     zonesLayerRef.current = []
     markersRef.current.forEach(m => m.remove())
@@ -437,17 +484,11 @@ export default function MapSection({ records }: MapSectionProps) {
     linesRef.current.forEach(l => l.remove())
     linesRef.current = []
 
-    // A. RESALTAR POLÍGONOS DE CADA ZONA GEOGRÁFICA
+    // Polígonos de zonas
     Object.keys(MACRO_ZONES_POLYGONS).forEach(macroKey => {
       const zone = MACRO_ZONES_POLYGONS[macroKey]
       const isMacroActive = macroFilter === 'todas' || macroFilter === macroKey
 
-      // Calcular promedio de la zona para el tooltip
-      const barriosInZone = Object.values(BARRIOS_GEO).filter(b => b.macro === macroKey)
-      const zoneAvgs = barriosInZone.map(b => barrioStats[b.name]?.avg).filter((v): v is number => v !== null)
-      const zoneProm = zoneAvgs.length > 0 ? Math.round(zoneAvgs.reduce((a, b) => a + b, 0) / zoneAvgs.length) : null
-
-      // Polígono sombreado con borde brillante
       const polygon = L.polygon(zone.coords, {
         color: zone.color,
         fillColor: zone.color,
@@ -456,27 +497,17 @@ export default function MapSection({ records }: MapSectionProps) {
         dashArray: isMacroActive ? '6, 6' : undefined
       }).addTo(map)
 
-      polygon.bindTooltip(`
-        <div style="font-weight:900;color:${zone.color};font-size:12px;">
-          ${zone.label}
-        </div>
-        <div style="color:#ffffff;font-size:11px;">
-          Promedio de zona: ${zoneProm !== null ? `${zoneProm} min` : 'Sin datos'}
-        </div>
-      `, { sticky: true, opacity: 0.95 })
-
       polygon.on('click', () => {
         handleMacroChange(macroKey)
       })
 
       zonesLayerRef.current.push(polygon)
 
-      // Etiqueta flotante en el centro de la macro-zona
       const zoneLabelIcon = L.divIcon({
         className: 'zone-label-' + macroKey.replace(/[^a-zA-Z0-9]/g, '-'),
         html: `
           <div style="
-            background:rgba(15, 23, 42, 0.85);
+            background:rgba(15, 23, 42, 0.9);
             border:1px solid ${zone.color};
             color:${zone.color};
             padding:2px 8px;
@@ -501,26 +532,11 @@ export default function MapSection({ records }: MapSectionProps) {
       zonesLayerRef.current.push(zoneLabelMarker)
     })
 
-    // B. DESTINOS EN CABA: SHOPPING DOT Y OBELISCO
-    // Shopping DOT Baires
+    // Destinos: Shopping DOT y Microcentro
     const dotIcon = L.divIcon({
       className: 'dest-dot-marker',
       html: `
-        <div style="
-          display:flex;
-          align-items:center;
-          gap:6px;
-          background:#020617;
-          border:2px solid #3b82f6;
-          color:#60a5fa;
-          padding:6px 12px;
-          border-radius:24px;
-          font-weight:900;
-          font-size:11px;
-          box-shadow:0 0 20px rgba(59,130,246,0.7);
-          white-space:nowrap;
-          cursor:pointer;
-        ">
+        <div style="display:flex;align-items:center;gap:6px;background:#020617;border:2px solid #3b82f6;color:#60a5fa;padding:6px 12px;border-radius:24px;font-weight:900;font-size:11px;box-shadow:0 0 20px rgba(59,130,246,0.7);white-space:nowrap;cursor:pointer;">
           <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#3b82f6;box-shadow:0 0 10px #3b82f6;"></span>
           Shopping DOT Baires
         </div>
@@ -532,25 +548,10 @@ export default function MapSection({ records }: MapSectionProps) {
     dotMarker.bindPopup('<b>Shopping DOT Baires</b><br/>Panamericana y General Paz (Saavedra)')
     markersRef.current.push(dotMarker)
 
-    // Microcentro (Obelisco)
     const centroIcon = L.divIcon({
       className: 'dest-centro-marker',
       html: `
-        <div style="
-          display:flex;
-          align-items:center;
-          gap:6px;
-          background:#020617;
-          border:2px solid #a855f7;
-          color:#c084fc;
-          padding:6px 12px;
-          border-radius:24px;
-          font-weight:900;
-          font-size:11px;
-          box-shadow:0 0 20px rgba(168,85,247,0.7);
-          white-space:nowrap;
-          cursor:pointer;
-        ">
+        <div style="display:flex;align-items:center;gap:6px;background:#020617;border:2px solid #a855f7;color:#c084fc;padding:6px 12px;border-radius:24px;font-weight:900;font-size:11px;box-shadow:0 0 20px rgba(168,85,247,0.7);white-space:nowrap;cursor:pointer;">
           <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#a855f7;box-shadow:0 0 10px #a855f7;"></span>
           Microcentro (Obelisco)
         </div>
@@ -562,7 +563,7 @@ export default function MapSection({ records }: MapSectionProps) {
     centroMarker.bindPopup('<b>Microcentro (Obelisco)</b><br/>Av. 9 de Julio y Corrientes')
     markersRef.current.push(centroMarker)
 
-    // C. BARRIOS RESALTADOS INDIVIDUALMENTE CON HUELLA CIRCULAR Y PINES DESTACADOS
+    // Barrios individuales
     const uniqueBarrios = Object.values(BARRIOS_GEO).filter((b, idx, self) => 
       self.findIndex(t => t.name === b.name) === idx
     )
@@ -577,7 +578,7 @@ export default function MapSection({ records }: MapSectionProps) {
       const zoneInfo = MACRO_ZONES_POLYGONS[barrio.macro]
       const zoneColor = zoneInfo ? zoneInfo.color : '#3b82f6'
 
-      // Huella física del barrio (Círculo sombreado que resalta el predio)
+      // Huella física circular
       const footprintCircle = L.circle([barrio.lat, barrio.lng], {
         radius: isSelected ? 800 : 600,
         color: isSelected ? '#ffffff' : zoneColor,
@@ -587,7 +588,7 @@ export default function MapSection({ records }: MapSectionProps) {
       }).addTo(map)
       markersRef.current.push(footprintCircle)
 
-      // Marcador prominente del barrio con demora y nombre
+      // Marcador prominente del barrio
       const markerHtml = `
         <div style="
           display:flex;
@@ -648,25 +649,8 @@ export default function MapSection({ records }: MapSectionProps) {
         map.flyTo([barrio.lat, barrio.lng], 13.5, { duration: 0.6 })
       })
 
-      marker.bindTooltip(`
-        <div style="padding:4px 6px;">
-          <div style="font-weight:bold;color:#f8fafc;font-size:13px;">${barrio.name}</div>
-          <div style="color:${zoneColor};font-size:11px;font-weight:bold;">${barrio.macro}</div>
-          <div style="color:${colors.text};font-weight:900;font-size:14px;margin-top:2px;">
-            Demora: ${mins !== null ? `${mins} min` : 'Sin datos'}
-          </div>
-          ${stat && stat.delta !== null ? `
-            <div style="font-size:10px;color:#cbd5e1;">
-              Delta histórico: ${stat.delta > 0 ? `+${stat.delta}m demora` : `${stat.delta}m más rápido`}
-            </div>
-          ` : ''}
-          <div style="font-size:9px;color:#38bdf8;margin-top:3px;">Haz clic para ver ficha detallada</div>
-        </div>
-      `, { direction: 'top', offset: [0, -18], opacity: 0.95 })
-
       markersRef.current.push(marker)
 
-      // D. LÍNEAS DE RUTA CONECTADAS
       if (mins !== null) {
         const strokeColor = colors.bg
 
@@ -694,584 +678,614 @@ export default function MapSection({ records }: MapSectionProps) {
 
   }, [mapLoaded, barrioStats, selectedBarrio, destFilter, macroFilter])
 
-  // Acciones de enfoque y zoom
-  const handleResetCorredor = () => {
-    if (mapInstanceRef.current && (window as any).L) {
-      const L = (window as any).L
-      const bounds = L.latLngBounds([
-        [-34.615, -58.760],
-        [-34.350, -58.370]
-      ])
-      mapInstanceRef.current.fitBounds(bounds, { padding: [30, 30], duration: 0.8 })
-    }
-  }
+  const details = selectedBarrioDetails
+  const selectedZoneInfo = MACRO_ZONES_POLYGONS[details.macro]
+  const selectedZoneColor = selectedZoneInfo ? selectedZoneInfo.color : '#3b82f6'
 
-  const handleFocusZonaNorte = () => {
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo([-34.42, -58.66], 12.5, { duration: 0.8 })
-    }
-  }
+  // Encontrar el día más rápido y el más lento
+  const validDays = details.dayBreakdown.filter(d => d.avg !== null)
+  const fastestDay = validDays.length > 0 ? validDays.reduce((min, d) => d.avg! < min.avg! ? d : min, validDays[0]) : null
+  const slowestDay = validDays.length > 0 ? validDays.reduce((max, d) => d.avg! > max.avg! ? d : max, validDays[0]) : null
 
-  const handleMacroChange = (macro: string) => {
-    setMacroFilter(macro)
-    if (macro !== 'todas' && MACRO_ZONES_POLYGONS[macro] && mapInstanceRef.current) {
-      const zone = MACRO_ZONES_POLYGONS[macro]
-      mapInstanceRef.current.flyTo([zone.center[0], zone.center[1]], 13, { duration: 0.8 })
-    } else if (macro === 'todas') {
-      handleResetCorredor()
-    }
-  }
-
-  const activeGeo = BARRIOS_GEO[selectedBarrio] || Object.values(BARRIOS_GEO)[0]
-  const activeStat = barrioStats[activeGeo.name] || { avg: null, delta: null, min: null, max: null, count: 0, overallAvg: null, hourlyAvg: [] }
-  const activeColors = getTrafficColor(activeStat.avg)
-
-  const applyPreset = (presetName: string) => {
-    if (presetName === 'pico-manana-caba') {
-      setSentidoFilter('ida')
-      setDayFilter('habiles')
-      setTimePreset('manana')
-    } else if (presetName === 'pico-tarde-vuelta') {
-      setSentidoFilter('vuelta')
-      setDayFilter('habiles')
-      setTimePreset('tarde')
-    }
-  }
-
-  const rankingList = useMemo(() => {
-    const list = Object.values(BARRIOS_GEO).map(b => {
-      const stat = barrioStats[b.name]
-      return {
-        name: b.name,
-        macro: b.macro,
-        avg: stat ? stat.avg : null,
-        delta: stat ? stat.delta : null,
-        min: stat ? stat.min : null,
-        max: stat ? stat.max : null,
-        count: stat ? stat.count : 0
-      }
-    })
-    const unique = list.filter((v, i, a) => a.findIndex(t => t.name === v.name) === i)
-    return unique.sort((a, b) => {
-      if (a.avg === null) return 1
-      if (b.avg === null) return -1
-      return a.avg - b.avg
-    })
-  }, [barrioStats])
+  // Máximo para escalar la curva horaria
+  const maxHourlyAvg = details.hourlyCurve.length > 0 ? Math.max(...details.hourlyCurve.map(h => h.avg)) : 100
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="space-y-8 animate-in fade-in duration-500">
       
-      {/* 1. HEADER Y TÍTULO DE LA SECCIÓN */}
-      <div className="glass-card p-6 md:p-8 rounded-2xl border border-white/10 shadow-2xl relative overflow-hidden bg-slate-950/80">
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -z-10" />
-
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-white/10">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-black tracking-widest text-blue-400 uppercase bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full w-fit mb-3">
-              <MapIcon size={14} /> Mapa Geográfico Interactivo
-            </div>
-            <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight flex items-center gap-3">
-              Zonas y Barrios Resaltados de Zona Norte
-            </h2>
-            <p className="text-xs md:text-sm text-slate-400 mt-1 max-w-2xl font-medium">
-              Mapa visual con delimitación de cada zona (Nordelta, Villa Nueva, Pacheco, Tortugas, Tigre y Bancalari) y tiempos de viaje hacia Shopping DOT y Obelisco.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 self-start md:self-center">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block w-full md:w-auto">
-              Presets de consulta:
+      {/* 1. ENCABEZADO Y CONTROLES DEL MAPA */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
+              <MapIcon size={20} />
             </span>
-            <button
-              onClick={() => applyPreset('pico-manana-caba')}
-              className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-slate-900 border border-blue-500/30 hover:border-blue-400 text-blue-300 hover:text-white transition-all flex items-center gap-1.5"
-            >
-              <Sparkles size={12} className="text-amber-400" /> Pico Mañana (Lun-Vie)
-            </button>
-            <button
-              onClick={() => applyPreset('pico-tarde-vuelta')}
-              className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-slate-900 border border-purple-500/30 hover:border-purple-400 text-purple-300 hover:text-white transition-all flex items-center gap-1.5"
-            >
-              <Sparkles size={12} className="text-purple-400" /> Pico Tarde Regreso
-            </button>
+            <h2 className="text-xl md:text-2xl font-black text-white tracking-tight">
+              Mapa Geoespacial de Tráfico y Corredores
+            </h2>
           </div>
+          <p className="text-xs text-slate-400 mt-1">
+            Visualizá los tiempos de viaje proyectados desde Zona Norte hacia Shopping DOT y Obelisco en tiempo real.
+          </p>
         </div>
 
-        {/* 2. PANEL DE FILTROS INTERACTIVOS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 pt-6">
-          
-          <div className="bg-slate-900/90 p-3 rounded-xl border border-white/5 space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Navigation size={12} className="text-blue-400" /> Destino
+        {/* Botón centrar mapa */}
+        <button
+          onClick={handleResetView}
+          className="self-start md:self-auto flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-300 transition-all hover:scale-105"
+        >
+          <RotateCcw size={14} />
+          Centrar Vista Completa
+        </button>
+      </div>
+
+      {/* 2. BARRA DE FILTROS DEL MAPA */}
+      <div className="bg-slate-900/80 backdrop-blur-md border border-white/10 p-4 md:p-5 rounded-2xl shadow-xl space-y-4">
+        {/* Selector de Macrozonas */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 mr-1">
+            <Layers size={13} className="text-blue-400" /> Zona:
+          </span>
+          <button
+            onClick={() => handleMacroChange('todas')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              macroFilter === 'todas'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
+                : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 border border-white/5'
+            }`}
+          >
+            Todas las Zonas
+          </button>
+          {macroList.map(mKey => {
+            const z = MACRO_ZONES_POLYGONS[mKey]
+            const active = macroFilter === mKey
+            return (
+              <button
+                key={mKey}
+                onClick={() => handleMacroChange(mKey)}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border"
+                style={{
+                  borderColor: active ? z.color : 'rgba(255,255,255,0.08)',
+                  background: active ? `${z.color}25` : 'rgba(255,255,255,0.03)',
+                  color: active ? '#ffffff' : z.color
+                }}
+              >
+                <span className="w-2 h-2 rounded-full" style={{ background: z.color }} />
+                {z.label.replace('Zona ', '')}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Filtros de Destino, Sentido, Horario y Capa */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 pt-2 border-t border-white/5">
+          {/* Destino */}
+          <div>
+            <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1">
+              Destino
             </label>
             <select
               value={destFilter}
               onChange={e => setDestFilter(e.target.value as any)}
-              className="w-full bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-blue-500"
+              className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-slate-200 focus:outline-none focus:border-blue-500"
             >
-              <option value="ambos">Ambos (DOT y Obelisco)</option>
-              <option value="dot">Shopping DOT Baires</option>
-              <option value="centro">Microcentro (Obelisco)</option>
+              <option value="ambos">DOT y Centro (Ambos)</option>
+              <option value="dot">Solo Shopping DOT</option>
+              <option value="centro">Solo Microcentro</option>
             </select>
           </div>
 
-          <div className="bg-slate-900/90 p-3 rounded-xl border border-white/5 space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Car size={12} className="text-emerald-400" /> Sentido
+          {/* Sentido */}
+          <div>
+            <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1">
+              Sentido
             </label>
             <select
               value={sentidoFilter}
               onChange={e => setSentidoFilter(e.target.value as any)}
-              className="w-full bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-emerald-500"
+              className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-slate-200 focus:outline-none focus:border-blue-500"
             >
-              <option value="ida">Ida (hacia CABA)</option>
-              <option value="vuelta">Vuelta (hacia Barrios)</option>
-              <option value="ambos">Ambos sentidos</option>
+              <option value="ida">Ida (Hacia CABA)</option>
+              <option value="vuelta">Vuelta (Hacia Barrios)</option>
+              <option value="ambos">Ambos Sentidos</option>
             </select>
           </div>
 
-          <div className="bg-slate-900/90 p-3 rounded-xl border border-white/5 space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Calendar size={12} className="text-amber-400" /> Día de la semana
-            </label>
-            <select
-              value={dayFilter}
-              onChange={e => setDayFilter(e.target.value as any)}
-              className="w-full bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-amber-500"
-            >
-              <option value="habiles">Días hábiles (Lun a Vie)</option>
-              <option value="todos">Todos los días</option>
-              <option value="0">Lunes</option>
-              <option value="1">Martes</option>
-              <option value="2">Miércoles</option>
-              <option value="3">Jueves</option>
-              <option value="4">Viernes</option>
-              <option value="finde">Fin de semana (Sáb-Dom)</option>
-            </select>
-          </div>
-
-          <div className="bg-slate-900/90 p-3 rounded-xl border border-white/5 space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Clock size={12} className="text-cyan-400" /> Horario / Turno
+          {/* Horario */}
+          <div>
+            <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1">
+              Horario
             </label>
             <select
               value={timePreset}
               onChange={e => setTimePreset(e.target.value as any)}
-              className="w-full bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-cyan-500"
+              className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-slate-200 focus:outline-none focus:border-blue-500"
             >
-              <option value="manana">Mañana Pico (06:00 a 10:00)</option>
-              <option value="tarde">Tarde Pico (15:00 a 20:30)</option>
+              <option value="manana">Pico Mañana (06 - 10 hs)</option>
+              <option value="tarde">Pico Tarde (15 - 20 hs)</option>
               <option value="todo">Todo el día</option>
-              <option value="custom">Hora específica...</option>
             </select>
           </div>
 
-          <div className="bg-slate-900/90 p-3 rounded-xl border border-white/5 space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Layers size={12} className="text-indigo-400" /> Mes
+          {/* Días */}
+          <div>
+            <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1">
+              Días
             </label>
             <select
-              value={monthFilter}
-              onChange={e => setMonthFilter(e.target.value)}
-              className="w-full bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-indigo-500"
+              value={dayFilter}
+              onChange={e => setDayFilter(e.target.value as any)}
+              className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-slate-200 focus:outline-none focus:border-blue-500"
             >
-              <option value="todos">Todos los meses</option>
-              {availableMonths.map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
+              <option value="habiles">Días Hábiles (Lun a Vie)</option>
+              <option value="finde">Fines de Semana</option>
+              <option value="todos">Todos los días</option>
             </select>
           </div>
 
-          <div className="bg-slate-900/90 p-3 rounded-xl border border-white/5 space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <MapPin size={12} className="text-pink-400" /> Zona Geográfica
+          {/* Capa de Mapa */}
+          <div>
+            <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1">
+              Estilo Visual
             </label>
             <select
-              value={macroFilter}
-              onChange={e => handleMacroChange(e.target.value)}
-              className="w-full bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-pink-500"
+              value={activeTileKey}
+              onChange={e => setActiveTileKey(e.target.value as any)}
+              className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-slate-200 focus:outline-none focus:border-blue-500"
             >
-              <option value="todas">Todas las Zonas</option>
-              {macroList.map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
+              <option value="oscuro">🌙 Minimalista Oscuro</option>
+              <option value="claro">☀️ Minimalista Claro</option>
+              <option value="calles">🗺️ Calles OpenStreetMap</option>
+              <option value="satelite">🛰️ Satélite Aéreo</option>
             </select>
           </div>
-
         </div>
+      </div>
 
-        {timePreset === 'custom' && (
-          <div className="mt-4 pt-4 border-t border-white/5 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold text-slate-300">Seleccionar hora:</span>
-            {[6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21].map(h => (
-              <button
-                key={h}
-                onClick={() => setSelectedHour(h)}
-                className={`px-2.5 py-1 rounded-md text-xs font-mono font-bold transition-all ${
-                  selectedHour === h
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
-                    : 'bg-slate-900 text-slate-400 hover:text-white border border-white/5'
-                }`}
-              >
-                {String(h).padStart(2, '0')}:00 hs
-              </button>
-            ))}
+      {/* 3. MAPA A TODO LO ANCHO */}
+      <div className="relative w-full h-[580px] md:h-[640px] rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-slate-950">
+        
+        {/* Contenedor Leaflet */}
+        <div ref={mapContainerRef} className="w-full h-full z-0" />
+
+        {/* Estado de carga */}
+        {!mapLoaded && !leafletError && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 z-20">
+            <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
+            <p className="text-sm font-bold text-slate-300">Cargando motor de mapas satelital...</p>
           </div>
         )}
-      </div>
 
-      {/* 3. CONTENEDOR PRINCIPAL: MAPA (2/3) + PANEL DE INSPECCIÓN (1/3) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        
-        {/* COLUMNA IZQUIERDA: MAPA INTERACTIVO */}
-        <div className="lg:col-span-2 glass-card rounded-2xl border border-white/10 bg-slate-950/80 p-5 shadow-2xl relative flex flex-col justify-between overflow-hidden">
-          
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10 mb-4 z-10 relative">
-            
-            {/* Selector de Estilo de Mapa (Minimalista Limpio por Defecto) */}
-            <div className="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-white/10">
-              <span className="text-[10px] font-bold text-slate-400 px-2 uppercase">Estilo:</span>
-              {(Object.keys(TILE_LAYERS) as (keyof typeof TILE_LAYERS)[]).map(k => (
-                <button
-                  key={k}
-                  onClick={() => setActiveTileKey(k)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                    activeTileKey === k
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {TILE_LAYERS[k].label}
-                </button>
-              ))}
+        {/* Mensaje de error si falla Leaflet */}
+        {leafletError && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/95 z-20 p-6 text-center">
+            <Info size={36} className="text-amber-400 mb-3" />
+            <p className="text-base font-bold text-white mb-1">No se pudo cargar la vista cartográfica</p>
+            <p className="text-xs text-slate-400 max-w-md">Verificá tu conexión a internet para cargar los mapas de OpenStreetMap / Esri Canvas.</p>
+          </div>
+        )}
+
+        {/* Leyenda de Tráfico flotante sobre el mapa */}
+        <div className="absolute bottom-4 left-4 z-10 bg-slate-950/90 backdrop-blur-md border border-white/10 p-3.5 rounded-xl shadow-2xl max-w-xs pointer-events-auto">
+          <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+            <Sparkles size={11} className="text-blue-400" /> Escala de Demora
+          </div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px] font-bold">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500" />
+              <span className="text-emerald-400">≤ 42 min (Fluido)</span>
             </div>
-
-            {/* Botones de Enfoque Rápido */}
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={handleResetCorredor}
-                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-white/10 transition-all flex items-center gap-1"
-                title="Ver todo el corredor desde CABA hasta Villa Nueva"
-              >
-                <RotateCcw size={12} /> Todo el Corredor
-              </button>
-              <button
-                onClick={handleFocusZonaNorte}
-                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-white/10 transition-all flex items-center gap-1"
-                title="Acercar mapa a los barrios de Zona Norte"
-              >
-                <ZoomIn size={12} /> Foco Norte
-              </button>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm shadow-amber-500" />
+              <span className="text-amber-400">43 - 56 min</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-sm shadow-orange-500" />
+              <span className="text-orange-400">57 - 72 min</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm shadow-red-500" />
+              <span className="text-red-400">&gt; 72 min (Alto)</span>
             </div>
           </div>
-
-          {/* Contenedor del Mapa Leaflet */}
-          <div className="w-full h-[580px] rounded-xl overflow-hidden relative border border-white/10 shadow-inner bg-slate-900">
-            <div ref={mapContainerRef} className="w-full h-full z-0" />
-
-            {!mapLoaded && !leafletError && (
-              <div className="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center gap-3 z-20">
-                <div className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
-                <span className="text-xs font-bold text-slate-400">Cargando mapa interactivo...</span>
-              </div>
-            )}
-
-            {/* Leyenda de Tráfico flotante en el mapa */}
-            <div className="absolute bottom-4 left-4 z-10 bg-slate-950/95 backdrop-blur-md p-3 rounded-xl border border-white/15 shadow-2xl pointer-events-auto">
-              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block mb-2">
-                Escala de Demora
-              </span>
-              <div className="flex flex-col gap-1.5 text-[10px] font-bold">
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
-                  <span className="text-slate-200">&le; 42 min (Fluido)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-amber-400 shadow-sm shadow-amber-400/50" />
-                  <span className="text-slate-200">43 - 56 min (Normal)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-orange-400 shadow-sm shadow-orange-400/50" />
-                  <span className="text-slate-200">57 - 72 min (Congestión)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-red-400 shadow-sm shadow-red-400/50" />
-                  <span className="text-slate-200">&gt; 72 min (Demora alta)</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
         </div>
 
-        {/* COLUMNA DERECHA: PANEL DE INSPECCIÓN DE BARRIO SELECCIONADO */}
-        <div className="glass-card rounded-2xl border border-white/10 bg-slate-950/80 p-5 md:p-6 shadow-2xl flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <Info size={13} className="text-blue-400" /> Ficha de Inspección
-              </span>
-              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${activeColors.badgeClass}`}>
-                {activeGeo.macro}
-              </span>
-            </div>
+        {/* Indicador de Barrio Seleccionado flotante arriba a la derecha */}
+        <div className="absolute top-4 right-4 z-10 hidden sm:flex items-center gap-2 bg-slate-950/90 backdrop-blur-md border border-white/10 px-3.5 py-2 rounded-xl shadow-xl pointer-events-auto">
+          <span className="text-[11px] text-slate-400 font-medium">Barrio activo:</span>
+          <span className="text-xs font-black text-white">{selectedBarrio}</span>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md" style={{ background: `${selectedZoneColor}25`, color: selectedZoneColor }}>
+            {details.macro}
+          </span>
+        </div>
 
-            <h3 className="text-2xl font-black text-white tracking-tight flex items-center gap-2">
-              <MapPin size={22} className="text-blue-400 shrink-0" />
-              {activeGeo.name}
+      </div>
+
+      {/* 4. BARRA SELECTORA DE BARRIOS */}
+      <div className="bg-slate-900/60 border border-white/10 p-4 rounded-2xl">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <MapPin size={16} className="text-blue-400" />
+            <h3 className="text-sm font-black text-white uppercase tracking-wider">
+              Seleccionar Barrio para Ficha de Inspección
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Zona: <span className="font-bold text-slate-200">{activeGeo.macro}</span>
-            </p>
-
-            {/* Métrica Principal: Tiempo Promedio */}
-            <div className="mt-5 p-4 rounded-xl bg-slate-900/80 border border-white/5 space-y-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-                Demora Promedio Filtrada
-              </span>
-              <div className="flex items-baseline justify-between">
-                <span className={`text-4xl font-black font-mono ${activeColors.text}`}>
-                  {activeStat.avg !== null ? `${activeStat.avg} min` : '--'}
-                </span>
-                {activeStat.delta !== null && (
-                  <div className="text-right">
-                    {activeStat.delta === 0 ? (
-                      <span className="text-xs font-mono font-bold text-slate-400 flex items-center gap-1">
-                        <Minus size={12} /> habitual
-                      </span>
-                    ) : activeStat.delta < 0 ? (
-                      <span className="text-xs font-mono font-bold text-emerald-400 flex items-center gap-1">
-                        <TrendingDown size={14} /> {Math.abs(activeStat.delta)}m más rápido
-                      </span>
-                    ) : (
-                      <span className="text-xs font-mono font-bold text-red-400 flex items-center gap-1">
-                        <TrendingUp size={14} /> +{activeStat.delta}m demora
-                      </span>
-                    )}
-                    <span className="text-[9px] text-slate-500 block">vs promedio histórico</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Métricas Secundarias */}
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <div className="p-3 rounded-xl bg-slate-900/60 border border-white/5">
-                <span className="text-[9px] uppercase font-bold text-slate-400 block">Rango Registrado</span>
-                <span className="text-sm font-black font-mono text-slate-200">
-                  {activeStat.min !== null && activeStat.max !== null 
-                    ? `${activeStat.min}m - ${activeStat.max}m` 
-                    : '--'}
-                </span>
-              </div>
-              <div className="p-3 rounded-xl bg-slate-900/60 border border-white/5">
-                <span className="text-[9px] uppercase font-bold text-slate-400 block">Muestras Evaluadas</span>
-                <span className="text-sm font-black font-mono text-slate-200">
-                  {activeStat.count} registros
-                </span>
-              </div>
-            </div>
-
-            {/* Histograma Horario de Viaje para este Barrio */}
-            <div className="mt-5 space-y-2">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-                Comportamiento por Hora (6 a 21 hs)
-              </span>
-              <div className="space-y-1.5 bg-slate-900/50 p-3 rounded-xl border border-white/5 max-h-52 overflow-y-auto">
-                {activeStat.hourlyAvg.length > 0 ? (
-                  activeStat.hourlyAvg.map(item => {
-                    const c = getTrafficColor(item.avg)
-                    const percent = Math.min(100, Math.max(15, (item.avg / 90) * 100))
-                    return (
-                      <div key={item.hour} className="flex items-center gap-2 text-xs">
-                        <span className="w-12 font-mono text-[11px] text-slate-400 shrink-0">
-                          {String(item.hour).padStart(2, '0')}:00 hs
-                        </span>
-                        <div className="flex-1 bg-slate-800/80 rounded-full h-2.5 overflow-hidden">
-                          <div 
-                            className="h-full rounded-full transition-all"
-                            style={{ width: `${percent}%`, backgroundColor: c.bg }}
-                          />
-                        </div>
-                        <span className="w-10 text-right font-mono font-bold text-[11px] text-slate-200">
-                          {item.avg}m
-                        </span>
-                      </div>
-                    )
-                  })
-                ) : (
-                  <p className="text-xs text-slate-500 py-4 text-center">
-                    No hay suficientes datos horarios con los filtros actuales.
-                  </p>
-                )}
-              </div>
-            </div>
-
           </div>
-
-          <div className="mt-6 pt-4 border-t border-white/5 text-[10px] text-slate-500">
-            Haz clic en cualquier barrio en el mapa o en el ranking para inspeccionar.
-          </div>
+          <span className="text-xs text-slate-400 hidden sm:inline">
+            Haz clic en cualquier barrio para ver su radiografía completa
+          </span>
         </div>
 
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+          {uniqueBarriosList.map(bName => {
+            const isSel = selectedBarrio === bName
+            const stat = barrioStats[bName]
+            const avgMins = stat?.avg
+            const colors = getTrafficColor(avgMins ?? null)
+            const bGeo = BARRIOS_GEO[bName]
+            const zColor = bGeo ? MACRO_ZONES_POLYGONS[bGeo.macro]?.color || '#3b82f6' : '#3b82f6'
+
+            return (
+              <button
+                key={bName}
+                onClick={() => handleSelectBarrio(bName)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border shrink-0 ${
+                  isSel 
+                    ? 'bg-blue-600/30 border-blue-500 text-white shadow-lg shadow-blue-500/20 scale-[1.03]' 
+                    : 'bg-white/5 border-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full" style={{ background: zColor }} />
+                <span>{bName}</span>
+                {avgMins !== null && avgMins !== undefined && (
+                  <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${colors.badgeClass}`}>
+                    {avgMins}m
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
-      {/* 4. TABLERO DE MACRO-ZONAS Y RANKING DE BARRIOS */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+      {/* 5. FICHA DE INSPECCIÓN DETALLADA DEL BARRIO */}
+      <div className="bg-slate-900/90 border border-white/10 rounded-2xl p-6 md:p-8 shadow-2xl space-y-8">
         
-        {/* TARJETAS RESUMEN POR MACRO-ZONA */}
-        <div className="xl:col-span-1 space-y-4">
-          <h4 className="text-sm font-black uppercase tracking-wider text-slate-300 flex items-center gap-2">
-            <Layers size={16} className="text-indigo-400" /> Promedios por Zona
-          </h4>
+        {/* Cabecera del Barrio */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/10">
+          <div>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+                {details.barrio}
+              </h2>
+              <span 
+                className="text-xs font-bold px-3 py-1 rounded-full border"
+                style={{
+                  borderColor: `${selectedZoneColor}50`,
+                  background: `${selectedZoneColor}20`,
+                  color: selectedZoneColor
+                }}
+              >
+                {details.macro}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              Ficha integral de tiempos de viaje, patrones horarios, días pico y análisis estacional.
+            </p>
+          </div>
 
-          <div className="grid grid-cols-1 gap-3">
-            {macroList.map(macro => {
-              const zone = MACRO_ZONES_POLYGONS[macro]
-              const barriosInMacro = Object.values(BARRIOS_GEO).filter(b => b.macro === macro)
-              const avgs = barriosInMacro.map(b => barrioStats[b.name]?.avg).filter((v): v is number => v !== null)
-              const macroAvg = avgs.length > 0 ? Math.round(avgs.reduce((a, b) => a + b, 0) / avgs.length) : null
-              const colors = getTrafficColor(macroAvg)
-              const isSelected = macroFilter === macro
-
-              return (
-                <div
-                  key={macro}
-                  onClick={() => handleMacroChange(isSelected ? 'todas' : macro)}
-                  className={`p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
-                    isSelected 
-                      ? 'bg-slate-900 border-blue-500/50 shadow-lg shadow-blue-500/10' 
-                      : 'bg-slate-950/80 border-white/5 hover:border-white/15'
-                  }`}
-                  style={{ borderLeftColor: zone.color, borderLeftWidth: '4px' }}
-                >
-                  <div className="space-y-0.5">
-                    <span className="font-bold text-sm text-white block">
-                      {macro}
-                    </span>
-                    <span className="text-[10px] text-slate-400">
-                      {barriosInMacro.length} barrios monitoreados
-                    </span>
-                  </div>
-
-                  <div className="text-right">
-                    <span className={`text-xl font-black font-mono block ${colors.text}`}>
-                      {macroAvg !== null ? `${macroAvg} min` : '--'}
-                    </span>
-                    <span className="text-[9px] uppercase font-bold text-slate-500">
-                      Promedio Zona
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
+          <div className="flex items-center gap-4 bg-white/5 border border-white/10 px-5 py-3 rounded-2xl self-start md:self-auto">
+            <div>
+              <span className="text-[10px] font-bold uppercase text-slate-400 block tracking-wider">
+                Promedio General
+              </span>
+              <span className="text-2xl font-black text-white font-mono">
+                {details.overall.avg !== null ? `${details.overall.avg} min` : '--'}
+              </span>
+            </div>
+            <div className="border-l border-white/10 pl-4">
+              <span className="text-[10px] font-bold uppercase text-slate-400 block tracking-wider">
+                Muestras
+              </span>
+              <span className="text-sm font-black text-slate-300 font-mono">
+                {details.overall.count} reg
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* TABLA DE RANKING COMPARATIVO */}
-        <div className="xl:col-span-2 glass-card p-5 md:p-6 rounded-2xl border border-white/10 bg-slate-950/80 shadow-2xl space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-white/10">
-            <div>
-              <h4 className="text-base font-black text-white tracking-wide">
-                Ranking de Tiempos de Viaje
-              </h4>
-              <p className="text-xs text-slate-400">
-                Ordenado del más rápido al más congestionado bajo el filtro activo
-              </p>
-            </div>
-            <span className="text-xs font-mono font-bold text-slate-400 bg-slate-900 px-3 py-1 rounded-lg border border-white/10">
-              {rankingList.filter(r => r.avg !== null).length} de {rankingList.length} barrios con datos
-            </span>
+        {/* 4 CARDS: MAÑANA Y TARDE x DOT Y MICROCENTRO */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <Clock size={16} className="text-blue-400" />
+            <h3 className="text-sm font-black uppercase text-slate-300 tracking-wider">
+              Tiempos Clave por Turno y Destino
+            </h3>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-white/10 bg-slate-900/80 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                  <th className="px-3.5 py-2.5">#</th>
-                  <th className="px-3.5 py-2.5">Barrio</th>
-                  <th className="px-3.5 py-2.5">Zona</th>
-                  <th className="px-3.5 py-2.5 text-right">Demora Promedio</th>
-                  <th className="px-3.5 py-2.5 text-right">Delta Histórico</th>
-                  <th className="px-3.5 py-2.5 text-right">Rango (Mín - Máx)</th>
-                  <th className="px-3.5 py-2.5 text-right">Acción</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5 font-medium">
-                {rankingList.map((item, idx) => {
-                  const colors = getTrafficColor(item.avg)
-                  const isSelected = selectedBarrio === item.name
-                  const zoneColor = MACRO_ZONES_POLYGONS[item.macro]?.color || '#3b82f6'
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* 1. Mañana DOT */}
+            <div className="bg-slate-950/60 border border-white/10 rounded-2xl p-4 relative overflow-hidden group hover:border-blue-500/50 transition-all">
+              <div className="flex items-center justify-between text-xs font-bold text-blue-400 mb-2">
+                <span className="flex items-center gap-1.5">
+                  <Sun size={14} className="text-amber-400" />
+                  Mañana $\rightarrow$ DOT
+                </span>
+                <span className="text-[10px] text-slate-400">06:00 - 11:00 hs</span>
+              </div>
+              <div className="text-3xl font-black font-mono text-white mb-2">
+                {details.mananaDOT.avg !== null ? `${details.mananaDOT.avg} min` : '--'}
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-white/5">
+                <span>Rango:</span>
+                <span className="font-mono text-slate-300 font-bold">
+                  {details.mananaDOT.min !== null ? `${details.mananaDOT.min}m - ${details.mananaDOT.max}m` : '--'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
+                <span>Registros:</span>
+                <span className="font-mono">{details.mananaDOT.count}</span>
+              </div>
+            </div>
+
+            {/* 2. Mañana Centro */}
+            <div className="bg-slate-950/60 border border-white/10 rounded-2xl p-4 relative overflow-hidden group hover:border-purple-500/50 transition-all">
+              <div className="flex items-center justify-between text-xs font-bold text-purple-400 mb-2">
+                <span className="flex items-center gap-1.5">
+                  <Sun size={14} className="text-amber-400" />
+                  Mañana $\rightarrow$ Obelisco
+                </span>
+                <span className="text-[10px] text-slate-400">06:00 - 11:00 hs</span>
+              </div>
+              <div className="text-3xl font-black font-mono text-white mb-2">
+                {details.mananaCentro.avg !== null ? `${details.mananaCentro.avg} min` : '--'}
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-white/5">
+                <span>Rango:</span>
+                <span className="font-mono text-slate-300 font-bold">
+                  {details.mananaCentro.min !== null ? `${details.mananaCentro.min}m - ${details.mananaCentro.max}m` : '--'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
+                <span>Registros:</span>
+                <span className="font-mono">{details.mananaCentro.count}</span>
+              </div>
+            </div>
+
+            {/* 3. Tarde DOT */}
+            <div className="bg-slate-950/60 border border-white/10 rounded-2xl p-4 relative overflow-hidden group hover:border-blue-500/50 transition-all">
+              <div className="flex items-center justify-between text-xs font-bold text-blue-400 mb-2">
+                <span className="flex items-center gap-1.5">
+                  <Moon size={14} className="text-indigo-400" />
+                  Tarde $\leftarrow$ DOT
+                </span>
+                <span className="text-[10px] text-slate-400">14:00 - 21:00 hs</span>
+              </div>
+              <div className="text-3xl font-black font-mono text-white mb-2">
+                {details.tardeDOT.avg !== null ? `${details.tardeDOT.avg} min` : '--'}
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-white/5">
+                <span>Rango:</span>
+                <span className="font-mono text-slate-300 font-bold">
+                  {details.tardeDOT.min !== null ? `${details.tardeDOT.min}m - ${details.tardeDOT.max}m` : '--'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
+                <span>Registros:</span>
+                <span className="font-mono">{details.tardeDOT.count}</span>
+              </div>
+            </div>
+
+            {/* 4. Tarde Centro */}
+            <div className="bg-slate-950/60 border border-white/10 rounded-2xl p-4 relative overflow-hidden group hover:border-purple-500/50 transition-all">
+              <div className="flex items-center justify-between text-xs font-bold text-purple-400 mb-2">
+                <span className="flex items-center gap-1.5">
+                  <Moon size={14} className="text-indigo-400" />
+                  Tarde $\leftarrow$ Obelisco
+                </span>
+                <span className="text-[10px] text-slate-400">14:00 - 21:00 hs</span>
+              </div>
+              <div className="text-3xl font-black font-mono text-white mb-2">
+                {details.tardeCentro.avg !== null ? `${details.tardeCentro.avg} min` : '--'}
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-white/5">
+                <span>Rango:</span>
+                <span className="font-mono text-slate-300 font-bold">
+                  {details.tardeCentro.min !== null ? `${details.tardeCentro.min}m - ${details.tardeCentro.max}m` : '--'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
+                <span>Registros:</span>
+                <span className="font-mono">{details.tardeCentro.count}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 2 COLUMNAS: DÍAS DE LA SEMANA & MESES */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4 border-t border-white/5">
+          
+          {/* Desglose por Día de la Semana */}
+          <div className="bg-slate-950/60 border border-white/10 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Calendar size={16} className="text-emerald-400" />
+                <h4 className="text-xs font-black uppercase text-slate-300 tracking-wider">
+                  Demoras por Día de la Semana
+                </h4>
+              </div>
+              {fastestDay && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  Día más rápido: {fastestDay.name} ({fastestDay.avg}m)
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              {details.dayBreakdown.map(d => {
+                const colors = getTrafficColor(d.avg)
+                const isFastest = fastestDay && fastestDay.name === d.name && d.avg !== null
+                const isSlowest = slowestDay && slowestDay.name === d.name && d.avg !== null && slowestDay.name !== fastestDay?.name
+
+                return (
+                  <div
+                    key={d.name}
+                    className={`flex items-center justify-between px-3 py-2 rounded-xl border transition-all ${
+                      isFastest 
+                        ? 'bg-emerald-500/10 border-emerald-500/30' 
+                        : isSlowest 
+                        ? 'bg-red-500/10 border-red-500/30' 
+                        : 'bg-white/5 border-white/5'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: colors.bg }} />
+                      <span className="text-xs font-bold text-slate-200">{d.name}</span>
+                      {isFastest && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400">
+                          Más veloz
+                        </span>
+                      )}
+                      {isSlowest && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-red-500/20 text-red-400">
+                          Más lento
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-4 text-xs font-mono">
+                      <span className="text-slate-500 text-[11px] hidden sm:inline">
+                        {d.min !== null ? `${d.min} - ${d.max}m` : '--'}
+                      </span>
+                      <span className="text-slate-400 text-[11px]">{d.count} reg</span>
+                      <span className={`font-black text-sm w-14 text-right ${colors.text}`}>
+                        {d.avg !== null ? `${d.avg}m` : '--'}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Desglose por Mes (Histórico) */}
+          <div className="bg-slate-950/60 border border-white/10 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <BarChart3 size={16} className="text-cyan-400" />
+                <h4 className="text-xs font-black uppercase text-slate-300 tracking-wider">
+                  Evolución Histórica por Mes
+                </h4>
+              </div>
+              <span className="text-[10px] text-slate-400 font-mono">
+                {details.monthBreakdown.length} meses relevados
+              </span>
+            </div>
+
+            {details.monthBreakdown.length === 0 ? (
+              <div className="text-center py-10 text-xs text-slate-500">
+                No hay suficientes datos mensuales agrupados para este barrio.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {details.monthBreakdown.map(m => {
+                  const colors = getTrafficColor(m.avg)
 
                   return (
-                    <tr 
-                      key={item.name}
-                      onClick={() => {
-                        setSelectedBarrio(item.name)
-                        if (mapInstanceRef.current && BARRIOS_GEO[item.name]) {
-                          const g = BARRIOS_GEO[item.name]
-                          mapInstanceRef.current.flyTo([g.lat, g.lng], 13.5, { duration: 0.6 })
-                        }
-                      }}
-                      className={`cursor-pointer transition-colors ${
-                        isSelected 
-                          ? 'bg-blue-600/15 border-l-2 border-l-blue-400' 
-                          : idx % 2 === 0 ? 'bg-transparent hover:bg-white/[0.04]' : 'bg-white/[0.01] hover:bg-white/[0.04]'
-                      }`}
+                    <div
+                      key={m.name}
+                      className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/5 border border-white/5"
                     >
-                      <td className="px-3.5 py-3 font-mono font-bold text-slate-500">
-                        {idx + 1}
-                      </td>
-                      <td className="px-3.5 py-3">
-                        <span className="font-bold text-white text-sm block">
-                          {item.name}
+                      <div className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: colors.bg }} />
+                        <span className="text-xs font-bold text-slate-200">{m.name}</span>
+                      </div>
+
+                      <div className="flex items-center gap-4 text-xs font-mono">
+                        <span className="text-slate-500 text-[11px] hidden sm:inline">
+                          {m.min !== null ? `${m.min} - ${m.max}m` : '--'}
                         </span>
-                      </td>
-                      <td className="px-3.5 py-3">
-                        <span 
-                          className="text-[11px] font-semibold px-2 py-0.5 rounded border inline-block"
-                          style={{ borderColor: `${zoneColor}40`, color: zoneColor, background: `${zoneColor}10` }}
-                        >
-                          {item.macro}
+                        <span className="text-slate-400 text-[11px]">{m.count} reg</span>
+                        <span className={`font-black text-sm w-14 text-right ${colors.text}`}>
+                          {m.avg !== null ? `${m.avg}m` : '--'}
                         </span>
-                      </td>
-                      <td className="px-3.5 py-3 text-right">
-                        <span className={`text-base font-black font-mono ${colors.text}`}>
-                          {item.avg !== null ? `${item.avg} min` : '--'}
-                        </span>
-                      </td>
-                      <td className="px-3.5 py-3 text-right">
-                        {item.delta !== null ? (
-                          item.delta === 0 ? (
-                            <span className="text-[11px] font-mono text-slate-400">habitual</span>
-                          ) : item.delta < 0 ? (
-                            <span className="text-[11px] font-mono font-bold text-emerald-400">
-                              {item.delta}m rápido
-                            </span>
-                          ) : (
-                            <span className="text-[11px] font-mono font-bold text-red-400">
-                              +{item.delta}m demora
-                            </span>
-                          )
-                        ) : (
-                          <span className="text-slate-600 font-mono text-xs">--</span>
-                        )}
-                      </td>
-                      <td className="px-3.5 py-3 text-right font-mono text-slate-400 text-xs">
-                        {item.min !== null && item.max !== null ? `${item.min}m - ${item.max}m` : '--'}
-                      </td>
-                      <td className="px-3.5 py-3 text-right">
-                        <span className="text-blue-400 hover:text-blue-300 text-xs font-bold inline-flex items-center gap-1">
-                          Ver <ChevronRight size={13} />
-                        </span>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   )
                 })}
-              </tbody>
-            </table>
+              </div>
+            )}
           </div>
+        </div>
+
+        {/* CURVA HORARIA DE CONGESTIÓN (06:00 a 21:00 hs) */}
+        <div className="bg-slate-950/60 border border-white/10 rounded-2xl p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
+            <div className="flex items-center gap-2">
+              <TrendingUp size={16} className="text-amber-400" />
+              <h4 className="text-xs font-black uppercase text-slate-300 tracking-wider">
+                Curva Horaria de Congestión (06:00 a 21:00 hs)
+              </h4>
+            </div>
+            <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded bg-amber-500" /> Pico Mañana (07 - 09hs)
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded bg-purple-500" /> Pico Tarde (17 - 19hs)
+              </span>
+            </div>
+          </div>
+
+          {details.hourlyCurve.length === 0 ? (
+            <div className="text-center py-8 text-xs text-slate-500">
+              No hay datos horarios registrados para este barrio.
+            </div>
+          ) : (
+            <div className="grid grid-cols-8 sm:grid-cols-16 gap-1.5 items-end h-44 pt-6">
+              {Array.from({ length: 16 }, (_, i) => i + 6).map(hour => {
+                const hData = details.hourlyCurve.find(h => h.hour === hour)
+                const val = hData?.avg || 0
+                const colors = getTrafficColor(hData ? val : null)
+                const heightPercent = val > 0 ? Math.max(15, Math.round((val / maxHourlyAvg) * 100)) : 4
+                const isMorningPeak = hour >= 7 && hour <= 9
+                const isEveningPeak = hour >= 17 && hour <= 19
+
+                return (
+                  <div key={hour} className="flex flex-col items-center h-full justify-end group relative">
+                    {/* Tooltip on hover */}
+                    {hData && (
+                      <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 border border-white/20 px-2 py-1 rounded text-[10px] font-mono text-white whitespace-nowrap z-20 pointer-events-none shadow-xl">
+                        {hour}:00hs: {val}m ({hData.count} reg)
+                      </div>
+                    )}
+
+                    {/* Bar */}
+                    <div 
+                      className={`w-full rounded-t-md transition-all group-hover:brightness-125 ${
+                        isMorningPeak ? 'ring-1 ring-amber-400/40' : isEveningPeak ? 'ring-1 ring-purple-400/40' : ''
+                      }`}
+                      style={{
+                        height: `${heightPercent}%`,
+                        background: val > 0 ? colors.bg : 'rgba(255,255,255,0.05)'
+                      }}
+                    />
+
+                    {/* Value label */}
+                    <span className="text-[9px] font-mono font-bold text-slate-400 mt-1">
+                      {val > 0 ? `${val}m` : '--'}
+                    </span>
+
+                    {/* Hour label */}
+                    <span className={`text-[9px] font-mono font-bold ${
+                      isMorningPeak ? 'text-amber-400' : isEveningPeak ? 'text-purple-400' : 'text-slate-500'
+                    }`}>
+                      {hour}h
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
       </div>

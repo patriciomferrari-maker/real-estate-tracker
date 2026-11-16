@@ -1,9 +1,10 @@
-﻿"use client"
+"use client"
 
 import React, { useState } from 'react'
-import { TrendingUp, RefreshCw, Map as MapIcon } from "lucide-react"
+import { TrendingUp, RefreshCw, Map as MapIcon, Trophy, BarChart3, Grid, Database } from "lucide-react"
 import LiveSection from "@/components/LiveSection"
 import MapSection from "@/components/MapSection"
+import RankingSection from "@/components/RankingSection"
 import AnalyticsSection from "@/components/AnalyticsSection"
 import DataExplorer from "@/components/DataExplorer"
 import MatrixSection from "@/components/MatrixSection"
@@ -56,7 +57,7 @@ export default function DashboardContainer({ records }: { records: ProcessedReco
       </header>
 
       <nav className="flex gap-2 mb-10 overflow-x-auto pb-2 scrollbar-hide">
-        {["ahora", "mapa", "graficos", "matriz", "datos"].map(t => (
+        {["ahora", "mapa", "ranking", "graficos", "matriz", "datos"].map(t => (
           <button 
             key={t} 
             onClick={() => handleTabChange(t)} 
@@ -68,7 +69,11 @@ export default function DashboardContainer({ records }: { records: ProcessedReco
           >
             {t === 'ahora' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
             {t === 'mapa' && <MapIcon size={12} className="text-blue-400" />}
-            {t.replace('-', ' ').toUpperCase()}
+            {t === 'ranking' && <Trophy size={12} className="text-amber-400" />}
+            {t === 'graficos' && <BarChart3 size={12} className="text-purple-400" />}
+            {t === 'matriz' && <Grid size={12} className="text-cyan-400" />}
+            {t === 'datos' && <Database size={12} className="text-emerald-400" />}
+            {t === 'ranking' ? 'RANKING & ZONAS' : t.replace('-', ' ').toUpperCase()}
           </button>
         ))}
       </nav>
@@ -84,6 +89,13 @@ export default function DashboardContainer({ records }: { records: ProcessedReco
       {visitedTabs.includes('mapa') && (
         <div style={{ display: currentTab === 'mapa' ? 'block' : 'none' }}>
           <MapSection records={records} />
+        </div>
+      )}
+
+      {/* Tab: Ranking y Promedios por Zona */}
+      {visitedTabs.includes('ranking') && (
+        <div style={{ display: currentTab === 'ranking' ? 'block' : 'none' }}>
+          <RankingSection records={records} />
         </div>
       )}
 
