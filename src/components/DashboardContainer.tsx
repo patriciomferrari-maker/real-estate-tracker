@@ -1,8 +1,9 @@
-"use client"
+﻿"use client"
 
 import React, { useState } from 'react'
-import { TrendingUp, RefreshCw } from "lucide-react"
+import { TrendingUp, RefreshCw, Map as MapIcon } from "lucide-react"
 import LiveSection from "@/components/LiveSection"
+import MapSection from "@/components/MapSection"
 import AnalyticsSection from "@/components/AnalyticsSection"
 import DataExplorer from "@/components/DataExplorer"
 import MatrixSection from "@/components/MatrixSection"
@@ -55,7 +56,7 @@ export default function DashboardContainer({ records }: { records: ProcessedReco
       </header>
 
       <nav className="flex gap-2 mb-10 overflow-x-auto pb-2 scrollbar-hide">
-        {["ahora", "graficos", "matriz", "datos"].map(t => (
+        {["ahora", "mapa", "graficos", "matriz", "datos"].map(t => (
           <button 
             key={t} 
             onClick={() => handleTabChange(t)} 
@@ -66,6 +67,7 @@ export default function DashboardContainer({ records }: { records: ProcessedReco
             }`}
           >
             {t === 'ahora' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
+            {t === 'mapa' && <MapIcon size={12} className="text-blue-400" />}
             {t.replace('-', ' ').toUpperCase()}
           </button>
         ))}
@@ -75,6 +77,13 @@ export default function DashboardContainer({ records }: { records: ProcessedReco
       {visitedTabs.includes('ahora') && (
         <div style={{ display: currentTab === 'ahora' ? 'block' : 'none' }}>
           <LiveSection records={records} />
+        </div>
+      )}
+
+      {/* Tab: Mapa Interactivo */}
+      {visitedTabs.includes('mapa') && (
+        <div style={{ display: currentTab === 'mapa' ? 'block' : 'none' }}>
+          <MapSection records={records} />
         </div>
       )}
 
