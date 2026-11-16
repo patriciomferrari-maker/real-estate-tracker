@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { ProcessedRecord } from '@/components/DashboardContainer'
+import NordeltaMasterplan from '@/components/NordeltaMasterplan'
 import { 
   Map as MapIcon, 
   MapPin, 
@@ -23,7 +24,8 @@ import {
   BarChart3,
   CheckCircle2,
   ChevronRight,
-  ArrowUpDown
+  ArrowUpDown,
+  Compass
 } from 'lucide-react'
 
 export interface BarrioGeo {
@@ -156,6 +158,7 @@ interface MapSectionProps {
 }
 
 export default function MapSection({ records }: MapSectionProps) {
+  const [viewMode, setViewMode] = useState<'corredores' | 'nordelta'>('corredores')
   const [activeTileKey, setActiveTileKey] = useState<'oscuro' | 'claro' | 'calles' | 'satelite'>('oscuro')
 
   // Filtros del Mapa
@@ -709,15 +712,49 @@ export default function MapSection({ records }: MapSectionProps) {
           </p>
         </div>
 
-        {/* Botón centrar mapa */}
-        <button
-          onClick={handleResetView}
-          className="self-start md:self-auto flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-300 transition-all hover:scale-105"
-        >
-          <RotateCcw size={14} />
-          Centrar Vista Completa
-        </button>
+        {/* Selector de Vista: Corredores de Tráfico vs Masterplan Nordelta */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 bg-slate-950 p-1.5 rounded-xl border border-white/10 shadow-lg">
+            <button
+              onClick={() => setViewMode('corredores')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                viewMode === 'corredores'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Car size={14} />
+              <span>Corredores a CABA</span>
+            </button>
+            <button
+              onClick={() => setViewMode('nordelta')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                viewMode === 'nordelta'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Compass size={14} />
+              <span>Masterplan Nordelta (1.600 ha)</span>
+            </button>
+          </div>
+
+          {viewMode === 'corredores' && (
+            <button
+              onClick={handleResetView}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-300 transition-all hover:scale-105"
+            >
+              <RotateCcw size={14} />
+              Centrar Mapa
+            </button>
+          )}
+        </div>
       </div>
+
+      {viewMode === 'nordelta' ? (
+        <NordeltaMasterplan />
+      ) : (
+        <>
 
       {/* 2. BARRA DE FILTROS DEL MAPA */}
       <div className="bg-slate-900/80 backdrop-blur-md border border-white/10 p-4 md:p-5 rounded-2xl shadow-xl space-y-4">
@@ -1290,6 +1327,8 @@ export default function MapSection({ records }: MapSectionProps) {
 
       </div>
 
+        </>
+      )}
     </div>
   )
 }
