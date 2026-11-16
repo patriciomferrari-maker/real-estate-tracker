@@ -20,7 +20,8 @@ import {
   RotateCcw,
   Info,
   ZoomIn,
-  Eye
+  Eye,
+  SlidersHorizontal
 } from 'lucide-react'
 
 export interface BarrioGeo {
@@ -48,35 +49,103 @@ export const BARRIOS_GEO: Record<string, BarrioGeo> = {
   "Buenavista": { name: "Buenavista", macro: "San Isidro / Bancalari", lat: -34.4820, lng: -58.5480 }
 }
 
-export const MACRO_CENTERS: Record<string, { lat: number; lng: number; color: string; label: string }> = {
-  "Nordelta": { lat: -34.425, lng: -58.647, color: "#3b82f6", label: "Nordelta" },
-  "Villa Nueva": { lat: -34.370, lng: -58.697, color: "#a855f7", label: "Villa Nueva" },
-  "Benavidez / Pacheco": { lat: -34.438, lng: -58.666, color: "#06b6d4", label: "Benavídez / Pacheco" },
-  "Tortugas": { lat: -34.458, lng: -58.744, color: "#f59e0b", label: "Tortugas" },
-  "Tigre": { lat: -34.420, lng: -58.590, color: "#10b981", label: "Tigre" },
-  "San Isidro / Bancalari": { lat: -34.482, lng: -58.548, color: "#ec4899", label: "San Isidro / Bancalari" }
+// Polígonos de delimitación para resaltar visualmente cada zona en el mapa
+export const MACRO_ZONES_POLYGONS: Record<string, { label: string; color: string; center: [number, number]; coords: [number, number][] }> = {
+  "Nordelta": {
+    label: "Zona Nordelta",
+    color: "#3b82f6", // Azul
+    center: [-34.425, -58.647],
+    coords: [
+      [-34.398, -58.672],
+      [-34.402, -58.632],
+      [-34.435, -58.618],
+      [-34.458, -58.632],
+      [-34.448, -58.665]
+    ]
+  },
+  "Villa Nueva": {
+    label: "Zona Villa Nueva",
+    color: "#a855f7", // Violeta
+    center: [-34.370, -58.697],
+    coords: [
+      [-34.352, -58.718],
+      [-34.352, -58.682],
+      [-34.385, -58.678],
+      [-34.392, -58.712]
+    ]
+  },
+  "Benavidez / Pacheco": {
+    label: "Zona Benavídez / Pacheco",
+    color: "#06b6d4", // Cian
+    center: [-34.438, -58.666],
+    coords: [
+      [-34.395, -58.705],
+      [-34.402, -58.668],
+      [-34.468, -58.638],
+      [-34.475, -58.675]
+    ]
+  },
+  "Tortugas": {
+    label: "Zona Tortugas",
+    color: "#f59e0b", // Ámbar
+    center: [-34.458, -58.744],
+    coords: [
+      [-34.442, -58.765],
+      [-34.442, -58.722],
+      [-34.478, -58.722],
+      [-34.478, -58.765]
+    ]
+  },
+  "Tigre": {
+    label: "Zona Tigre",
+    color: "#10b981", // Esmeralda
+    center: [-34.420, -58.590],
+    coords: [
+      [-34.402, -58.612],
+      [-34.402, -58.568],
+      [-34.438, -58.568],
+      [-34.438, -58.612]
+    ]
+  },
+  "San Isidro / Bancalari": {
+    label: "Zona Bancalari / Buenavista",
+    color: "#ec4899", // Rosa
+    center: [-34.482, -58.548],
+    coords: [
+      [-34.468, -58.568],
+      [-34.468, -58.528],
+      [-34.498, -58.528],
+      [-34.498, -58.568]
+    ]
+  }
 }
 
 const DEST_DOT = { name: "Shopping DOT Baires", lat: -34.5453, lng: -58.4891, color: "#3b82f6" }
 const DEST_CENTRO = { name: "Microcentro (Obelisco)", lat: -34.6037, lng: -58.3816, color: "#a855f7" }
 
 const TILE_LAYERS = {
-  calles: {
-    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    maxZoom: 19,
-    label: 'Calles (OSM)',
-    attribution: '&copy; OpenStreetMap contributors'
-  },
   oscuro: {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
     maxZoom: 16,
-    label: 'Oscuro (Esri)',
-    attribution: '&copy; Esri'
+    label: '🌙 Minimalista Oscuro',
+    attribution: '&copy; Esri World Dark Gray'
+  },
+  claro: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    maxZoom: 16,
+    label: '☀️ Minimalista Claro',
+    attribution: '&copy; Esri World Light Gray'
+  },
+  calles: {
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    maxZoom: 19,
+    label: '🗺️ Calles Detalladas',
+    attribution: '&copy; OpenStreetMap'
   },
   satelite: {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     maxZoom: 18,
-    label: 'Satélite',
+    label: '🛰️ Satélite',
     attribution: '&copy; Esri World Imagery'
   }
 }
@@ -86,8 +155,8 @@ interface MapSectionProps {
 }
 
 export default function MapSection({ records }: MapSectionProps) {
-  // Capa base seleccionada (por defecto "calles" para máxima visibilidad geográfica)
-  const [activeTileKey, setActiveTileKey] = useState<'calles' | 'oscuro' | 'satelite'>('calles')
+  // Capa base limpia y minimalista sin ruido visual (por defecto "oscuro")
+  const [activeTileKey, setActiveTileKey] = useState<'oscuro' | 'claro' | 'calles' | 'satelite'>('oscuro')
 
   // Filtros interactivos
   const [destFilter, setDestFilter] = useState<'dot' | 'centro' | 'ambos'>('ambos')
@@ -105,6 +174,7 @@ export default function MapSection({ records }: MapSectionProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const tileLayerRef = useRef<any>(null)
+  const zonesLayerRef = useRef<any[]>([])
   const markersRef = useRef<any[]>([])
   const linesRef = useRef<any[]>([])
   const [mapLoaded, setMapLoaded] = useState(false)
@@ -117,7 +187,7 @@ export default function MapSection({ records }: MapSectionProps) {
     return unique.sort((a, b) => monthsOrder.indexOf(a) - monthsOrder.indexOf(b))
   }, [records])
 
-  const macroList = useMemo(() => Object.keys(MACRO_CENTERS), [])
+  const macroList = useMemo(() => Object.keys(MACRO_ZONES_POLYGONS), [])
 
   // Filtrado reactivo de records
   const filteredRecords = useMemo(() => {
@@ -298,10 +368,9 @@ export default function MapSection({ records }: MapSectionProps) {
 
     if (mapInstanceRef.current) return
 
-    // Límites de todo el corredor
     const bounds = L.latLngBounds([
-      [-34.615, -58.760], // Suroeste (cerca de CABA / Tortugas)
-      [-34.350, -58.370]  // Noreste (Río / Villa Nueva / Centro)
+      [-34.615, -58.760],
+      [-34.350, -58.370]
     ])
 
     const map = L.map(mapContainerRef.current, {
@@ -311,10 +380,8 @@ export default function MapSection({ records }: MapSectionProps) {
 
     L.control.zoom({ position: 'bottomright' }).addTo(map)
 
-    // Ajustar vista inicial
     map.fitBounds(bounds, { padding: [30, 30] })
 
-    // Capa base
     const tileConfig = TILE_LAYERS[activeTileKey]
     const tileLayer = L.tileLayer(tileConfig.url, {
       maxZoom: tileConfig.maxZoom,
@@ -324,7 +391,6 @@ export default function MapSection({ records }: MapSectionProps) {
 
     mapInstanceRef.current = map
 
-    // Forzar redimensionamiento tras renderizado
     const timer = setTimeout(() => {
       map.invalidateSize()
     }, 250)
@@ -338,7 +404,7 @@ export default function MapSection({ records }: MapSectionProps) {
     }
   }, [mapLoaded])
 
-  // 3. CAMBIO DE CAPA TILE (CALLES, OSCURO, SATÉLITE)
+  // 3. CAMBIO DE CAPA TILE
   useEffect(() => {
     const map = mapInstanceRef.current
     const L = (window as any).L
@@ -357,17 +423,85 @@ export default function MapSection({ records }: MapSectionProps) {
     map.invalidateSize()
   }, [activeTileKey])
 
-  // 4. ACTUALIZACIÓN DE MARCADORES Y RUTAS
+  // 4. DIBUJO DE POLÍGONOS DE ZONAS RESALTADAS, BARRIOS Y RUTAS
   useEffect(() => {
     const map = mapInstanceRef.current
     const L = (window as any).L
     if (!map || !L) return
 
+    // Limpiar capas previas
+    zonesLayerRef.current.forEach(z => z.remove())
+    zonesLayerRef.current = []
     markersRef.current.forEach(m => m.remove())
     markersRef.current = []
     linesRef.current.forEach(l => l.remove())
     linesRef.current = []
 
+    // A. RESALTAR POLÍGONOS DE CADA ZONA GEOGRÁFICA
+    Object.keys(MACRO_ZONES_POLYGONS).forEach(macroKey => {
+      const zone = MACRO_ZONES_POLYGONS[macroKey]
+      const isMacroActive = macroFilter === 'todas' || macroFilter === macroKey
+
+      // Calcular promedio de la zona para el tooltip
+      const barriosInZone = Object.values(BARRIOS_GEO).filter(b => b.macro === macroKey)
+      const zoneAvgs = barriosInZone.map(b => barrioStats[b.name]?.avg).filter((v): v is number => v !== null)
+      const zoneProm = zoneAvgs.length > 0 ? Math.round(zoneAvgs.reduce((a, b) => a + b, 0) / zoneAvgs.length) : null
+
+      // Polígono sombreado con borde brillante
+      const polygon = L.polygon(zone.coords, {
+        color: zone.color,
+        fillColor: zone.color,
+        fillOpacity: isMacroActive ? 0.16 : 0.04,
+        weight: isMacroActive ? 2.5 : 1,
+        dashArray: isMacroActive ? '6, 6' : undefined
+      }).addTo(map)
+
+      polygon.bindTooltip(`
+        <div style="font-weight:900;color:${zone.color};font-size:12px;">
+          ${zone.label}
+        </div>
+        <div style="color:#ffffff;font-size:11px;">
+          Promedio de zona: ${zoneProm !== null ? `${zoneProm} min` : 'Sin datos'}
+        </div>
+      `, { sticky: true, opacity: 0.95 })
+
+      polygon.on('click', () => {
+        handleMacroChange(macroKey)
+      })
+
+      zonesLayerRef.current.push(polygon)
+
+      // Etiqueta flotante en el centro de la macro-zona
+      const zoneLabelIcon = L.divIcon({
+        className: 'zone-label-' + macroKey.replace(/[^a-zA-Z0-9]/g, '-'),
+        html: `
+          <div style="
+            background:rgba(15, 23, 42, 0.85);
+            border:1px solid ${zone.color};
+            color:${zone.color};
+            padding:2px 8px;
+            border-radius:8px;
+            font-size:9px;
+            font-weight:900;
+            letter-spacing:0.8px;
+            text-transform:uppercase;
+            box-shadow:0 0 10px rgba(0,0,0,0.8);
+            white-space:nowrap;
+            pointer-events:none;
+            opacity:${isMacroActive ? '1' : '0.4'};
+          ">
+            ${zone.label}
+          </div>
+        `,
+        iconSize: [120, 20],
+        iconAnchor: [60, 10]
+      })
+
+      const zoneLabelMarker = L.marker(zone.center, { icon: zoneLabelIcon, zIndexOffset: 50 }).addTo(map)
+      zonesLayerRef.current.push(zoneLabelMarker)
+    })
+
+    // B. DESTINOS EN CABA: SHOPPING DOT Y OBELISCO
     // Shopping DOT Baires
     const dotIcon = L.divIcon({
       className: 'dest-dot-marker',
@@ -376,14 +510,14 @@ export default function MapSection({ records }: MapSectionProps) {
           display:flex;
           align-items:center;
           gap:6px;
-          background:#0f172a;
+          background:#020617;
           border:2px solid #3b82f6;
           color:#60a5fa;
           padding:6px 12px;
           border-radius:24px;
           font-weight:900;
           font-size:11px;
-          box-shadow:0 0 20px rgba(59,130,246,0.6);
+          box-shadow:0 0 20px rgba(59,130,246,0.7);
           white-space:nowrap;
           cursor:pointer;
         ">
@@ -406,14 +540,14 @@ export default function MapSection({ records }: MapSectionProps) {
           display:flex;
           align-items:center;
           gap:6px;
-          background:#0f172a;
+          background:#020617;
           border:2px solid #a855f7;
           color:#c084fc;
           padding:6px 12px;
           border-radius:24px;
           font-weight:900;
           font-size:11px;
-          box-shadow:0 0 20px rgba(168,85,247,0.6);
+          box-shadow:0 0 20px rgba(168,85,247,0.7);
           white-space:nowrap;
           cursor:pointer;
         ">
@@ -428,7 +562,7 @@ export default function MapSection({ records }: MapSectionProps) {
     centroMarker.bindPopup('<b>Microcentro (Obelisco)</b><br/>Av. 9 de Julio y Corrientes')
     markersRef.current.push(centroMarker)
 
-    // Marcadores de Barrios
+    // C. BARRIOS RESALTADOS INDIVIDUALMENTE CON HUELLA CIRCULAR Y PINES DESTACADOS
     const uniqueBarrios = Object.values(BARRIOS_GEO).filter((b, idx, self) => 
       self.findIndex(t => t.name === b.name) === idx
     )
@@ -440,63 +574,73 @@ export default function MapSection({ records }: MapSectionProps) {
       const mins = stat ? stat.avg : null
       const colors = getTrafficColor(mins)
       const isSelected = selectedBarrio === barrio.name
+      const zoneInfo = MACRO_ZONES_POLYGONS[barrio.macro]
+      const zoneColor = zoneInfo ? zoneInfo.color : '#3b82f6'
 
-      // Pin circular con indicador de minutos y etiqueta abajo
+      // Huella física del barrio (Círculo sombreado que resalta el predio)
+      const footprintCircle = L.circle([barrio.lat, barrio.lng], {
+        radius: isSelected ? 800 : 600,
+        color: isSelected ? '#ffffff' : zoneColor,
+        fillColor: colors.bg,
+        fillOpacity: isSelected ? 0.45 : 0.28,
+        weight: isSelected ? 2.5 : 1.5
+      }).addTo(map)
+      markersRef.current.push(footprintCircle)
+
+      // Marcador prominente del barrio con demora y nombre
       const markerHtml = `
         <div style="
           display:flex;
           flex-direction:column;
           align-items:center;
           cursor:pointer;
-          transform:${isSelected ? 'scale(1.2)' : 'scale(1)'};
+          transform:${isSelected ? 'scale(1.22)' : 'scale(1)'};
           transition:transform 0.2s ease;
         ">
           <div style="
             display:flex;
             align-items:center;
-            justify-content:center;
-            min-width:34px;
-            height:34px;
-            padding:0 6px;
-            background:${colors.bg};
-            border:2.5px solid ${isSelected ? '#ffffff' : '#0f172a'};
-            border-radius:18px;
-            box-shadow:0 4px 14px rgba(0,0,0,0.7), 0 0 10px ${colors.bg};
-            color:#ffffff;
-            font-weight:900;
-            font-size:12px;
-            font-family:monospace;
-            letter-spacing:-0.5px;
-          ">
-            ${mins !== null ? `${mins}m` : '--'}
-          </div>
-          <div style="
-            background:rgba(15, 23, 42, 0.92);
-            color:#f8fafc;
-            border:1px solid rgba(255, 255, 255, 0.2);
-            padding:1px 6px;
-            border-radius:6px;
-            font-size:10px;
-            font-weight:700;
-            margin-top:2px;
+            gap:4px;
+            background:#020617;
+            border:2px solid ${colors.bg};
+            padding:3px 8px;
+            border-radius:14px;
+            box-shadow:0 4px 15px rgba(0,0,0,0.8), 0 0 10px ${colors.bg};
             white-space:nowrap;
-            box-shadow:0 2px 6px rgba(0,0,0,0.5);
           ">
-            ${barrio.name}
+            <span style="
+              background:${colors.bg};
+              color:#ffffff;
+              font-weight:900;
+              font-size:11px;
+              font-family:monospace;
+              padding:1px 6px;
+              border-radius:8px;
+            ">
+              ${mins !== null ? `${mins}m` : '--'}
+            </span>
+            <span style="
+              color:#f8fafc;
+              font-weight:800;
+              font-size:11px;
+              padding-right:2px;
+            ">
+              ${barrio.name}
+            </span>
           </div>
         </div>
       `
 
       const icon = L.divIcon({
-        className: 'barrio-pin-' + barrio.name.replace(/\s+/g, '-'),
+        className: 'barrio-badge-' + barrio.name.replace(/\s+/g, '-'),
         html: markerHtml,
-        iconSize: [80, 52],
-        iconAnchor: [40, 26]
+        iconSize: [130, 30],
+        iconAnchor: [65, 15]
       })
 
       const marker = L.marker([barrio.lat, barrio.lng], { 
         icon, 
-        zIndexOffset: isSelected ? 1000 : 100 
+        zIndexOffset: isSelected ? 1200 : 200 
       }).addTo(map)
 
       marker.on('click', () => {
@@ -506,9 +650,9 @@ export default function MapSection({ records }: MapSectionProps) {
 
       marker.bindTooltip(`
         <div style="padding:4px 6px;">
-          <div style="font-weight:bold;color:#f8fafc;font-size:12px;">${barrio.name}</div>
-          <div style="color:#94a3b8;font-size:10px;">Zona: ${barrio.macro}</div>
-          <div style="color:${colors.text};font-weight:bold;font-size:13px;margin-top:2px;">
+          <div style="font-weight:bold;color:#f8fafc;font-size:13px;">${barrio.name}</div>
+          <div style="color:${zoneColor};font-size:11px;font-weight:bold;">${barrio.macro}</div>
+          <div style="color:${colors.text};font-weight:900;font-size:14px;margin-top:2px;">
             Demora: ${mins !== null ? `${mins} min` : 'Sin datos'}
           </div>
           ${stat && stat.delta !== null ? `
@@ -516,13 +660,13 @@ export default function MapSection({ records }: MapSectionProps) {
               Delta histórico: ${stat.delta > 0 ? `+${stat.delta}m demora` : `${stat.delta}m más rápido`}
             </div>
           ` : ''}
-          <div style="font-size:9px;color:#38bdf8;margin-top:2px;">Haz clic para inspeccionar detalles</div>
+          <div style="font-size:9px;color:#38bdf8;margin-top:3px;">Haz clic para ver ficha detallada</div>
         </div>
       `, { direction: 'top', offset: [0, -18], opacity: 0.95 })
 
       markersRef.current.push(marker)
 
-      // Rutas conectadas hacia los destinos activos
+      // D. LÍNEAS DE RUTA CONECTADAS
       if (mins !== null) {
         const strokeColor = colors.bg
 
@@ -530,7 +674,7 @@ export default function MapSection({ records }: MapSectionProps) {
           const lineDot = L.polyline([[barrio.lat, barrio.lng], [DEST_DOT.lat, DEST_DOT.lng]], {
             color: strokeColor,
             weight: isSelected ? 3.5 : 1.5,
-            opacity: isSelected ? 0.85 : 0.28,
+            opacity: isSelected ? 0.9 : 0.28,
             dashArray: isSelected ? undefined : '5, 8'
           }).addTo(map)
           linesRef.current.push(lineDot)
@@ -540,7 +684,7 @@ export default function MapSection({ records }: MapSectionProps) {
           const lineCentro = L.polyline([[barrio.lat, barrio.lng], [DEST_CENTRO.lat, DEST_CENTRO.lng]], {
             color: strokeColor,
             weight: isSelected ? 3.5 : 1.5,
-            opacity: isSelected ? 0.85 : 0.28,
+            opacity: isSelected ? 0.9 : 0.28,
             dashArray: isSelected ? undefined : '5, 8'
           }).addTo(map)
           linesRef.current.push(lineCentro)
@@ -568,17 +712,11 @@ export default function MapSection({ records }: MapSectionProps) {
     }
   }
 
-  const handleFocusCABA = () => {
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo([-34.57, -58.44], 12.5, { duration: 0.8 })
-    }
-  }
-
   const handleMacroChange = (macro: string) => {
     setMacroFilter(macro)
-    if (macro !== 'todas' && MACRO_CENTERS[macro] && mapInstanceRef.current) {
-      const center = MACRO_CENTERS[macro]
-      mapInstanceRef.current.flyTo([center.lat, center.lng], 13, { duration: 0.8 })
+    if (macro !== 'todas' && MACRO_ZONES_POLYGONS[macro] && mapInstanceRef.current) {
+      const zone = MACRO_ZONES_POLYGONS[macro]
+      mapInstanceRef.current.flyTo([zone.center[0], zone.center[1]], 13, { duration: 0.8 })
     } else if (macro === 'todas') {
       handleResetCorredor()
     }
@@ -634,10 +772,10 @@ export default function MapSection({ records }: MapSectionProps) {
               <MapIcon size={14} /> Mapa Geográfico Interactivo
             </div>
             <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight flex items-center gap-3">
-              Corredor Zona Norte & Destinos CABA
+              Zonas y Barrios Resaltados de Zona Norte
             </h2>
             <p className="text-xs md:text-sm text-slate-400 mt-1 max-w-2xl font-medium">
-              Analiza cómo varía el tiempo de viaje entre cada barrio y los puntos neurálgicos (Shopping DOT y Obelisco) según el día de la semana, la hora del día, el sentido y el mes.
+              Mapa visual con delimitación de cada zona (Nordelta, Villa Nueva, Pacheco, Tortugas, Tigre y Bancalari) y tiempos de viaje hacia Shopping DOT y Obelisco.
             </p>
           </div>
 
@@ -791,13 +929,14 @@ export default function MapSection({ records }: MapSectionProps) {
           
           <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10 mb-4 z-10 relative">
             
-            {/* Selector de Capa Base (Calles, Oscuro, Satélite) */}
+            {/* Selector de Estilo de Mapa (Minimalista Limpio por Defecto) */}
             <div className="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-white/10">
+              <span className="text-[10px] font-bold text-slate-400 px-2 uppercase">Estilo:</span>
               {(Object.keys(TILE_LAYERS) as (keyof typeof TILE_LAYERS)[]).map(k => (
                 <button
                   key={k}
                   onClick={() => setActiveTileKey(k)}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
                     activeTileKey === k
                       ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
                       : 'text-slate-400 hover:text-white'
@@ -828,7 +967,7 @@ export default function MapSection({ records }: MapSectionProps) {
           </div>
 
           {/* Contenedor del Mapa Leaflet */}
-          <div className="w-full h-[560px] rounded-xl overflow-hidden relative border border-white/10 shadow-inner bg-slate-900">
+          <div className="w-full h-[580px] rounded-xl overflow-hidden relative border border-white/10 shadow-inner bg-slate-900">
             <div ref={mapContainerRef} className="w-full h-full z-0" />
 
             {!mapLoaded && !leafletError && (
@@ -989,6 +1128,7 @@ export default function MapSection({ records }: MapSectionProps) {
 
           <div className="grid grid-cols-1 gap-3">
             {macroList.map(macro => {
+              const zone = MACRO_ZONES_POLYGONS[macro]
               const barriosInMacro = Object.values(BARRIOS_GEO).filter(b => b.macro === macro)
               const avgs = barriosInMacro.map(b => barrioStats[b.name]?.avg).filter((v): v is number => v !== null)
               const macroAvg = avgs.length > 0 ? Math.round(avgs.reduce((a, b) => a + b, 0) / avgs.length) : null
@@ -1004,6 +1144,7 @@ export default function MapSection({ records }: MapSectionProps) {
                       ? 'bg-slate-900 border-blue-500/50 shadow-lg shadow-blue-500/10' 
                       : 'bg-slate-950/80 border-white/5 hover:border-white/15'
                   }`}
+                  style={{ borderLeftColor: zone.color, borderLeftWidth: '4px' }}
                 >
                   <div className="space-y-0.5">
                     <span className="font-bold text-sm text-white block">
@@ -1061,6 +1202,7 @@ export default function MapSection({ records }: MapSectionProps) {
                 {rankingList.map((item, idx) => {
                   const colors = getTrafficColor(item.avg)
                   const isSelected = selectedBarrio === item.name
+                  const zoneColor = MACRO_ZONES_POLYGONS[item.macro]?.color || '#3b82f6'
 
                   return (
                     <tr 
@@ -1087,7 +1229,10 @@ export default function MapSection({ records }: MapSectionProps) {
                         </span>
                       </td>
                       <td className="px-3.5 py-3">
-                        <span className="text-[11px] font-semibold text-slate-400">
+                        <span 
+                          className="text-[11px] font-semibold px-2 py-0.5 rounded border inline-block"
+                          style={{ borderColor: `${zoneColor}40`, color: zoneColor, background: `${zoneColor}10` }}
+                        >
                           {item.macro}
                         </span>
                       </td>
