@@ -158,8 +158,8 @@ interface MapSectionProps {
 }
 
 export default function MapSection({ records }: MapSectionProps) {
-  const [viewMode, setViewMode] = useState<'corredores' | 'nordelta'>('corredores')
-  const [activeTileKey, setActiveTileKey] = useState<'oscuro' | 'claro' | 'calles' | 'satelite'>('oscuro')
+  const [viewMode, setViewMode] = useState<'nordelta' | 'corredores'>('nordelta')
+  const [activeTileKey, setActiveTileKey] = useState<'calles' | 'oscuro' | 'claro' | 'satelite'>('calles')
 
   // Filtros del Mapa
   const [destFilter, setDestFilter] = useState<'dot' | 'centro' | 'ambos'>('ambos')
@@ -700,21 +700,34 @@ export default function MapSection({ records }: MapSectionProps) {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
-              <MapIcon size={20} />
+            <span className={`p-2 rounded-xl border ${viewMode === 'nordelta' ? 'bg-teal-500/10 border-teal-500/20 text-teal-400' : 'bg-blue-500/10 border-blue-500/20 text-blue-400'}`}>
+              {viewMode === 'nordelta' ? <Compass size={20} /> : <MapIcon size={20} />}
             </span>
             <h2 className="text-xl md:text-2xl font-black text-white tracking-tight">
-              Mapa Geoespacial de Tráfico y Corredores
+              {viewMode === 'nordelta' ? 'Masterplan Nordelta & Barrios Vecinos' : 'Mapa Geoespacial de Tráfico y Corredores'}
             </h2>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Visualizá los tiempos de viaje proyectados desde Zona Norte hacia Shopping DOT y Obelisco en tiempo real.
+            {viewMode === 'nordelta' 
+              ? 'Cartografía GIS de 1.600 hectáreas con profundidad y visualización de calles internas, lagos y accesos.' 
+              : 'Visualizá los tiempos de viaje proyectados desde Zona Norte hacia Shopping DOT y Obelisco en tiempo real.'}
           </p>
         </div>
 
-        {/* Selector de Vista: Corredores de Tráfico vs Masterplan Nordelta */}
+        {/* Selector de Vista: Masterplan Nordelta vs Corredores */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5 bg-slate-950 p-1.5 rounded-xl border border-white/10 shadow-lg">
+            <button
+              onClick={() => setViewMode('nordelta')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                viewMode === 'nordelta'
+                  ? 'bg-teal-600 text-white shadow-md shadow-teal-500/20'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Compass size={14} />
+              <span>Masterplan Nordelta (GIS)</span>
+            </button>
             <button
               onClick={() => setViewMode('corredores')}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
@@ -725,17 +738,6 @@ export default function MapSection({ records }: MapSectionProps) {
             >
               <Car size={14} />
               <span>Corredores a CABA</span>
-            </button>
-            <button
-              onClick={() => setViewMode('nordelta')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
-                viewMode === 'nordelta'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Compass size={14} />
-              <span>Masterplan Nordelta (1.600 ha)</span>
             </button>
           </div>
 
