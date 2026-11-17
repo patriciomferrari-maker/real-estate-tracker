@@ -368,92 +368,121 @@ export default function MapSection({ records }: MapSectionProps) {
     }
   }
 
-  // 1. CARGA DINÁMICA DE ASSETS LEAFLET
+  // 1. CARGA DINÁMICA DE ASSETS LEAFLET CON POLLING ROBUSTO
   useEffect(() => {
     let isMounted = true
 
-    const loadLeafletAssets = async () => {
-      try {
-        if (!(window as any).L) {
-          if (!document.getElementById('leaflet-css')) {
-            const link = document.createElement('link')
-            link.id = 'leaflet-css'
-            link.rel = 'stylesheet'
-            link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
-            document.head.appendChild(link)
-          }
-
-          await new Promise<void>((resolve, reject) => {
-            if (document.getElementById('leaflet-js')) {
-              const existing = document.getElementById('leaflet-js')
-              existing?.addEventListener('load', () => resolve())
-              return
-            }
-            const script = document.createElement('script')
-            script.id = 'leaflet-js'
-            script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
-            script.onload = () => resolve()
-            script.onerror = () => reject(new Error('Failed to load Leaflet JS'))
-            document.body.appendChild(script)
-          })
-        }
-
+    const checkLeaflet = () => {
+      if ((window as any).L) {
         if (isMounted) setMapLoaded(true)
-      } catch (err) {
-        console.error('Error loading Leaflet:', err)
-        if (isMounted) setLeafletError(true)
+        return true
       }
+      return false
     }
 
-    loadLeafletAssets()
+    if (checkLeaflet()) return
+
+    try {
+      if (!document.getElementById('leaflet-css')) {
+        const link = document.createElement('link')
+        link.id = 'leaflet-css'
+        link.rel = 'stylesheet'
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+        document.head.appendChild(link)
+      }
+
+      if (!document.getElementById('leaflet-js')) {
+        const script = document.createElement('script')
+        script.id = 'leaflet-js'
+        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+        script.onload = () => {
+          if (isMounted) setMapLoaded(true)
+        }
+        script.onerror = () => {
+          if (isMounted) setLeafletError(true)
+        }
+        document.body.appendChild(script)
+      }
+    } catch (err) {
+      console.error('Error in Leaflet injection:', err)
+    }
+
+    const interval = setInterval(() => {
+      if (checkLeaflet()) {
+        clearInterval(interval)
+      }
+    }, 50)
+
+    const timeout = setTimeout(() => {
+      clearInterval(interval)
+      if (!checkLeaflet() && isMounted) {
+        setLeafletError(true)
+      }
+    }, 10000)
 
     return () => {
       isMounted = false
+      clearInterval(interval)
+      clearTimeout(timeout)
     }
   }, [])
 
-  // 2. INICIALIZACIÓN DEL MAPA
+  // 2. INICIALIZACIÓN Y REDIMENSIONAMIENTO DEL MAPA CORREDORES
   useEffect(() => {
     if (!mapLoaded || !mapContainerRef.current) return
     const L = (window as any).L
     if (!L) return
 
-    if (mapInstanceRef.current) return
+    if (!mapInstanceRef.current) {
+      const bounds = L.latLngBounds([
+        [-34.615, -58.760],
+        [-34.350, -58.370]
+      ])
 
-    const bounds = L.latLngBounds([
-      [-34.615, -58.760],
-      [-34.350, -58.370]
-    ])
+      const map = L.map(mapContainerRef.current, {
+        zoomControl: false,
+        attributionControl: true
+      })
 
-    const map = L.map(mapContainerRef.current, {
-      zoomControl: false,
-      attributionControl: true
-    })
+      L.control.zoom({ position: 'bottomright' }).addTo(map)
+      map.fitBounds(bounds, { padding: [35, 35] })
 
-    L.control.zoom({ position: 'bottomright' }).addTo(map)
+      const tileConfig = TILE_LAYERS[activeTileKey] || TILE_LAYERS.calles
+      tileLayerRef.current = L.tileLayer(tileConfig.url, {
+        maxZoom: tileConfig.maxZoom,
+        attribution: tileConfig.attribution
+      }).addTo(map)
 
-    map.fitBounds(bounds, { padding: [35, 35] })
+      mapInstanceRef.current = map
+    }
 
-    const tileConfig = TILE_LAYERS[activeTileKey]
-    tileLayerRef.current = L.tileLayer(tileConfig.url, {
-      maxZoom: tileConfig.maxZoom,
-      attribution: tileConfig.attribution
-    }).addTo(map)
+    if (viewMode === 'corredores' && mapInstanceRef.current) {
+      const t1 = setTimeout(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize()
+        }
+      }, 100)
+      const t2 = setTimeout(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize()
+        }
+      }, 350)
+      return () => {
+        clearTimeout(t1)
+        clearTimeout(t2)
+      }
+    }
+  }, [mapLoaded, viewMode, activeTileKey])
 
-    mapInstanceRef.current = map
-
-    const timer = setTimeout(() => {
-      map.invalidateSize()
-    }, 250)
-
+  // Limpieza al desmontar el componente MapSection
+  useEffect(() => {
     return () => {
-      clearTimeout(timer)
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove()
         mapInstanceRef.current = null
       }
     }
-  }, [mapLoaded])
+  }, [])
 
   // 3. CAMBIO DE CAPA TILE
   useEffect(() => {
@@ -679,7 +708,7 @@ export default function MapSection({ records }: MapSectionProps) {
       }
     })
 
-  }, [mapLoaded, barrioStats, selectedBarrio, destFilter, macroFilter])
+  }, [mapLoaded, viewMode, barrioStats, selectedBarrio, destFilter, macroFilter])
 
   const details = selectedBarrioDetails
   const selectedZoneInfo = MACRO_ZONES_POLYGONS[details.macro]
@@ -753,10 +782,13 @@ export default function MapSection({ records }: MapSectionProps) {
         </div>
       </div>
 
-      {viewMode === 'nordelta' ? (
-        <NordeltaMasterplan />
-      ) : (
-        <>
+      {/* Vista 1: Masterplan Nordelta GIS */}
+      <div style={{ display: viewMode === 'nordelta' ? 'block' : 'none' }}>
+        <NordeltaMasterplan isActive={viewMode === 'nordelta'} />
+      </div>
+
+      {/* Vista 2: Corredores a CABA y Tráfico AMBA */}
+      <div style={{ display: viewMode === 'corredores' ? 'block' : 'none' }} className="space-y-6">
 
       {/* 2. BARRA DE FILTROS DEL MAPA */}
       <div className="bg-slate-900/80 backdrop-blur-md border border-white/10 p-4 md:p-5 rounded-2xl shadow-xl space-y-4">
@@ -1329,8 +1361,9 @@ export default function MapSection({ records }: MapSectionProps) {
 
       </div>
 
-        </>
-      )}
+      {/* Fin Vista 2 */}
+      </div>
+
     </div>
   )
 }

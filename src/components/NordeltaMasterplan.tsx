@@ -542,7 +542,7 @@ export const MASTERPLAN_DATA: Record<string, MasterplanZone> = {
   }
 }
 
-export default function NordeltaMasterplan() {
+export default function NordeltaMasterplan({ isActive = true }: { isActive?: boolean }) {
   const [selectedKey, setSelectedKey] = useState<string>("Castores")
   const [filterType, setFilterType] = useState<'todos' | 'nordelta' | 'vecino'>('todos')
   const [searchQuery, setSearchQuery] = useState<string>("")
@@ -572,48 +572,79 @@ export default function NordeltaMasterplan() {
     })
   }, [filterType, searchQuery])
 
-  // Carga de Leaflet Assets
+  // Carga Robusta de Leaflet Assets
   useEffect(() => {
     let isMounted = true
 
-    const loadLeaflet = async () => {
-      try {
-        if (!(window as any).L) {
-          if (!document.getElementById('leaflet-css')) {
-            const link = document.createElement('link')
-            link.id = 'leaflet-css'
-            link.rel = 'stylesheet'
-            link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
-            document.head.appendChild(link)
-          }
-
-          await new Promise<void>((resolve, reject) => {
-            if (document.getElementById('leaflet-js')) {
-              const existing = document.getElementById('leaflet-js')
-              existing?.addEventListener('load', () => resolve())
-              return
-            }
-            const script = document.createElement('script')
-            script.id = 'leaflet-js'
-            script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
-            script.onload = () => resolve()
-            script.onerror = () => reject(new Error('Failed to load Leaflet'))
-            document.body.appendChild(script)
-          })
-        }
-
+    const checkLeaflet = () => {
+      if ((window as any).L) {
         if (isMounted) setMapReady(true)
-      } catch (e) {
-        console.error('Error loading Leaflet in Masterplan:', e)
+        return true
       }
+      return false
     }
 
-    loadLeaflet()
+    if (checkLeaflet()) return
+
+    try {
+      if (!document.getElementById('leaflet-css')) {
+        const link = document.createElement('link')
+        link.id = 'leaflet-css'
+        link.rel = 'stylesheet'
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+        document.head.appendChild(link)
+      }
+
+      if (!document.getElementById('leaflet-js')) {
+        const script = document.createElement('script')
+        script.id = 'leaflet-js'
+        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+        script.onload = () => {
+          if (isMounted) setMapReady(true)
+        }
+        document.body.appendChild(script)
+      }
+    } catch (e) {
+      console.error('Error loading Leaflet in Masterplan:', e)
+    }
+
+    const interval = setInterval(() => {
+      if (checkLeaflet()) {
+        clearInterval(interval)
+      }
+    }, 50)
+
+    const timeout = setTimeout(() => {
+      clearInterval(interval)
+      checkLeaflet()
+    }, 10000)
 
     return () => {
       isMounted = false
+      clearInterval(interval)
+      clearTimeout(timeout)
     }
   }, [])
+
+  // InvalidateSize cuando el componente pasa a estar activo
+  useEffect(() => {
+    if (isActive && mapInstanceRef.current) {
+      const t1 = setTimeout(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize()
+        }
+      }, 100)
+      const t2 = setTimeout(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize()
+        }
+      }, 350)
+      return () => {
+        clearTimeout(t1)
+        clearTimeout(t2)
+      }
+    }
+  }, [isActive])
 
   // Inicialización del Mapa Leaflet
   useEffect(() => {
