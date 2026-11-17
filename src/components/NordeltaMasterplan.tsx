@@ -622,10 +622,10 @@ export default function NordeltaMasterplan() {
             </span>
           </div>
 
-          {/* VISTA 1: PLANO VECTORIAL ESTILO BARRIOS MAPS */}
+          {/* VISTA 1: PLANO VECTORIAL ESTILO BARRIOS MAPS (DIMENSIONES Y ORIENTACIÓN REAL) */}
           {viewType === 'plano' && (
-            <div className="w-full aspect-[4/3] max-h-[620px] relative">
-              <svg viewBox="0 0 1020 740" className="w-full h-full select-none" xmlns="http://www.w3.org/2000/svg">
+            <div className="w-full aspect-[4/3] max-h-[660px] relative">
+              <svg viewBox="0 0 1040 820" className="w-full h-full select-none" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                   {/* Gradiente de Agua Estilo Blueprint Náutico */}
                   <linearGradient id="bmWaterGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -640,304 +640,343 @@ export default function NordeltaMasterplan() {
                     <stop offset="100%" stopColor="#0f172a" stopOpacity="0.95"/>
                   </linearGradient>
 
-                  {/* Patrón de Loteo Fino (Blueprint Texture) */}
+                  {/* Patrón de Loteo Fino */}
                   <pattern id="loteoPattern" width="16" height="16" patternUnits="userSpaceOnUse">
                     <path d="M 16 0 L 0 0 0 16" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="0.8"/>
                   </pattern>
                 </defs>
 
                 {/* Fondo Base Cartográfico */}
-                <rect x="0" y="0" width="1020" height="740" fill="#090d16" />
+                <rect x="0" y="0" width="1040" height="820" fill="#090d16" />
 
-                {/* --- 1. LÍMITES REGIONALES Y VECINOS --- */}
-                {/* Santa Bárbara (Oeste del Corredor Bancalari) */}
-                <polygon points="10,670 100,670 90,380 10,400" fill="#1e293b" stroke="#334155" strokeWidth="1.5" strokeDasharray="4,4" opacity="0.6" />
-                <ellipse cx="50" cy="530" rx="30" ry="70" fill="#0369a1" opacity="0.35" />
-                <text x="25" y="520" fill="#94a3b8" fontSize="11" fontWeight="bold">SANTA</text>
-                <text x="20" y="534" fill="#94a3b8" fontSize="11" fontWeight="bold">BÁRBARA</text>
-
+                {/* ---------------- 1. BORDE NORTE: VECINOS Y RUTA 27 ---------------- */}
                 {/* Complejo Villa Nueva (Norte de Ruta 27) */}
-                <polygon points="260,10 760,10 740,65 280,65" fill="#1e293b" stroke="#334155" strokeWidth="1.5" strokeDasharray="4,4" opacity="0.6" />
-                <text x="460" y="38" fill="#38bdf8" fontSize="12" fontWeight="900" letterSpacing="1">COMPLEJO VILLA NUEVA (EIDICO)</text>
-                <text x="410" y="52" fill="#94a3b8" fontSize="10">Santa Teresa • Santa Clara • San Marco • San Isidro Labrador</text>
+                <g className="cursor-pointer" onClick={() => setSelectedKey('Tipas')}>
+                  <polygon points="260,10 820,10 790,60 280,60" fill="#1e293b" stroke="#334155" strokeWidth="1.5" strokeDasharray="4,4" opacity="0.6" />
+                  <text x="460" y="32" fill="#38bdf8" fontSize="12" fontWeight="900" letterSpacing="1">COMPLEJO VILLA NUEVA (EIDICO)</text>
+                  <text x="400" y="48" fill="#94a3b8" fontSize="10">Santa Teresa • Santa Clara • San Marco • San Isidro Labrador</text>
+                </g>
 
-                {/* Perímetro Masterplan Nordelta (1.600 Hectáreas) */}
-                <polygon points="160,680 210,690 520,700 750,560 840,360 810,150 640,90 280,75 150,210 120,510"
-                         fill="url(#bmPerimeterGrad)" stroke="#3b82f6" strokeWidth="2.5" strokeDasharray="6,4" />
-                <rect x="160" y="80" width="670" height="610" fill="url(#loteoPattern)" />
-                <text x="230" y="715" fill="#3b82f6" fontSize="11" fontWeight="bold" opacity="0.8">
-                  LÍMITE MASTERPLAN NORDELTA (1.600 HECTÁREAS)
-                </text>
+                {/* Ruta 27 (Lateral Norte y Borde Superior) */}
+                <path d="M 180,68 L 780,68 Q 850,75 885,150 T 935,320 T 985,520" 
+                      fill="none" stroke="#334155" strokeWidth="18" strokeLinecap="round" />
+                <path d="M 180,68 L 780,68 Q 850,75 885,150 T 935,320 T 985,520" 
+                      fill="none" stroke="#64748b" strokeWidth="12" strokeLinecap="round" />
+                <path d="M 180,68 L 780,68 Q 850,75 885,150 T 935,320 T 985,520" 
+                      fill="none" stroke="#10b981" strokeWidth="2" strokeDasharray="7,5" />
+                <text x="380" y="62" fill="#34d399" fontSize="11" fontWeight="900">RUTA 27 (LATERAL NORTE HACIA BENAVÍDEZ Y TIGRE)</text>
 
-                {/* --- 2. RÍO LUJÁN Y CANALES NAVEGABLES --- */}
-                <path d="M 740,35 Q 840,95 890,190 T 980,310" 
+                {/* Río Luján (Noreste) */}
+                <path d="M 780,25 Q 870,80 920,170 T 1000,280" 
                       fill="none" stroke="#0284c7" strokeWidth="26" strokeLinecap="round" opacity="0.8" />
-                <text x="860" y="145" fill="#7dd3fc" fontSize="12" fontWeight="900" transform="rotate(50, 860, 145)">
+                <text x="890" y="120" fill="#7dd3fc" fontSize="12" fontWeight="900" transform="rotate(50, 890, 120)">
                   RÍO LUJÁN (Navegable al Delta)
                 </text>
 
-                {/* Canal Náutico Mayor de Nordelta */}
-                <path d="M 730,260 Q 780,270 820,240 T 890,195" 
+                {/* Canal Mayor Náutico de Nordelta */}
+                <path d="M 770,230 Q 820,240 860,210 T 920,165" 
                       fill="none" stroke="#0284c7" strokeWidth="16" strokeLinecap="round" opacity="0.9" />
 
-                {/* --- 3. RED VIAL EXTERIOR (ARTERIAS LATERALES) --- */}
-                {/* A. Corredor Bancalari (Lateral Oeste) */}
-                <path d="M 115,730 L 115,480 Q 115,350 145,210 T 260,75" 
+                {/* Camino de los Remeros (Lateral Este) */}
+                <path d="M 885,150 Q 930,340 955,540 T 985,780" 
                       fill="none" stroke="#334155" strokeWidth="18" strokeLinecap="round" />
-                <path d="M 115,730 L 115,480 Q 115,350 145,210 T 260,75" 
+                <path d="M 885,150 Q 930,340 955,540 T 985,780" 
                       fill="none" stroke="#64748b" strokeWidth="12" strokeLinecap="round" />
-                <path d="M 115,730 L 115,480 Q 115,350 145,210 T 260,75" 
-                      fill="none" stroke="#f59e0b" strokeWidth="2" strokeDasharray="6,5" />
-                <text x="35" y="625" fill="#fbbf24" fontSize="11" fontWeight="900">CORREDOR BANCALARI</text>
-                <text x="45" y="640" fill="#94a3b8" fontSize="10">↓ Hacia Panamericana Sur</text>
-
-                {/* B. Ruta 27 (Lateral Norte y Este) */}
-                <path d="M 250,75 L 630,85 Q 740,90 780,160 T 845,340 T 905,560" 
-                      fill="none" stroke="#334155" strokeWidth="18" strokeLinecap="round" />
-                <path d="M 250,75 L 630,85 Q 740,90 780,160 T 845,340 T 905,560" 
-                      fill="none" stroke="#64748b" strokeWidth="12" strokeLinecap="round" />
-                <path d="M 250,75 L 630,85 Q 740,90 780,160 T 845,340 T 905,560" 
-                      fill="none" stroke="#10b981" strokeWidth="2" strokeDasharray="7,5" />
-                <text x="370" y="80" fill="#34d399" fontSize="11" fontWeight="900">RUTA 27 (LATERAL NORTE)</text>
-
-                {/* C. Camino de los Remeros (Lateral Este) */}
-                <path d="M 845,340 Q 875,450 895,590 T 925,725" 
-                      fill="none" stroke="#334155" strokeWidth="18" strokeLinecap="round" />
-                <path d="M 845,340 Q 875,450 895,590 T 925,725" 
-                      fill="none" stroke="#64748b" strokeWidth="12" strokeLinecap="round" />
-                <path d="M 845,340 Q 875,450 895,590 T 925,725" 
+                <path d="M 885,150 Q 930,340 955,540 T 985,780" 
                       fill="none" stroke="#38bdf8" strokeWidth="2" strokeDasharray="6,4" />
-                <text x="825" y="450" fill="#7dd3fc" fontSize="11" fontWeight="900">CAMINO DE LOS REMEROS</text>
+                <text x="900" y="450" fill="#7dd3fc" fontSize="11" fontWeight="900" transform="rotate(82, 900, 450)">
+                  CAMINO DE LOS REMEROS (Salida a Ramal Tigre)
+                </text>
 
-                {/* --- 4. RED VIAL INTERNA DE NORDELTA --- */}
-                {/* Avenida de los Lagos (Troncal de 8 km) */}
-                <path d="M 125,540 Q 220,535 300,520 T 400,430 T 470,290 T 540,170 T 605,90" 
+                {/* ---------------- 2. PERÍMETRO GENERAL NORDELTA (1.600 HA) ---------------- */}
+                <polygon points="170,580 480,590 770,540 850,330 820,130 650,75 220,72 150,200 130,480"
+                         fill="url(#bmPerimeterGrad)" stroke="#3b82f6" strokeWidth="2.5" strokeDasharray="6,4" />
+                <rect x="150" y="75" width="700" height="515" fill="url(#loteoPattern)" />
+                <text x="210" y="605" fill="#3b82f6" fontSize="11" fontWeight="bold" opacity="0.85">
+                  LÍMITE MASTERPLAN NORDELTA (1.600 HECTÁREAS)
+                </text>
+
+                {/* ---------------- 3. SECTOR SUR (AFUERA DE NORDELTA): BARRIO SANTA BÁRBARA ---------------- */}
+                {/* Santa Bárbara (232 ha) ubicado AL SUR sobre Bancalari antes de entrar a Nordelta */}
+                <g className="cursor-pointer group" onClick={() => setSelectedKey('Castaños')}>
+                  {/* Polígono de Santa Bárbara */}
+                  <polygon points="120,630 460,630 430,795 100,795" 
+                           fill="#1e293b" stroke="#38bdf8" strokeWidth="2" strokeDasharray="5,3" opacity="0.8" />
+                  
+                  {/* Gran Laguna Central de Santa Bárbara (60 ha) con sus 4 islas características */}
+                  <path d="M 160,710 C 180,660 380,660 400,710 C 390,760 170,765 160,710 Z" 
+                        fill="url(#bmWaterGrad)" opacity="0.75" />
+                  {/* 4 Islas de Santa Bárbara */}
+                  <ellipse cx="230" cy="710" rx="14" ry="8" fill="#1e293b" stroke="#38bdf8" strokeWidth="1" />
+                  <ellipse cx="280" cy="705" rx="16" ry="9" fill="#1e293b" stroke="#38bdf8" strokeWidth="1" />
+                  <ellipse cx="330" cy="715" rx="15" ry="8" fill="#1e293b" stroke="#38bdf8" strokeWidth="1" />
+                  <ellipse cx="370" cy="710" rx="12" ry="7" fill="#1e293b" stroke="#38bdf8" strokeWidth="1" />
+
+                  {/* Puentes vehiculares que unen las islas */}
+                  <line x1="216" y1="710" x2="244" y2="710" stroke="#f59e0b" strokeWidth="2" />
+                  <line x1="264" y1="707" x2="296" y2="707" stroke="#f59e0b" strokeWidth="2" />
+                  <line x1="315" y1="712" x2="345" y2="712" stroke="#f59e0b" strokeWidth="2" />
+                  <line x1="358" y1="710" x2="382" y2="710" stroke="#f59e0b" strokeWidth="2" />
+
+                  {/* Rótulo de Santa Bárbara */}
+                  <rect x="180" y="635" width="190" height="26" rx="6" fill="#0f172a" stroke="#38bdf8" strokeWidth="1.5" />
+                  <text x="195" y="652" fill="#7dd3fc" fontSize="12" fontWeight="900">
+                    BARRIO SANTA BÁRBARA
+                  </text>
+                  <text x="200" y="780" fill="#94a3b8" fontSize="11" fontWeight="bold">
+                    232 Hectáreas • Laguna 60 ha con 4 Islas y Puentes
+                  </text>
+                  <text x="210" y="792" fill="#64748b" fontSize="10">
+                    (Ubicado al SUR de Nordelta sobre Corredor Bancalari)
+                  </text>
+                </g>
+
+                {/* ---------------- 4. CORREDOR BANCALARI (SUBE DE SUR A NORTE) ---------------- */}
+                {/* Nace en el sur (Panamericana), pasa por Santa Bárbara y llega al Acceso Sur de Nordelta */}
+                <path d="M 85,815 L 85,550 Q 90,440 120,300 T 210,75" 
+                      fill="none" stroke="#334155" strokeWidth="18" strokeLinecap="round" />
+                <path d="M 85,815 L 85,550 Q 90,440 120,300 T 210,75" 
+                      fill="none" stroke="#64748b" strokeWidth="12" strokeLinecap="round" />
+                <path d="M 85,815 L 85,550 Q 90,440 120,300 T 210,75" 
+                      fill="none" stroke="#f59e0b" strokeWidth="2" strokeDasharray="6,5" />
+                
+                {/* Cartel Bancalari */}
+                <rect x="10" y="740" width="145" height="42" rx="6" fill="#0f172a" stroke="#f59e0b" strokeWidth="1.5" />
+                <text x="16" y="756" fill="#fbbf24" fontSize="10" fontWeight="900">CORREDOR BANCALARI</text>
+                <text x="16" y="770" fill="#94a3b8" fontSize="9">↓ Panamericana / CABA</text>
+                <text x="16" y="779" fill="#38bdf8" fontSize="8.5">Pasa por Santa Bárbara</text>
+
+                {/* ---------------- 5. RED VIAL INTERNA: AVENIDA DE LOS LAGOS (TRONCAL 8 KM) ---------------- */}
+                {/* Nace en la Garita Bancalari (Sur), bordea Castaños, el Lago Central y sube a Garita Benavídez (Norte) */}
+                <path d="M 115,550 Q 200,545 280,530 T 380,440 T 450,300 T 520,170 T 580,72" 
                       fill="none" stroke="#0f172a" strokeWidth="14" strokeLinecap="round" />
-                <path d="M 125,540 Q 220,535 300,520 T 400,430 T 470,290 T 540,170 T 605,90" 
+                <path d="M 115,550 Q 200,545 280,530 T 380,440 T 450,300 T 520,170 T 580,72" 
                       fill="none" stroke="#f59e0b" strokeWidth="5" strokeLinecap="round" />
-                <path d="M 125,540 Q 220,535 300,520 T 400,430 T 470,290 T 540,170 T 605,90" 
+                <path d="M 115,550 Q 200,545 280,530 T 380,440 T 450,300 T 520,170 T 580,72" 
                       fill="none" stroke="#ffffff" strokeWidth="1.5" strokeDasharray="7,5" />
-                <text x="415" y="420" fill="#fef08a" fontSize="12" fontWeight="900" transform="rotate(-54, 415, 420)">
+                <text x="400" y="420" fill="#fef08a" fontSize="12" fontWeight="900" transform="rotate(-54, 400, 420)">
                   Av. de los Lagos (Troncal 8 km)
                 </text>
 
-                {/* Ramal Avenida del Golf */}
-                <path d="M 400,430 Q 320,380 290,260 T 320,130" 
+                {/* Ramal Av. del Golf */}
+                <path d="M 380,440 Q 300,380 270,260 T 300,120" 
                       fill="none" stroke="#f59e0b" strokeWidth="3.5" opacity="0.8" />
-                <text x="290" y="320" fill="#fde68a" fontSize="10" fontWeight="bold" transform="rotate(-75, 290, 320)">
+                <text x="270" y="310" fill="#fde68a" fontSize="10" fontWeight="bold" transform="rotate(-75, 270, 310)">
                   Av. del Golf
                 </text>
 
-                {/* Ramal Avenida de la Bahía */}
-                <path d="M 470,290 Q 570,305 680,315 T 780,325" 
+                {/* Ramal Av. de la Bahía */}
+                <path d="M 450,300 Q 560,310 680,318 T 780,325" 
                       fill="none" stroke="#f59e0b" strokeWidth="3.5" opacity="0.8" />
                 <text x="610" y="300" fill="#fde68a" fontSize="10" fontWeight="bold">
                   Av. de la Bahía
                 </text>
 
-                {/* --- 5. ESPEJOS DE AGUA DE NORDELTA --- */}
-                {/* LAGO CENTRAL (180 HA) */}
-                <path d="M 370,510 C 350,440 400,390 380,320 C 370,270 450,230 490,250 C 550,280 530,360 480,400 C 450,420 450,490 400,520 Z" 
+                {/* ---------------- 6. ESPEJOS DE AGUA DE NORDELTA ---------------- */}
+                {/* LAGO CENTRAL (180 HECTÁREAS) */}
+                <path d="M 350,500 C 330,430 380,380 360,310 C 350,260 430,220 470,240 C 530,270 510,350 460,390 C 430,410 430,480 380,510 Z" 
                       fill="url(#bmWaterGrad)" filter="drop-shadow(0 0 12px rgba(14, 165, 233, 0.5))" />
-                <text x="420" y="350" fill="#e0f2fe" fontSize="14" fontWeight="900" letterSpacing="1">LAGO CENTRAL</text>
-                <text x="445" y="366" fill="#bae6fd" fontSize="12" fontWeight="bold">(180 ha)</text>
+                <text x="400" y="340" fill="#e0f2fe" fontSize="14" fontWeight="900" letterSpacing="1">LAGO CENTRAL</text>
+                <text x="425" y="356" fill="#bae6fd" fontSize="12" fontWeight="bold">(180 ha)</text>
 
                 {/* Lagunas Internas de los Barrios */}
-                <ellipse cx="280" cy="590" rx="45" ry="30" fill="url(#bmWaterGrad)" />
-                <ellipse cx="550" cy="420" rx="40" ry="24" fill="url(#bmWaterGrad)" />
-                <ellipse cx="660" cy="210" rx="45" ry="26" fill="url(#bmWaterGrad)" />
+                <ellipse cx="260" cy="570" rx="40" ry="25" fill="url(#bmWaterGrad)" />
+                <ellipse cx="530" cy="410" rx="36" ry="20" fill="url(#bmWaterGrad)" />
+                <ellipse cx="640" cy="190" rx="42" ry="24" fill="url(#bmWaterGrad)" />
 
-                {/* --- 6. GARITAS DE ACCESO VEHICULAR --- */}
+                {/* ---------------- 7. GARITAS DE ACCESO VEHICULAR ---------------- */}
+                {/* Garita Bancalari (Sur) */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('Castaños')}>
-                  <circle cx="125" cy="540" r="10" fill="#ef4444" stroke="#ffffff" strokeWidth="2" className="animate-pulse" />
-                  <rect x="55" y="500" width="135" height="24" rx="6" fill="#450a0a" stroke="#ef4444" strokeWidth="1.5" />
-                  <text x="62" y="516" fill="#fca5a5" fontSize="10" fontWeight="900">GARITA BANCALARI (SUR)</text>
+                  <circle cx="115" cy="550" r="10" fill="#ef4444" stroke="#ffffff" strokeWidth="2" className="animate-pulse" />
+                  <rect x="45" y="510" width="145" height="24" rx="6" fill="#450a0a" stroke="#ef4444" strokeWidth="1.5" />
+                  <text x="52" y="526" fill="#fca5a5" fontSize="10" fontWeight="900">GARITA BANCALARI (SUR)</text>
                 </g>
 
+                {/* Garita Benavídez (Norte) */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('Tipas')}>
-                  <circle cx="605" cy="90" r="10" fill="#ef4444" stroke="#ffffff" strokeWidth="2" className="animate-pulse" />
-                  <rect x="530" y="58" width="145" height="24" rx="6" fill="#450a0a" stroke="#ef4444" strokeWidth="1.5" />
-                  <text x="537" y="74" fill="#fca5a5" fontSize="10" fontWeight="900">GARITA BENAVÍDEZ (NORTE)</text>
+                  <circle cx="580" cy="72" r="10" fill="#ef4444" stroke="#ffffff" strokeWidth="2" className="animate-pulse" />
+                  <rect x="505" y="42" width="150" height="24" rx="6" fill="#450a0a" stroke="#ef4444" strokeWidth="1.5" />
+                  <text x="512" y="58" fill="#fca5a5" fontSize="10" fontWeight="900">GARITA BENAVÍDEZ (NORTE)</text>
                 </g>
 
+                {/* Garita Remeros (Este) */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('El Yacht')}>
-                  <circle cx="845" cy="340" r="10" fill="#ef4444" stroke="#ffffff" strokeWidth="2" className="animate-pulse" />
-                  <rect x="770" y="355" width="135" height="24" rx="6" fill="#450a0a" stroke="#ef4444" strokeWidth="1.5" />
-                  <text x="777" y="371" fill="#fca5a5" fontSize="10" fontWeight="900">GARITA REMEROS (ESTE)</text>
+                  <circle cx="885" cy="150" r="10" fill="#ef4444" stroke="#ffffff" strokeWidth="2" className="animate-pulse" />
+                  <rect x="810" y="165" width="140" height="24" rx="6" fill="#450a0a" stroke="#ef4444" strokeWidth="1.5" />
+                  <text x="818" y="181" fill="#fca5a5" fontSize="10" fontWeight="900">GARITA REMEROS (ESTE)</text>
                 </g>
 
-                {/* --- 7. POLOS URBANOS --- */}
-                {/* Cancha de Golf Nicklaus */}
+                {/* ---------------- 8. POLOS URBANOS ---------------- */}
+                {/* Golf Nicklaus */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('El Golf')}>
-                  <path d="M 240,170 C 280,140 370,160 350,220 C 320,250 240,230 240,170 Z" 
+                  <path d="M 220,150 C 260,120 350,140 330,200 C 300,230 220,210 220,150 Z" 
                         fill="#064e3b" stroke="#10b981" strokeWidth="1.5" strokeDasharray="4,3" opacity="0.75" />
-                  <text x="260" y="195" fill="#6ee7b7" fontSize="11" fontWeight="900">GOLF CLUB (18 Hoyos)</text>
-                  <text x="265" y="210" fill="#a7f3d0" fontSize="10">Jack Nicklaus Design</text>
+                  <text x="240" y="175" fill="#6ee7b7" fontSize="11" fontWeight="900">GOLF CLUB (18 Hoyos)</text>
+                  <text x="245" y="190" fill="#a7f3d0" fontSize="10">Jack Nicklaus Design</text>
                 </g>
 
                 {/* Centro Comercial & Sanatorio */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('Centro Comercial')}>
-                  <rect x="670" y="360" width="90" height="46" rx="8" fill="#1e1b4b" stroke="#818cf8" strokeWidth="2" />
-                  <text x="678" y="378" fill="#c7d2fe" fontSize="11" fontWeight="900">CENTRO COMERCIAL</text>
-                  <text x="678" y="392" fill="#a5b4fc" fontSize="10">Jumbo, Cines, Bancos</text>
-                  <text x="678" y="402" fill="#f472b6" fontSize="9">Sanatorio Las Lomas</text>
+                  <rect x="650" y="340" width="90" height="46" rx="8" fill="#1e1b4b" stroke="#818cf8" strokeWidth="2" />
+                  <text x="658" y="358" fill="#c7d2fe" fontSize="11" fontWeight="900">CENTRO COMERCIAL</text>
+                  <text x="658" y="372" fill="#a5b4fc" fontSize="10">Jumbo, Cines, Bancos</text>
+                  <text x="658" y="382" fill="#f472b6" fontSize="9">Sanatorio Las Lomas</text>
                 </g>
 
                 {/* Bahía Grande & Wyndham */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('Bahía Grande')}>
-                  <rect x="735" y="295" width="85" height="42" rx="8" fill="#14532d" stroke="#4ade80" strokeWidth="2" />
-                  <text x="745" y="313" fill="#bbf7d0" fontSize="11" fontWeight="900">BAHÍA GRANDE</text>
-                  <text x="745" y="327" fill="#86efac" fontSize="10">Marina & Gastronomía</text>
-                  <text x="745" y="335" fill="#a7f3d0" fontSize="9">Hotel Wyndham</text>
+                  <rect x="715" y="275" width="85" height="42" rx="8" fill="#14532d" stroke="#4ade80" strokeWidth="2" />
+                  <text x="725" y="293" fill="#bbf7d0" fontSize="11" fontWeight="900">BAHÍA GRANDE</text>
+                  <text x="725" y="307" fill="#86efac" fontSize="10">Marina & Restos</text>
+                  <text x="725" y="315" fill="#a7f3d0" fontSize="9">Hotel Wyndham</text>
                 </g>
 
-                {/* Polo Educativo (Colegios) */}
+                {/* Colegios */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('El Palmar')}>
-                  <rect x="360" y="565" width="80" height="34" rx="6" fill="#701a75" stroke="#f472b6" strokeWidth="1.5" />
-                  <text x="368" y="580" fill="#fbcfe8" fontSize="11" fontWeight="bold">COLEGIOS</text>
-                  <text x="368" y="593" fill="#f472b6" fontSize="10">Northlands, Michael Ham</text>
+                  <rect x="340" y="545" width="80" height="34" rx="6" fill="#701a75" stroke="#f472b6" strokeWidth="1.5" />
+                  <text x="348" y="560" fill="#fbcfe8" fontSize="11" fontWeight="bold">COLEGIOS</text>
+                  <text x="348" y="573" fill="#f472b6" fontSize="10">Northlands, Michael Ham</text>
                 </g>
 
-                {/* --- 8. POLÍGONOS Y NODOS DE CADA BARRIO --- */}
-
+                {/* ---------------- 9. BARRIOS DE NORDELTA ---------------- */}
                 {/* LA ISLA */}
-                <g className="cursor-pointer group" onClick={() => setSelectedKey('La Isla')}>
-                  <rect x="385" y="325" width="70" height="36" rx="8" fill="#831843" stroke={selectedKey === 'La Isla' ? '#38bdf8' : '#f472b6'} strokeWidth={selectedKey === 'La Isla' ? 3.5 : 2} />
-                  <text x="398" y="343" fill="#ffffff" fontSize="12" fontWeight="900">La Isla</text>
-                  <text x="395" y="355" fill="#fbcfe8" fontSize="10">Exclusivo 360°</text>
+                <g className="cursor-pointer" onClick={() => setSelectedKey('La Isla')}>
+                  <rect x="365" y="305" width="70" height="36" rx="8" fill="#831843" stroke={selectedKey === 'La Isla' ? '#38bdf8' : '#f472b6'} strokeWidth={selectedKey === 'La Isla' ? 3.5 : 2} />
+                  <text x="378" y="323" fill="#ffffff" fontSize="12" fontWeight="900">La Isla</text>
+                  <text x="375" y="335" fill="#fbcfe8" fontSize="10">Exclusivo 360°</text>
                 </g>
 
                 {/* LOS CASTORES */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('Los Castores')}>
-                  <rect x="250" y="375" width="90" height="36" rx="8" fill="#1e3a8a" stroke={selectedKey === 'Los Castores' ? '#38bdf8' : '#38bdf8'} strokeWidth={selectedKey === 'Los Castores' ? 3.5 : 2} />
-                  <text x="262" y="392" fill="#ffffff" fontSize="12" fontWeight="900">Los Castores</text>
-                  <text x="262" y="405" fill="#bae6fd" fontSize="10">Lago Central</text>
+                  <rect x="230" y="355" width="90" height="36" rx="8" fill="#1e3a8a" stroke={selectedKey === 'Los Castores' ? '#38bdf8' : '#38bdf8'} strokeWidth={selectedKey === 'Los Castores' ? 3.5 : 2} />
+                  <text x="242" y="372" fill="#ffffff" fontSize="12" fontWeight="900">Los Castores</text>
+                  <text x="242" y="385" fill="#bae6fd" fontSize="10">Lago Central</text>
                 </g>
 
                 {/* CASTAÑOS */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('Castaños')}>
-                  <rect x="180" y="550" width="78" height="36" rx="8" fill="#1e3a8a" stroke={selectedKey === 'Castaños' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'Castaños' ? 3.5 : 2} />
-                  <text x="192" y="567" fill="#ffffff" fontSize="12" fontWeight="900">Castaños</text>
-                  <text x="190" y="580" fill="#93c5fd" fontSize="10">Entrada Rápida</text>
+                  <rect x="170" y="530" width="78" height="36" rx="8" fill="#1e3a8a" stroke={selectedKey === 'Castaños' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'Castaños' ? 3.5 : 2} />
+                  <text x="182" y="547" fill="#ffffff" fontSize="12" fontWeight="900">Castaños</text>
+                  <text x="180" y="560" fill="#93c5fd" fontSize="10">Entrada Rápida</text>
                 </g>
 
                 {/* LAS GLORIETAS */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('Las Glorietas')}>
-                  <rect x="185" y="465" width="88" height="36" rx="8" fill="#1e3a8a" stroke={selectedKey === 'Las Glorietas' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'Las Glorietas' ? 3.5 : 2} />
-                  <text x="196" y="482" fill="#ffffff" fontSize="12" fontWeight="900">Las Glorietas</text>
-                  <text x="196" y="495" fill="#93c5fd" fontSize="10">Muy Arbolado</text>
+                  <rect x="170" y="445" width="88" height="36" rx="8" fill="#1e3a8a" stroke={selectedKey === 'Las Glorietas' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'Las Glorietas' ? 3.5 : 2} />
+                  <text x="181" y="462" fill="#ffffff" fontSize="12" fontWeight="900">Las Glorietas</text>
+                  <text x="181" y="475" fill="#93c5fd" fontSize="10">Muy Arbolado</text>
                 </g>
 
                 {/* LOS ALISOS */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('Los Alisos')}>
-                  <rect x="300" y="605" width="78" height="36" rx="8" fill="#1e3a8a" stroke={selectedKey === 'Los Alisos' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'Los Alisos' ? 3.5 : 2} />
-                  <text x="310" y="622" fill="#ffffff" fontSize="12" fontWeight="900">Los Alisos</text>
-                  <text x="310" y="635" fill="#93c5fd" fontSize="10">Lago 10 ha</text>
+                  <rect x="280" y="585" width="78" height="36" rx="8" fill="#1e3a8a" stroke={selectedKey === 'Los Alisos' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'Los Alisos' ? 3.5 : 2} />
+                  <text x="290" y="602" fill="#ffffff" fontSize="12" fontWeight="900">Los Alisos</text>
+                  <text x="290" y="615" fill="#93c5fd" fontSize="10">Lago 10 ha</text>
                 </g>
 
                 {/* EL PALMAR */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('El Palmar')}>
-                  <rect x="280" y="535" width="70" height="34" rx="7" fill="#312e81" stroke={selectedKey === 'El Palmar' ? '#38bdf8' : '#818cf8'} strokeWidth={selectedKey === 'El Palmar' ? 3.5 : 1.8} />
-                  <text x="288" y="551" fill="#ffffff" fontSize="11" fontWeight="bold">El Palmar</text>
-                  <text x="288" y="563" fill="#c7d2fe" fontSize="10">Townhouses</text>
+                  <rect x="260" y="515" width="70" height="34" rx="7" fill="#312e81" stroke={selectedKey === 'El Palmar' ? '#38bdf8' : '#818cf8'} strokeWidth={selectedKey === 'El Palmar' ? 3.5 : 1.8} />
+                  <text x="268" y="531" fill="#ffffff" fontSize="11" fontWeight="bold">El Palmar</text>
+                  <text x="268" y="543" fill="#c7d2fe" fontSize="10">Townhouses</text>
                 </g>
 
                 {/* BARRANCAS DEL LAGO */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('Barrancas del Lago')}>
-                  <rect x="500" y="460" width="100" height="36" rx="8" fill="#1e3a8a" stroke={selectedKey === 'Barrancas del Lago' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'Barrancas del Lago' ? 3.5 : 2} />
-                  <text x="508" y="477" fill="#ffffff" fontSize="11" fontWeight="900">Barrancas Lago</text>
-                  <text x="508" y="489" fill="#93c5fd" fontSize="10">Estilo Colonial</text>
+                  <rect x="480" y="440" width="100" height="36" rx="8" fill="#1e3a8a" stroke={selectedKey === 'Barrancas del Lago' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'Barrancas del Lago' ? 3.5 : 2} />
+                  <text x="488" y="457" fill="#ffffff" fontSize="11" fontWeight="900">Barrancas Lago</text>
+                  <text x="488" y="469" fill="#93c5fd" fontSize="10">Estilo Colonial</text>
                 </g>
 
                 {/* PORTEZUELO */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('Portezuelo')}>
-                  <rect x="550" y="515" width="78" height="34" rx="7" fill="#312e81" stroke={selectedKey === 'Portezuelo' ? '#38bdf8' : '#818cf8'} strokeWidth={selectedKey === 'Portezuelo' ? 3.5 : 1.8} />
-                  <text x="558" y="531" fill="#ffffff" fontSize="11" fontWeight="bold">Portezuelo</text>
-                  <text x="558" y="543" fill="#c7d2fe" fontSize="10">Condominios</text>
+                  <rect x="530" y="495" width="78" height="34" rx="7" fill="#312e81" stroke={selectedKey === 'Portezuelo' ? '#38bdf8' : '#818cf8'} strokeWidth={selectedKey === 'Portezuelo' ? 3.5 : 1.8} />
+                  <text x="538" y="511" fill="#ffffff" fontSize="11" fontWeight="bold">Portezuelo</text>
+                  <text x="538" y="523" fill="#c7d2fe" fontSize="10">Condominios</text>
                 </g>
 
                 {/* LAS CALETAS */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('Las Caletas')}>
-                  <rect x="620" y="445" width="80" height="36" rx="8" fill="#0f766e" stroke={selectedKey === 'Las Caletas' ? '#38bdf8' : '#2dd4bf'} strokeWidth={selectedKey === 'Las Caletas' ? 3.5 : 2} />
-                  <text x="628" y="462" fill="#ffffff" fontSize="11" fontWeight="900">Las Caletas</text>
-                  <text x="628" y="474" fill="#99f6e4" fontSize="10">Amarras Propias</text>
+                  <rect x="600" y="425" width="80" height="36" rx="8" fill="#0f766e" stroke={selectedKey === 'Las Caletas' ? '#38bdf8' : '#2dd4bf'} strokeWidth={selectedKey === 'Las Caletas' ? 3.5 : 2} />
+                  <text x="608" y="442" fill="#ffffff" fontSize="11" fontWeight="900">Las Caletas</text>
+                  <text x="608" y="454" fill="#99f6e4" fontSize="10">Amarras Propias</text>
                 </g>
 
                 {/* LOS SAUCES */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('Los Sauces')}>
-                  <rect x="370" y="220" width="78" height="36" rx="8" fill="#1e3a8a" stroke={selectedKey === 'Los Sauces' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'Los Sauces' ? 3.5 : 2} />
-                  <text x="380" y="237" fill="#ffffff" fontSize="12" fontWeight="900">Los Sauces</text>
-                  <text x="380" y="249" fill="#93c5fd" fontSize="10">Junto a Centro</text>
+                  <rect x="350" y="200" width="78" height="36" rx="8" fill="#1e3a8a" stroke={selectedKey === 'Los Sauces' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'Los Sauces' ? 3.5 : 2} />
+                  <text x="360" y="217" fill="#ffffff" fontSize="12" fontWeight="900">Los Sauces</text>
+                  <text x="360" y="229" fill="#93c5fd" fontSize="10">Junto a Centro</text>
                 </g>
 
                 {/* LOS TILOS */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('Los Tilos')}>
-                  <rect x="460" y="190" width="70" height="34" rx="7" fill="#1e3a8a" stroke={selectedKey === 'Los Tilos' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'Los Tilos' ? 3.5 : 1.8} />
-                  <text x="470" y="206" fill="#ffffff" fontSize="11" fontWeight="bold">Los Tilos</text>
-                  <text x="470" y="218" fill="#93c5fd" fontSize="10">Familiar</text>
+                  <rect x="440" y="170" width="70" height="34" rx="7" fill="#1e3a8a" stroke={selectedKey === 'Los Tilos' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'Los Tilos' ? 3.5 : 1.8} />
+                  <text x="450" y="186" fill="#ffffff" fontSize="11" fontWeight="bold">Los Tilos</text>
+                  <text x="450" y="198" fill="#93c5fd" fontSize="10">Familiar</text>
                 </g>
 
                 {/* LA ALAMEDA */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('La Alameda')}>
-                  <rect x="525" y="145" width="78" height="36" rx="8" fill="#1e3a8a" stroke={selectedKey === 'La Alameda' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'La Alameda' ? 3.5 : 2} />
-                  <text x="533" y="162" fill="#ffffff" fontSize="11" fontWeight="900">La Alameda</text>
-                  <text x="533" y="174" fill="#93c5fd" fontSize="10">Lago 7 ha</text>
+                  <rect x="505" y="125" width="78" height="36" rx="8" fill="#1e3a8a" stroke={selectedKey === 'La Alameda' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'La Alameda' ? 3.5 : 2} />
+                  <text x="513" y="142" fill="#ffffff" fontSize="11" fontWeight="900">La Alameda</text>
+                  <text x="513" y="154" fill="#93c5fd" fontSize="10">Lago 7 ha</text>
                 </g>
 
                 {/* TIPAS */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('Tipas')}>
-                  <rect x="435" y="140" width="70" height="34" rx="7" fill="#1e3a8a" stroke={selectedKey === 'Tipas' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'Tipas' ? 3.5 : 1.8} />
-                  <text x="449" y="156" fill="#ffffff" fontSize="11" fontWeight="bold">Tipas</text>
-                  <text x="444" y="168" fill="#93c5fd" fontSize="10">Acceso Norte</text>
+                  <rect x="415" y="120" width="70" height="34" rx="7" fill="#1e3a8a" stroke={selectedKey === 'Tipas' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'Tipas' ? 3.5 : 1.8} />
+                  <text x="429" y="136" fill="#ffffff" fontSize="11" fontWeight="bold">Tipas</text>
+                  <text x="424" y="148" fill="#93c5fd" fontSize="10">Acceso Norte</text>
                 </g>
 
                 {/* EL GOLF */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('El Golf')}>
-                  <rect x="290" y="115" width="75" height="36" rx="8" fill="#065f46" stroke={selectedKey === 'El Golf' ? '#38bdf8' : '#34d399'} strokeWidth={selectedKey === 'El Golf' ? 3.5 : 2} />
-                  <text x="306" y="132" fill="#ffffff" fontSize="12" fontWeight="900">El Golf</text>
-                  <text x="300" y="145" fill="#a7f3d0" fontSize="10">Nicklaus 18H</text>
+                  <rect x="270" y="95" width="75" height="36" rx="8" fill="#065f46" stroke={selectedKey === 'El Golf' ? '#38bdf8' : '#34d399'} strokeWidth={selectedKey === 'El Golf' ? 3.5 : 2} />
+                  <text x="286" y="112" fill="#ffffff" fontSize="12" fontWeight="900">El Golf</text>
+                  <text x="280" y="125" fill="#a7f3d0" fontSize="10">Nicklaus 18H</text>
                 </g>
 
                 {/* CARPINCHOS */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('Carpinchos')}>
-                  <rect x="625" y="160" width="80" height="36" rx="8" fill="#1e3a8a" stroke={selectedKey === 'Carpinchos' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'Carpinchos' ? 3.5 : 2} />
-                  <text x="635" y="177" fill="#ffffff" fontSize="11" fontWeight="900">Carpinchos</text>
-                  <text x="635" y="190" fill="#93c5fd" fontSize="10">Lago 16 ha</text>
+                  <rect x="605" y="140" width="80" height="36" rx="8" fill="#1e3a8a" stroke={selectedKey === 'Carpinchos' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'Carpinchos' ? 3.5 : 2} />
+                  <text x="615" y="157" fill="#ffffff" fontSize="11" fontWeight="900">Carpinchos</text>
+                  <text x="615" y="170" fill="#93c5fd" fontSize="10">Lago 16 ha</text>
                 </g>
 
                 {/* EL YACHT */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('El Yacht')}>
-                  <rect x="720" y="180" width="75" height="36" rx="8" fill="#0f766e" stroke={selectedKey === 'El Yacht' ? '#38bdf8' : '#2dd4bf'} strokeWidth={selectedKey === 'El Yacht' ? 3.5 : 2} />
-                  <text x="734" y="197" fill="#ffffff" fontSize="12" fontWeight="900">El Yacht</text>
-                  <text x="728" y="210" fill="#99f6e4" fontSize="10">Al Río Luján</text>
+                  <rect x="700" y="160" width="75" height="36" rx="8" fill="#0f766e" stroke={selectedKey === 'El Yacht' ? '#38bdf8' : '#2dd4bf'} strokeWidth={selectedKey === 'El Yacht' ? 3.5 : 2} />
+                  <text x="714" y="177" fill="#ffffff" fontSize="12" fontWeight="900">El Yacht</text>
+                  <text x="708" y="190" fill="#99f6e4" fontSize="10">Al Río Luján</text>
                 </g>
 
                 {/* LOS LAGOS */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('Los Lagos')}>
-                  <rect x="560" y="380" width="78" height="34" rx="7" fill="#1e3a8a" stroke={selectedKey === 'Los Lagos' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'Los Lagos' ? 3.5 : 1.8} />
-                  <text x="569" y="396" fill="#ffffff" fontSize="11" fontWeight="900">Los Lagos</text>
-                  <text x="569" y="408" fill="#93c5fd" fontSize="10">Lago 22 ha</text>
+                  <rect x="540" y="360" width="78" height="34" rx="7" fill="#1e3a8a" stroke={selectedKey === 'Los Lagos' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'Los Lagos' ? 3.5 : 1.8} />
+                  <text x="549" y="376" fill="#ffffff" fontSize="11" fontWeight="900">Los Lagos</text>
+                  <text x="549" y="388" fill="#93c5fd" fontSize="10">Lago 22 ha</text>
                 </g>
 
                 {/* LOS PUENTES */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('Los Puentes')}>
-                  <rect x="365" y="470" width="78" height="34" rx="7" fill="#1e3a8a" stroke={selectedKey === 'Los Puentes' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'Los Puentes' ? 3.5 : 1.8} />
-                  <text x="373" y="486" fill="#ffffff" fontSize="11" fontWeight="900">Los Puentes</text>
-                  <text x="373" y="498" fill="#93c5fd" fontSize="10">Alta Gama</text>
+                  <rect x="345" y="450" width="78" height="34" rx="7" fill="#1e3a8a" stroke={selectedKey === 'Los Puentes' ? '#38bdf8' : '#60a5fa'} strokeWidth={selectedKey === 'Los Puentes' ? 3.5 : 1.8} />
+                  <text x="353" y="466" fill="#ffffff" fontSize="11" fontWeight="900">Los Puentes</text>
+                  <text x="353" y="478" fill="#93c5fd" fontSize="10">Alta Gama</text>
                 </g>
 
                 {/* SENDERO */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('Sendero')}>
-                  <rect x="635" y="495" width="68" height="32" rx="6" fill="#312e81" stroke={selectedKey === 'Sendero' ? '#38bdf8' : '#818cf8'} strokeWidth={selectedKey === 'Sendero' ? 3.5 : 1.5} />
-                  <text x="645" y="510" fill="#ffffff" fontSize="10" fontWeight="bold">Sendero</text>
-                  <text x="643" y="521" fill="#c7d2fe" fontSize="9">Condominios</text>
+                  <rect x="615" y="475" width="68" height="32" rx="6" fill="#312e81" stroke={selectedKey === 'Sendero' ? '#38bdf8' : '#818cf8'} strokeWidth={selectedKey === 'Sendero' ? 3.5 : 1.5} />
+                  <text x="625" y="490" fill="#ffffff" fontSize="10" fontWeight="bold">Sendero</text>
+                  <text x="623" y="501" fill="#c7d2fe" fontSize="9">Condominios</text>
                 </g>
 
                 {/* YOO NORDELTA */}
                 <g className="cursor-pointer" onClick={() => setSelectedKey('Yoo Nordelta')}>
-                  <rect x="235" y="240" width="80" height="34" rx="7" fill="#065f46" stroke={selectedKey === 'Yoo Nordelta' ? '#38bdf8' : '#34d399'} strokeWidth={selectedKey === 'Yoo Nordelta' ? 3.5 : 1.8} />
-                  <text x="245" y="255" fill="#ffffff" fontSize="11" fontWeight="bold">Yoo Nordelta</text>
-                  <text x="245" y="267" fill="#a7f3d0" fontSize="9">Ph. Starck</text>
+                  <rect x="215" y="220" width="80" height="34" rx="7" fill="#065f46" stroke={selectedKey === 'Yoo Nordelta' ? '#38bdf8' : '#34d399'} strokeWidth={selectedKey === 'Yoo Nordelta' ? 3.5 : 1.8} />
+                  <text x="225" y="235" fill="#ffffff" fontSize="11" fontWeight="bold">Yoo Nordelta</text>
+                  <text x="225" y="247" fill="#a7f3d0" fontSize="9">Ph. Starck</text>
                 </g>
 
               </svg>
